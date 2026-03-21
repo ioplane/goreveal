@@ -1,0 +1,12 @@
+{
+  "input": {
+    "path": "corpus/fixtures/minimal-linux-amd64/fixture.bin",
+    "size": 16,
+    "format": "elf"
+  },
+  "provenance": {
+    "source": "core.ingest",
+    "confidence": "high"
+  },
+  "types": []
+}

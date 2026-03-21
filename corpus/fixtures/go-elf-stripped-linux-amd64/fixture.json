@@ -1,0 +1,9 @@
+{
+  "name": "go-elf-stripped-linux-amd64",
+  "fixture": "fixture.bin",
+  "normalized_path": "corpus/fixtures/go-elf-stripped-linux-amd64/fixture.bin",
+  "format": "elf",
+  "goos": "linux",
+  "goarch": "amd64",
+  "notes": "Go-built stripped ELF fixture used for Sprint 12 runtime validation without relying on a rich symbol table."
+}

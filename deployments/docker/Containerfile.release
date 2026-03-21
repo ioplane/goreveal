@@ -1,0 +1,15 @@
+FROM debian:trixie-slim AS release
+
+LABEL org.opencontainers.image.title="GoREveal Release Image"
+LABEL org.opencontainers.image.description="Minimal OCI runtime image for GoREveal"
+LABEL org.opencontainers.image.source="https://github.com/dantte-lp/goreveal"
+
+RUN groupadd -r goreveal && useradd -r -g goreveal -s /usr/sbin/nologin goreveal \
+    && apt-get update && apt-get install -y --no-install-recommends ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY goreveal /usr/local/bin/goreveal
+
+USER goreveal:goreveal
+
+ENTRYPOINT ["/usr/local/bin/goreveal"]
