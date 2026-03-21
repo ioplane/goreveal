@@ -1,0 +1,9 @@
+{
+  "name": "go-elf-buildinfo-linux-amd64",
+  "fixture": "fixture.bin",
+  "normalized_path": "corpus/fixtures/go-elf-buildinfo-linux-amd64/fixture.bin",
+  "format": "elf",
+  "goos": "linux",
+  "goarch": "amd64",
+  "notes": "Go-built ELF fixture used for build info and pclntab function recovery tests."
+}

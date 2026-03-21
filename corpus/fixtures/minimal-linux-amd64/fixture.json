@@ -1,0 +1,7 @@
+{
+  "name": "minimal-linux-amd64",
+  "fixture": "fixture.bin",
+  "normalized_path": "corpus/fixtures/minimal-linux-amd64/fixture.bin",
+  "format": "elf",
+  "notes": "Minimal Linux amd64 fixture for the first schema snapshot test."
+}

@@ -1,0 +1,200 @@
+version: "2"
+
+# This policy is rebased from /opt/projects/repositories/gobfd/.golangci.yml.
+# It is intentionally staged for goreveal: preserve the shared lint philosophy,
+# but only enable the subset that currently provides signal without drowning the
+# repo in style-only migration noise.
+
+run:
+  timeout: 10m
+  relative-path-mode: gomod
+  tests: true
+
+formatters:
+  enable:
+    - gofmt
+    - gofumpt
+    - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/dantte-lp/goreveal
+
+output:
+  formats:
+    text:
+      print-linter-name: true
+      colors: true
+  show-stats: true
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
+
+linters:
+  default: none
+  enable:
+    - gosec
+    - bidichk
+    - forcetypeassert
+    - reassign
+    - containedctx
+
+    - govet
+    - staticcheck
+    - errcheck
+    - bodyclose
+    - noctx
+    - contextcheck
+    - nilerr
+    - nilnesserr
+    - nilnil
+    - durationcheck
+    - fatcontext
+    - copyloopvar
+    - predeclared
+    - recvcheck
+    - gocheckcompilerdirectives
+    - iface
+    - asasalint
+    - gochecksumtype
+    - gochecknoinits
+
+    - errorlint
+    - errname
+    - errchkjson
+
+    - nosprintfhostport
+
+    - gocritic
+    - funlen
+    - exhaustive
+    - unparam
+    - unconvert
+    - unused
+    - ineffassign
+    - maintidx
+    - nakedret
+    - nonamedreturns
+    - goprintffuncname
+    - interfacebloat
+    - inamedparam
+    - decorder
+
+    - prealloc
+    - perfsprint
+    - makezero
+    - mirror
+    - wastedassign
+    - exptostd
+
+    - dupl
+    - misspell
+    - sloglint
+    - musttag
+    - modernize
+    - asciicheck
+    - canonicalheader
+    - dupword
+    - usestdlibvars
+    - loggercheck
+    - whitespace
+    - godot
+    - godoclint
+    - tagalign
+    - importas
+
+    - depguard
+    - gomoddirectives
+
+    - nolintlint
+
+    - tparallel
+    - thelper
+    - testableexamples
+    - usetesting
+    - testifylint
+
+  settings:
+    gosec:
+      config:
+        global:
+          audit: "true"
+      excludes:
+        - G115
+    govet:
+      enable:
+        - shadow
+        - atomic
+        - copylocks
+        - loopclosure
+        - httpmux
+    funlen:
+      lines: 60
+      statements: 40
+    maintidx:
+      under: 20
+    nakedret:
+      max-func-lines: 0
+    exhaustive:
+      default-signifies-exhaustive: true
+    interfacebloat:
+      max: 10
+    importas:
+      no-unaliased: false
+    depguard:
+      rules:
+        main:
+          deny:
+            - pkg: "math/rand$"
+              desc: "Use crypto/rand or math/rand/v2"
+            - pkg: "^log$"
+              desc: "Use log/slog"
+            - pkg: "io/ioutil"
+              desc: "Deprecated in Go 1.16"
+            - pkg: "unsafe"
+              desc: "Forbidden in goreveal core"
+            - pkg: "os/exec"
+              desc: "Keep process execution isolated to baseline harness exceptions"
+    nolintlint:
+      require-explanation: true
+      require-specific: true
+    sloglint:
+      attr-only: false
+    loggercheck:
+      require-string-key: true
+      no-printf-like: true
+
+  exclusions:
+    generated: strict
+    presets:
+      - std-error-handling
+      - common-false-positives
+    rules:
+      - path: _test\.go
+        linters:
+          - gosec
+          - dupl
+          - funlen
+          - nonamedreturns
+          - maintidx
+          - containedctx
+          - forcetypeassert
+      - path: tests/differential/
+        linters:
+          - depguard
+
+severity:
+  default: warning
+  rules:
+    - linters:
+        - gosec
+        - errcheck
+        - bodyclose
+        - noctx
+        - staticcheck
+        - forcetypeassert
+        - containedctx
+        - nilnil
+        - reassign
+      severity: error

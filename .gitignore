@@ -1,0 +1,29 @@
+# Go
+bin/
+dist/
+*.test
+*.out
+coverage.out
+
+# Modules and workspaces
+vendor/
+
+# Tooling
+.golangci.cache/
+
+# Editors and OS
+.DS_Store
+.idea/
+.vscode/
+
+# Analysis artifacts
+corpus/generated/
+output/
+.tmp/
+
+# Local agent state
+.serena/
+
+# Python
+__pycache__/
+*.pyc
