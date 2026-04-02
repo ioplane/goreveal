@@ -1,30 +1,31 @@
 ---
 name: goreveal-release-ops
-description: Manage operational readiness for GoREveal including corpus refresh, regression checks, packaging, and release evidence.
+description: Keep release claims, corpus state, CI expectations, and operational docs aligned with actual supported capability.
 metadata:
   short-description: Release and ops workflow
 ---
 
 # GoREveal Release and Operations
 
-## Purpose
+## Use When
 
-Use this skill for release prep, CI hardening, and repeatable project operations.
+- preparing releases
+- updating CI or verification docs
+- refreshing corpus state for release notes
+- writing install or operations guidance
 
 ## Required Checks
 
-- architecture docs are still aligned with implementation
-- corpus and snapshot expectations are current
+- architecture docs still match implementation
+- corpus and snapshots are current
 - differential tests are green or divergences are documented
 - benchmark regressions are reviewed
-- release artifacts reflect actual supported capabilities
-- Podman verification commands are documented in the current `make`-based workflow
-- release claims do not outrun current Sprint 11 metadata surfaces and documented divergence policy
+- release claims do not outrun current bounded capability
 
 ## Scope
 
 - release notes
-- CI workflow expectations
-- corpus maintenance
-- benchmark baselines
+- CI expectations
 - install and operations docs
+- corpus maintenance
+- benchmark baseline notes

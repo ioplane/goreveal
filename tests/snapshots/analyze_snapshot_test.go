@@ -1,12 +1,13 @@
 package snapshots
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"flag"
 	"os"
 	"path/filepath"
-	"reflect"
+	"sort"
 	"testing"
 
 	"github.com/dantte-lp/goreveal/engine"
@@ -24,42 +25,75 @@ type fixtureMetadata struct {
 func TestAnalyzeFixtureSnapshot(t *testing.T) {
 	t.Parallel()
 
-	fixtureDir := filepath.Join("..", "..", "corpus", "fixtures", "minimal-linux-amd64")
-
-	metadataBytes, err := os.ReadFile(filepath.Join(fixtureDir, "fixture.json"))
+	fixtureNames, err := discoverSnapshotFixtures(filepath.Join("..", "..", "corpus", "fixtures"))
 	testutil.MustNoErr(t, err)
 
-	var metadata fixtureMetadata
-	testutil.MustNoErr(t, json.Unmarshal(metadataBytes, &metadata))
+	for _, fixtureName := range fixtureNames {
+		fixtureName := fixtureName
+		t.Run(fixtureName, func(t *testing.T) {
+			t.Parallel()
 
-	fixturePath := filepath.Join(fixtureDir, metadata.Fixture)
-	if _, statErr := os.Stat(fixturePath); statErr != nil {
-		t.Fatalf("fixture binary missing: %v", statErr)
+			fixtureDir := filepath.Join("..", "..", "corpus", "fixtures", fixtureName)
+
+			metadataBytes, err := os.ReadFile(filepath.Join(fixtureDir, "fixture.json"))
+			testutil.MustNoErr(t, err)
+
+			var metadata fixtureMetadata
+			testutil.MustNoErr(t, json.Unmarshal(metadataBytes, &metadata))
+
+			fixturePath := filepath.Join(fixtureDir, metadata.Fixture)
+			if _, statErr := os.Stat(fixturePath); statErr != nil {
+				t.Fatalf("fixture binary missing: %v", statErr)
+			}
+
+			got, err := engine.New().AnalyzeFile(context.Background(), fixturePath)
+			testutil.MustNoErr(t, err)
+			got.Input.Path = metadata.NormalizedPath
+
+			expectedPath := filepath.Join(fixtureDir, "expected.analysis.json")
+			if *updateSnapshots {
+				gotJSON, marshalErr := json.MarshalIndent(got, "", "  ")
+				testutil.MustNoErr(t, marshalErr)
+				testutil.MustNoErr(t, os.WriteFile(expectedPath, append(gotJSON, '\n'), 0o644))
+				return
+			}
+
+			expectedBytes, err := os.ReadFile(expectedPath)
+			testutil.MustNoErr(t, err)
+
+			var want schema.Analysis
+			testutil.MustNoErr(t, json.Unmarshal(expectedBytes, &want))
+
+			gotJSON, gotMarshalErr := json.MarshalIndent(got, "", "  ")
+			testutil.MustNoErr(t, gotMarshalErr)
+			wantJSON, wantMarshalErr := json.MarshalIndent(want, "", "  ")
+			testutil.MustNoErr(t, wantMarshalErr)
+
+			if !bytes.Equal(gotJSON, wantJSON) {
+				t.Fatalf("snapshot mismatch\nwant:\n%s\n\ngot:\n%s", wantJSON, gotJSON)
+			}
+		})
+	}
+}
+
+func discoverSnapshotFixtures(fixturesRoot string) ([]string, error) {
+	entries, err := os.ReadDir(fixturesRoot)
+	if err != nil {
+		return nil, err
 	}
 
-	got, err := engine.New().AnalyzeFile(context.Background(), fixturePath)
-	testutil.MustNoErr(t, err)
-	got.Input.Path = metadata.NormalizedPath
+	fixtures := make([]string, 0, len(entries))
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
 
-	expectedPath := filepath.Join(fixtureDir, "expected.analysis.json")
-	if *updateSnapshots {
-		gotJSON, marshalErr := json.MarshalIndent(got, "", "  ")
-		testutil.MustNoErr(t, marshalErr)
-		testutil.MustNoErr(t, os.WriteFile(expectedPath, append(gotJSON, '\n'), 0o644))
-		return
+		expectedPath := filepath.Join(fixturesRoot, entry.Name(), "expected.analysis.json")
+		if _, statErr := os.Stat(expectedPath); statErr == nil {
+			fixtures = append(fixtures, entry.Name())
+		}
 	}
 
-	expectedBytes, err := os.ReadFile(expectedPath)
-	testutil.MustNoErr(t, err)
-
-	var want schema.Analysis
-	testutil.MustNoErr(t, json.Unmarshal(expectedBytes, &want))
-
-	if !reflect.DeepEqual(got, want) {
-		gotJSON, gotMarshalErr := json.MarshalIndent(got, "", "  ")
-		testutil.MustNoErr(t, gotMarshalErr)
-		wantJSON, wantMarshalErr := json.MarshalIndent(want, "", "  ")
-		testutil.MustNoErr(t, wantMarshalErr)
-		t.Fatalf("snapshot mismatch\nwant:\n%s\n\ngot:\n%s", wantJSON, gotJSON)
-	}
+	sort.Strings(fixtures)
+	return fixtures, nil
 }

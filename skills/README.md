@@ -2,12 +2,20 @@
 
 These skills are local workflow guides for GoREveal.
 
+Canonical Codex-native location:
+- `.agents/skills/`
+
+Compatibility mirror:
+- `skills/`
+
 Use them to keep work aligned with:
+- `AGENTS.md`
 - `docs/architecture/2026-03-19-goreveal-platform-contract.md`
 - `docs/architecture/2026-03-19-goreveal-go126-best-practices.md`
 - `docs/plans/2026-03-19-goreveal-scrum-implementation-plan.md`
+- `docs/plans/2026-03-31-goreveal-strategic-review.md`
 
-Available skills:
+Core skills:
 - `goreveal-navigation`
 - `goreveal-cleanroom`
 - `goreveal-corpus-validation`
@@ -16,3 +24,20 @@ Available skills:
 - `goreveal-perf-simd`
 - `goreveal-export-contracts`
 - `goreveal-release-ops`
+
+New Codex-native support skills:
+- `goreveal-doc-sync`
+- `goreveal-sprint12-runtime`
+
+Related repo-local configuration:
+- `.codex/config.toml`
+- `.codex/agents/`
+
+Operational verification baseline:
+- prefer `task ...` or `make ...` entrypoints over ad hoc host commands
+- Podman automation is centralized in `scripts/dev/podman_runner.py`
+- script-quality checks use:
+  - `ruff`
+  - `ty`
+  - `yamllint`
+  - `shellcheck`

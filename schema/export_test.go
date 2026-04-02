@@ -10,6 +10,18 @@ func TestNewIDAExport(t *testing.T) {
 			Path:   "/tmp/sample.bin",
 			Format: "elf",
 		},
+		Runtime: &RuntimeMetadata{
+			TrustSummary:                  RuntimeTrustSummarySymbolBacked,
+			ELFFunctionFoothold:           "address_only",
+			ELFFunctionFootholdCountHint:  2125,
+			ELFFunctionFootholdTextSource: "moduledata_text",
+			ELFFunctionFootholdStartAddr:  0x401000,
+			ELFFunctionFootholdEndAddr:    0x4b4101,
+			Provenance: Provenance{
+				Source:     "core.runtime.elf",
+				Confidence: "medium",
+			},
+		},
 		BuildInfo: &BuildInfo{
 			GoVersion: "go1.26.1",
 			Path:      "example.com/sample",
@@ -62,6 +74,32 @@ func TestNewIDAExport(t *testing.T) {
 				},
 			},
 		},
+		Peeling: &PeelingAnalysis{
+			Functions: []PeelingFunction{{
+				Name:                   "main.main",
+				Package:                "main",
+				ImportPath:             "example.com/sample",
+				SourceFile:             "main.go",
+				SourceLine:             34,
+				Entry:                  0x1000,
+				End:                    0x1100,
+				ModuleLocal:            true,
+				Classification:         PeelingClassUser,
+				ClassificationEvidence: PeelingEvidenceModuleLocal,
+			}},
+			Packages: []PeelingPackage{{
+				Name:                  "main",
+				ImportPath:            "example.com/sample",
+				ModuleLocal:           true,
+				FunctionCount:         1,
+				UserFunctionCount:     1,
+				PrimaryClassification: PeelingClassUser,
+			}},
+			Provenance: Provenance{
+				Source:     "engine.peeling",
+				Confidence: "medium",
+			},
+		},
 		Refined: &RefinedAnalysis{
 			Functions: []RefinedFunction{{Name: "main.main"}},
 			Types:     []RefinedType{{Name: "main.fixtureCounter"}},
@@ -73,6 +111,25 @@ func TestNewIDAExport(t *testing.T) {
 
 	if got.Contract != IDAExportContractV1 {
 		t.Fatalf("contract = %q, want %q", got.Contract, IDAExportContractV1)
+	}
+	if got.Runtime == nil || got.Runtime.TrustSummary != RuntimeTrustSummarySymbolBacked {
+		t.Fatalf("runtime = %#v", got.Runtime)
+	}
+	if got.Runtime.ELFFunctionFoothold != "address_only" ||
+		got.Runtime.ELFFunctionFootholdCountHint != 2125 ||
+		got.Runtime.ELFFunctionFootholdTextSource != "moduledata_text" ||
+		got.Runtime.ELFFunctionFootholdStartAddr != 0x401000 ||
+		got.Runtime.ELFFunctionFootholdEndAddr != 0x4b4101 {
+		t.Fatalf("runtime foothold = %#v", got.Runtime)
+	}
+	if got.Peeling == nil || len(got.Peeling.Functions) != 1 || got.Peeling.Functions[0].Classification != PeelingClassUser {
+		t.Fatalf("peeling = %#v", got.Peeling)
+	}
+	if got.Peeling.Functions[0].ClassificationEvidence != PeelingEvidenceModuleLocal {
+		t.Fatalf("peeling evidence = %#v", got.Peeling.Functions[0])
+	}
+	if len(got.Peeling.Packages) != 1 || got.Peeling.Packages[0].PrimaryClassification != PeelingClassUser {
+		t.Fatalf("peeling packages = %#v", got.Peeling.Packages)
 	}
 	if len(got.Functions) != 1 || got.Functions[0].RefinedName != "main.main" {
 		t.Fatalf("functions = %#v", got.Functions)
@@ -105,6 +162,18 @@ func TestNewGhidraExport(t *testing.T) {
 			Path:   "/tmp/sample.bin",
 			Format: "elf",
 		},
+		Runtime: &RuntimeMetadata{
+			TrustSummary:                  RuntimeTrustSummaryGoModuleFallback,
+			ELFFunctionFoothold:           "address_only",
+			ELFFunctionFootholdCountHint:  2083,
+			ELFFunctionFootholdTextSource: "elf_text_section",
+			ELFFunctionFootholdStartAddr:  0x11000,
+			ELFFunctionFootholdEndAddr:    0xb55d1,
+			Provenance: Provenance{
+				Source:     "core.runtime.elf",
+				Confidence: "medium",
+			},
+		},
 		BuildInfo: &BuildInfo{
 			GoVersion: "go1.26.1",
 			Path:      "example.com/sample",
@@ -126,6 +195,30 @@ func TestNewGhidraExport(t *testing.T) {
 				},
 			},
 		},
+		Peeling: &PeelingAnalysis{
+			Functions: []PeelingFunction{{
+				Name:                   "main.main",
+				Package:                "main",
+				ImportPath:             "example.com/sample",
+				Entry:                  0x1000,
+				End:                    0x1100,
+				ModuleLocal:            true,
+				Classification:         PeelingClassUser,
+				ClassificationEvidence: PeelingEvidenceModuleLocal,
+			}},
+			Packages: []PeelingPackage{{
+				Name:                  "main",
+				ImportPath:            "example.com/sample",
+				ModuleLocal:           true,
+				FunctionCount:         1,
+				UserFunctionCount:     1,
+				PrimaryClassification: PeelingClassUser,
+			}},
+			Provenance: Provenance{
+				Source:     "engine.peeling",
+				Confidence: "medium",
+			},
+		},
 		Refined: &RefinedAnalysis{
 			Functions: []RefinedFunction{{Name: "main.main"}},
 		},
@@ -135,6 +228,25 @@ func TestNewGhidraExport(t *testing.T) {
 
 	if got.Contract != GhidraExportContractV1 {
 		t.Fatalf("contract = %q, want %q", got.Contract, GhidraExportContractV1)
+	}
+	if got.Runtime == nil || got.Runtime.TrustSummary != RuntimeTrustSummaryGoModuleFallback {
+		t.Fatalf("runtime = %#v", got.Runtime)
+	}
+	if got.Runtime.ELFFunctionFoothold != "address_only" ||
+		got.Runtime.ELFFunctionFootholdCountHint != 2083 ||
+		got.Runtime.ELFFunctionFootholdTextSource != "elf_text_section" ||
+		got.Runtime.ELFFunctionFootholdStartAddr != 0x11000 ||
+		got.Runtime.ELFFunctionFootholdEndAddr != 0xb55d1 {
+		t.Fatalf("runtime foothold = %#v", got.Runtime)
+	}
+	if got.Peeling == nil || len(got.Peeling.Functions) != 1 || got.Peeling.Functions[0].Classification != PeelingClassUser {
+		t.Fatalf("peeling = %#v", got.Peeling)
+	}
+	if got.Peeling.Functions[0].ClassificationEvidence != PeelingEvidenceModuleLocal {
+		t.Fatalf("peeling evidence = %#v", got.Peeling.Functions[0])
+	}
+	if len(got.Peeling.Packages) != 1 || got.Peeling.Packages[0].PrimaryClassification != PeelingClassUser {
+		t.Fatalf("peeling packages = %#v", got.Peeling.Packages)
 	}
 	if got.Program.Path != "/tmp/sample.bin" {
 		t.Fatalf("program path = %q", got.Program.Path)

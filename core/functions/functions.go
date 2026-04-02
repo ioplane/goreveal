@@ -14,7 +14,7 @@ import (
 // Function is the canonical recovered function representation.
 type Function = schema.Function
 
-// Recover extracts functions from a Go ELF binary via pclntab.
+// Recover extracts functions from a supported Go binary via pclntab.
 func Recover(path string) ([]Function, error) {
 	data, err := pclntab.Read(path)
 	if err != nil {

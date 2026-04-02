@@ -3,6 +3,8 @@ package runtime
 import (
 	"encoding/binary"
 	"testing"
+
+	"github.com/dantte-lp/goreveal/schema"
 )
 
 func TestReadMetadataFixture(t *testing.T) {
@@ -16,11 +18,35 @@ func TestReadMetadataFixture(t *testing.T) {
 	if got.FirstModuleDataAddr == 0 {
 		t.Fatalf("ReadMetadata() firstmoduledata = %#v", got)
 	}
+	if got.TrustSummary != "symbol_backed" {
+		t.Fatalf("ReadMetadata() trust summary = %q, want %q", got.TrustSummary, "symbol_backed")
+	}
 	if got.FirstModuleDataFromGoModuleFallback {
 		t.Fatalf("ReadMetadata() rich fixture unexpectedly marked go.module fallback = %#v", got)
 	}
 	if got.GopclntabAddr == 0 || got.GopclntabSize == 0 {
 		t.Fatalf("ReadMetadata() gopclntab = %#v", got)
+	}
+	if got.ELFPclntabHeaderMagic == "" || got.ELFPclntabHeaderMagicKind != "known" || got.ELFPclntabHeaderQuantum != 1 || got.ELFPclntabHeaderPointerSize != 8 {
+		t.Fatalf("ReadMetadata() ELF pclntab header = %#v", got)
+	}
+	if got.ELFPclntabFunctionCountHint == 0 || got.ELFPclntabFileCountHint == 0 {
+		t.Fatalf("ReadMetadata() ELF pclntab header hints = %#v", got)
+	}
+	if got.ELFTextSectionAddr == 0 || got.ELFTextSectionEndInclusive == 0 || got.ELFTextSectionEndInclusive < got.ELFTextSectionAddr {
+		t.Fatalf("ReadMetadata() ELF text section range = %#v", got)
+	}
+	if got.ELFPclntabFuncnametabOffsetHint == 0 || got.ELFPclntabPctabOffsetHint == 0 || got.ELFPclntabFunctabOffsetHint == 0 {
+		t.Fatalf("ReadMetadata() ELF pclntab offset hints = %#v", got)
+	}
+	if got.ELFFunctabLastPCOffsetHint == 0 || !got.ELFFunctabPCOffsetsMonotonic || got.ELFFunctabLastPCOffsetHint < got.ELFFunctabFirstPCOffsetHint {
+		t.Fatalf("ReadMetadata() ELF functab pc offset hints = %#v", got)
+	}
+	if got.ELFFunctabFirstPCAddrHint == 0 || got.ELFFunctabLastPCAddrHint == 0 || !got.ELFFunctabPCAddrHintsWithinText || got.ELFFunctabLastPCAddrHint < got.ELFFunctabFirstPCAddrHint {
+		t.Fatalf("ReadMetadata() ELF functab pc addr hints = %#v", got)
+	}
+	if len(got.ELFFunctabPCAddrSample) == 0 || !got.ELFFunctabPCAddrSampleAllWithinText {
+		t.Fatalf("ReadMetadata() ELF functab pc addr sample = %#v", got)
 	}
 	if got.ModuledataPCHeaderAddr == 0 || !got.ModuledataPCHeaderMatchesGopclntab {
 		t.Fatalf("ReadMetadata() moduledata pcheader bridge = %#v", got)
@@ -128,6 +154,27 @@ func TestReadMetadataStrippedFixtureFallsBackToGoModule(t *testing.T) {
 	if got.GoModuleAddr == 0 || got.GoModuleSize == 0 {
 		t.Fatalf("ReadMetadata() stripped go.module = %#v", got)
 	}
+	if got.ELFPclntabHeaderMagic == "" || got.ELFPclntabHeaderMagicKind != "known" || got.ELFPclntabHeaderQuantum != 1 || got.ELFPclntabHeaderPointerSize != 8 {
+		t.Fatalf("ReadMetadata() stripped ELF pclntab header = %#v", got)
+	}
+	if got.ELFPclntabFunctionCountHint == 0 || got.ELFPclntabFileCountHint == 0 {
+		t.Fatalf("ReadMetadata() stripped ELF pclntab header hints = %#v", got)
+	}
+	if got.ELFTextSectionAddr == 0 || got.ELFTextSectionEndInclusive == 0 || got.ELFTextSectionEndInclusive < got.ELFTextSectionAddr {
+		t.Fatalf("ReadMetadata() stripped ELF text section range = %#v", got)
+	}
+	if got.ELFFunctabLastPCOffsetHint == 0 || !got.ELFFunctabPCOffsetsMonotonic || got.ELFFunctabLastPCOffsetHint < got.ELFFunctabFirstPCOffsetHint {
+		t.Fatalf("ReadMetadata() stripped ELF functab pc offset hints = %#v", got)
+	}
+	if got.ELFFunctabFirstPCAddrHint == 0 || got.ELFFunctabLastPCAddrHint == 0 || !got.ELFFunctabPCAddrHintsWithinText || got.ELFFunctabLastPCAddrHint < got.ELFFunctabFirstPCAddrHint {
+		t.Fatalf("ReadMetadata() stripped ELF functab pc addr hints = %#v", got)
+	}
+	if len(got.ELFFunctabPCAddrSample) == 0 || !got.ELFFunctabPCAddrSampleAllWithinText {
+		t.Fatalf("ReadMetadata() stripped ELF functab pc addr sample = %#v", got)
+	}
+	if got.TrustSummary != "go_module_fallback" {
+		t.Fatalf("ReadMetadata() stripped trust summary = %q, want %q", got.TrustSummary, "go_module_fallback")
+	}
 	if got.FirstModuleDataAddr == 0 {
 		t.Fatalf("ReadMetadata() stripped firstmoduledata missing = %#v", got)
 	}
@@ -142,6 +189,298 @@ func TestReadMetadataStrippedFixtureFallsBackToGoModule(t *testing.T) {
 	}
 	if !got.ModuledataPCHeaderMatchesGopclntab || !got.ModuledataFuncnametabWithinGopclntab || !got.ModuledataPclntableWithinGopclntab {
 		t.Fatalf("ReadMetadata() stripped pcln bridges = %#v", got)
+	}
+}
+
+func TestReadMetadataPEFixtureSectionHeuristic(t *testing.T) {
+	t.Parallel()
+
+	got, err := ReadMetadata("../../corpus/fixtures/go-pe-buildinfo-windows-amd64/fixture.exe")
+	if err != nil {
+		t.Fatalf("ReadMetadata() error = %v", err)
+	}
+
+	if got.TrustSummary != "section_heuristic" {
+		t.Fatalf("ReadMetadata() trust summary = %q, want %q", got.TrustSummary, "section_heuristic")
+	}
+	if got.PETextSectionAddr != 0x140001000 || got.PETextSectionSize == 0 {
+		t.Fatalf("ReadMetadata() PE text section = %#v", got)
+	}
+	if got.PERdataSectionAddr != 0x1400a5000 || got.PERdataSectionSize == 0 {
+		t.Fatalf("ReadMetadata() PE rdata section = %#v", got)
+	}
+	if got.PEPclntabMagicSection != ".rdata" {
+		t.Fatalf("ReadMetadata() PE pclntab magic section = %q", got.PEPclntabMagicSection)
+	}
+	if got.PEPclntabMagicAddr != 0x1400d6da8 || got.PEPclntabMagicCount != 22 {
+		t.Fatalf("ReadMetadata() PE pclntab magic = %#v", got)
+	}
+	if got.PEPclntabHeaderSection != ".rdata" {
+		t.Fatalf("ReadMetadata() PE pclntab header section = %q", got.PEPclntabHeaderSection)
+	}
+	if got.PEPclntabHeaderAddr != 0x1400dd568 {
+		t.Fatalf("ReadMetadata() PE pclntab header addr = %#x", got.PEPclntabHeaderAddr)
+	}
+	if got.PEPclntabHeaderMagic != "f1ffffff" || got.PEPclntabHeaderQuantum != 1 || got.PEPclntabHeaderPointerSize != 8 {
+		t.Fatalf("ReadMetadata() PE pclntab header = %#v", got)
+	}
+	if got.Provenance.Source != "core.runtime.pe" || got.Provenance.Confidence != "low" {
+		t.Fatalf("ReadMetadata() provenance = %#v", got.Provenance)
+	}
+}
+
+func TestParseELFPclntabHeader(t *testing.T) {
+	t.Parallel()
+
+	magic, kind, quantum, pointerSize, ok := parseELFPclntabHeader(
+		[]byte{0xf1, 0xff, 0xff, 0xff, 0x00, 0x00, 0x01, 0x08},
+	)
+	if !ok {
+		t.Fatal("parseELFPclntabHeader() unexpectedly failed for known header")
+	}
+	if magic != "f1ffffff" || kind != "known" || quantum != 1 || pointerSize != 8 {
+		t.Fatalf(
+			"parseELFPclntabHeader() = (%q, %q, %d, %d), want (%q, %q, %d, %d)",
+			magic,
+			kind,
+			quantum,
+			pointerSize,
+			"f1ffffff",
+			"known",
+			1,
+			8,
+		)
+	}
+
+	magic, kind, quantum, pointerSize, ok = parseELFPclntabHeader(
+		[]byte{0x12, 0x34, 0x56, 0x78, 0x00, 0x00, 0x01, 0x08},
+	)
+	if !ok {
+		t.Fatal("parseELFPclntabHeader() unexpectedly failed for unknown header")
+	}
+	if magic != "12345678" || kind != "unknown" || quantum != 1 || pointerSize != 8 {
+		t.Fatalf(
+			"parseELFPclntabHeader() = (%q, %q, %d, %d), want (%q, %q, %d, %d)",
+			magic,
+			kind,
+			quantum,
+			pointerSize,
+			"12345678",
+			"unknown",
+			1,
+			8,
+		)
+	}
+}
+
+func TestParseELFPclntabHeaderHints(t *testing.T) {
+	t.Parallel()
+
+	header := make([]byte, 8+8*8)
+	copy(header[:8], []byte{0x12, 0x34, 0x56, 0x78, 0x00, 0x00, 0x01, 0x08})
+	binary.LittleEndian.PutUint64(header[8:], 123)
+	binary.LittleEndian.PutUint64(header[16:], 45)
+	binary.LittleEndian.PutUint64(header[32:], 0x111)
+	binary.LittleEndian.PutUint64(header[40:], 0x222)
+	binary.LittleEndian.PutUint64(header[48:], 0x333)
+	binary.LittleEndian.PutUint64(header[56:], 0x444)
+	binary.LittleEndian.PutUint64(header[64:], 0x555)
+
+	got, ok := parseELFPclntabHeaderHints(binary.LittleEndian, header)
+	if !ok {
+		t.Fatal("parseELFPclntabHeaderHints() unexpectedly failed")
+	}
+	if got.functionCount != 123 || got.fileCount != 45 {
+		t.Fatalf("parseELFPclntabHeaderHints() counts = %#v", got)
+	}
+	if got.funcnametabOffset != 0x111 || got.cuOffset != 0x222 || got.filetabOffset != 0x333 || got.pctabOffset != 0x444 || got.functabOffset != 0x555 {
+		t.Fatalf("parseELFPclntabHeaderHints() offsets = %#v", got)
+	}
+}
+
+func TestParseELFFunctabPCOffsetHints(t *testing.T) {
+	t.Parallel()
+
+	data := make([]byte, 96)
+	const functabOffset = 32
+	// 2 function entries plus trailing invalid PC sentinel.
+	binary.LittleEndian.PutUint32(data[functabOffset:], 100)
+	binary.LittleEndian.PutUint32(data[functabOffset+4:], 1000)
+	binary.LittleEndian.PutUint32(data[functabOffset+8:], 200)
+	binary.LittleEndian.PutUint32(data[functabOffset+12:], 2000)
+	binary.LittleEndian.PutUint32(data[functabOffset+16:], 300)
+
+	first, last, monotonic, ok := parseELFFunctabPCOffsetHints(
+		binary.LittleEndian,
+		data,
+		functabOffset,
+		2,
+	)
+	if !ok {
+		t.Fatal("parseELFFunctabPCOffsetHints() unexpectedly failed")
+	}
+	if first != 100 || last != 300 || !monotonic {
+		t.Fatalf(
+			"parseELFFunctabPCOffsetHints() = (%d, %d, %t), want (%d, %d, %t)",
+			first,
+			last,
+			monotonic,
+			100,
+			300,
+			true,
+		)
+	}
+}
+
+func TestParseELFFunctabPCOffsetSample(t *testing.T) {
+	t.Parallel()
+
+	data := make([]byte, 96)
+	const functabOffset = 32
+	binary.LittleEndian.PutUint32(data[functabOffset:], 100)
+	binary.LittleEndian.PutUint32(data[functabOffset+4:], 1000)
+	binary.LittleEndian.PutUint32(data[functabOffset+8:], 200)
+	binary.LittleEndian.PutUint32(data[functabOffset+12:], 2000)
+	binary.LittleEndian.PutUint32(data[functabOffset+16:], 300)
+	binary.LittleEndian.PutUint32(data[functabOffset+20:], 3000)
+
+	got, ok := parseELFFunctabPCOffsetSample(binary.LittleEndian, data, functabOffset, 3, 2)
+	if !ok {
+		t.Fatal("parseELFFunctabPCOffsetSample() unexpectedly failed")
+	}
+	if len(got) != 2 || got[0] != 100 || got[1] != 200 {
+		t.Fatalf("parseELFFunctabPCOffsetSample() = %#v", got)
+	}
+}
+
+func TestPopulateELFFunctabAddressHints(t *testing.T) {
+	t.Parallel()
+
+	meta := schema.RuntimeMetadata{
+		ELFFunctabFirstPCOffsetHint:  0,
+		ELFFunctabLastPCOffsetHint:   0x300,
+		ELFFunctabPCOffsetsMonotonic: true,
+		ELFFunctabPCAddrSample:       []uint64{0, 0x100, 0x200},
+		ModuledataTextAddr:           0x401000,
+		ModuledataTextEndInclusive:   0x4015ff,
+	}
+
+	populateELFFunctabAddressHints(&meta)
+
+	if meta.ELFFunctabFirstPCAddrHint != 0x401000 || meta.ELFFunctabLastPCAddrHint != 0x401300 || !meta.ELFFunctabPCAddrHintsWithinText {
+		t.Fatalf("populateELFFunctabAddressHints() = %#v", meta)
+	}
+	if len(meta.ELFFunctabPCAddrSample) != 3 || meta.ELFFunctabPCAddrSample[1] != 0x401100 || !meta.ELFFunctabPCAddrSampleAllWithinText {
+		t.Fatalf("populateELFFunctabAddressHints() sample = %#v", meta)
+	}
+}
+
+func TestPopulateELFFunctabAddressHintsFallsBackToELFTextSection(t *testing.T) {
+	t.Parallel()
+
+	meta := schema.RuntimeMetadata{
+		ELFFunctabFirstPCOffsetHint:  0,
+		ELFFunctabLastPCOffsetHint:   0x300,
+		ELFFunctabPCOffsetsMonotonic: true,
+		ELFFunctabPCAddrSample:       []uint64{0, 0x100, 0x200},
+		ELFTextSectionAddr:           0x501000,
+		ELFTextSectionEndInclusive:   0x5015ff,
+	}
+
+	populateELFFunctabAddressHints(&meta)
+
+	if meta.ELFFunctabFirstPCAddrHint != 0x501000 || meta.ELFFunctabLastPCAddrHint != 0x501300 || !meta.ELFFunctabPCAddrHintsWithinText {
+		t.Fatalf("populateELFFunctabAddressHints() ELF text fallback = %#v", meta)
+	}
+	if len(meta.ELFFunctabPCAddrSample) != 3 || meta.ELFFunctabPCAddrSample[1] != 0x501100 || !meta.ELFFunctabPCAddrSampleAllWithinText {
+		t.Fatalf("populateELFFunctabAddressHints() ELF text fallback sample = %#v", meta)
+	}
+}
+
+func TestSummarizeTrust(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		meta struct {
+			firstModuleDataAddr                 uint64
+			firstModuleDataFromGoModuleFallback bool
+			gopclntabAddr                       uint64
+			peTextSectionAddr                   uint64
+		}
+		want string
+	}{
+		{
+			name: "symbol backed",
+			meta: struct {
+				firstModuleDataAddr                 uint64
+				firstModuleDataFromGoModuleFallback bool
+				gopclntabAddr                       uint64
+				peTextSectionAddr                   uint64
+			}{
+				firstModuleDataAddr: 0x401000,
+			},
+			want: "symbol_backed",
+		},
+		{
+			name: "go module fallback",
+			meta: struct {
+				firstModuleDataAddr                 uint64
+				firstModuleDataFromGoModuleFallback bool
+				gopclntabAddr                       uint64
+				peTextSectionAddr                   uint64
+			}{
+				firstModuleDataAddr:                 0x401000,
+				firstModuleDataFromGoModuleFallback: true,
+			},
+			want: "go_module_fallback",
+		},
+		{
+			name: "section heuristic",
+			meta: struct {
+				firstModuleDataAddr                 uint64
+				firstModuleDataFromGoModuleFallback bool
+				gopclntabAddr                       uint64
+				peTextSectionAddr                   uint64
+			}{
+				gopclntabAddr: 0x500000,
+			},
+			want: "section_heuristic",
+		},
+		{
+			name: "pe section heuristic",
+			meta: struct {
+				firstModuleDataAddr                 uint64
+				firstModuleDataFromGoModuleFallback bool
+				gopclntabAddr                       uint64
+				peTextSectionAddr                   uint64
+			}{
+				peTextSectionAddr: 0x140001000,
+			},
+			want: "section_heuristic",
+		},
+		{
+			name: "absent",
+			want: "absent",
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			got := summarizeTrust(schema.RuntimeMetadata{
+				FirstModuleDataAddr:                 tt.meta.firstModuleDataAddr,
+				FirstModuleDataFromGoModuleFallback: tt.meta.firstModuleDataFromGoModuleFallback,
+				GopclntabAddr:                       tt.meta.gopclntabAddr,
+				PETextSectionAddr:                   tt.meta.peTextSectionAddr,
+			})
+
+			if string(got) != tt.want {
+				t.Fatalf("summarizeTrust() = %q, want %q", got, tt.want)
+			}
+		})
 	}
 }
 

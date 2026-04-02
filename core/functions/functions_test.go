@@ -66,6 +66,72 @@ func TestRecoverFixture(t *testing.T) {
 	}
 }
 
+func TestRecoverMachOFixture(t *testing.T) {
+	t.Parallel()
+
+	funcs, err := Recover("../../corpus/fixtures/go-macho-buildinfo-darwin-amd64/fixture.bin")
+	if err != nil {
+		t.Fatalf("Recover() error = %v", err)
+	}
+
+	if len(funcs) == 0 {
+		t.Fatal("Recover() returned no functions")
+	}
+
+	for _, want := range []string{"main.main", "main.helperAdd", "main.helperBanner"} {
+		if !containsFunction(funcs, want) {
+			t.Fatalf("Recover() missing function %q", want)
+		}
+	}
+
+	mainFn, ok := findFunction(funcs, "main.main")
+	if !ok {
+		t.Fatal("Recover() missing main.main for metadata assertions")
+	}
+	if mainFn.Package != "main" {
+		t.Fatalf("main.main package = %q, want %q", mainFn.Package, "main")
+	}
+	if mainFn.SourceFile != "main.go" {
+		t.Fatalf("main.main source file = %q, want %q", mainFn.SourceFile, "main.go")
+	}
+	if mainFn.SourceLine == 0 {
+		t.Fatalf("main.main source line = %d, want non-zero", mainFn.SourceLine)
+	}
+}
+
+func TestRecoverPEFixture(t *testing.T) {
+	t.Parallel()
+
+	funcs, err := Recover("../../corpus/fixtures/go-pe-buildinfo-windows-amd64/fixture.exe")
+	if err != nil {
+		t.Fatalf("Recover() error = %v", err)
+	}
+
+	if len(funcs) == 0 {
+		t.Fatal("Recover() returned no functions")
+	}
+
+	for _, want := range []string{"main.main", "main.helperAdd", "main.helperBanner"} {
+		if !containsFunction(funcs, want) {
+			t.Fatalf("Recover() missing function %q", want)
+		}
+	}
+
+	mainFn, ok := findFunction(funcs, "main.main")
+	if !ok {
+		t.Fatal("Recover() missing main.main for metadata assertions")
+	}
+	if mainFn.Package != "main" {
+		t.Fatalf("main.main package = %q, want %q", mainFn.Package, "main")
+	}
+	if mainFn.SourceFile != "main.go" {
+		t.Fatalf("main.main source file = %q, want %q", mainFn.SourceFile, "main.go")
+	}
+	if mainFn.SourceLine == 0 {
+		t.Fatalf("main.main source line = %d, want non-zero", mainFn.SourceLine)
+	}
+}
+
 func containsFunction(funcs []Function, want string) bool {
 	for _, fn := range funcs {
 		if fn.Name == want && fn.Entry != 0 {

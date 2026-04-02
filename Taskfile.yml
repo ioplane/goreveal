@@ -1,0 +1,107 @@
+---
+version: "3"
+
+vars:
+  PYTHON: python3
+  RUNNER: "{{.PYTHON}} -m scripts.dev.podman_runner"
+
+tasks:
+  default:
+    desc: Show available tasks
+    cmds:
+      - task --list
+
+  build-image:
+    desc: Build the Podman dev image through podman-py
+    cmds:
+      - "{{.RUNNER}} build-image"
+
+  fmt:
+    desc: Format Go sources inside the dev container
+    cmds:
+      - "{{.RUNNER}} task fmt"
+
+  build-dev-bin:
+    desc: Build the workspace goreveal binary inside the dev container
+    cmds:
+      - "{{.RUNNER}} task build-dev-bin"
+
+  test:
+    desc: Run the main regression suite inside Podman
+    cmds:
+      - "{{.RUNNER}} task test"
+
+  test-plugins:
+    desc: Run plugin adapter tests inside Podman
+    cmds:
+      - "{{.RUNNER}} task test-plugins"
+
+  test-differential:
+    desc: Run differential Go tests with baseline mounts
+    cmds:
+      - "{{.RUNNER}} task test-differential"
+
+  test-differential-report:
+    desc: Generate the differential fixture report with the workspace binary
+    cmds:
+      - "{{.RUNNER}} task test-differential-report"
+
+  test-snapshots:
+    desc: Run snapshot tests inside Podman
+    cmds:
+      - "{{.RUNNER}} task test-snapshots"
+
+  snapshot-update:
+    desc: Refresh analyze snapshots inside Podman
+    cmds:
+      - "{{.RUNNER}} task snapshot-update"
+
+  lint:
+    desc: Run golangci-lint inside Podman
+    cmds:
+      - "{{.RUNNER}} task lint"
+
+  lint-python:
+    desc: Run strict Ruff and ty checks for Python code
+    cmds:
+      - "{{.RUNNER}} task lint-python"
+
+  format-python:
+    desc: Format Python code with Ruff
+    cmds:
+      - "{{.RUNNER}} task format-python"
+
+  lint-yaml:
+    desc: Run strict YAML linting for repo-owned YAML files
+    cmds:
+      - "{{.RUNNER}} task lint-yaml"
+
+  lint-shell:
+    desc: Run shellcheck on bash wrapper scripts
+    cmds:
+      - "{{.RUNNER}} task lint-shell"
+
+  lint-scripts:
+    desc: Run all non-Go script linters
+    cmds:
+      - "{{.RUNNER}} task lint-scripts"
+
+  protected-matrix:
+    desc: Build the first protected-binary profile matrix and emit a JSON report
+    cmds:
+      - "{{.RUNNER}} task protected-matrix"
+
+  fuzz:
+    desc: Run fuzz targets inside Podman
+    cmds:
+      - "{{.RUNNER}} task fuzz"
+
+  bench:
+    desc: Run benchmarks inside Podman
+    cmds:
+      - "{{.RUNNER}} task bench"
+
+  verify:
+    desc: Run fmt and the main regression suite
+    cmds:
+      - "{{.RUNNER}} task verify"

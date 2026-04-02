@@ -14,6 +14,9 @@ At this point `GoREveal` is no longer a blank-platform plan. It is already a wor
 - differential validation against multiple baselines
 - staged `golangci-lint` policy imported from `gobfd`
 - green `make lint` on top of the imported `gobfd` policy
+- portable repo-local Codex skills and subagents
+- Podman-first task orchestration through `Taskfile.yml` and `scripts/dev/podman_runner.py`
+- strict script verification through `ruff`, `ty`, `yamllint`, and `shellcheck`
 - stable `IDA` and `Ghidra` export contracts
 - thin, fixture-validated `IDA` and `Ghidra` adapters
 
@@ -46,6 +49,7 @@ See also:
 - `docs/plans/2026-03-20-goreveal-deferred-continuation.md`
 - `docs/plans/2026-03-20-goreveal-market-killer-features-brainstorm.md`
 - `docs/plans/2026-03-21-goreveal-runtime-modes-and-storage-ideas.md`
+- `docs/plans/2026-03-31-goreveal-strategic-review.md`
 
 ## Feature Map
 
@@ -79,6 +83,7 @@ mindmap
         moduledata filetab bridge
         moduledata pctab bridge
         moduledata pclntable bridge
+        runtime trust summary
         stripped runtime fallback source bit
         ELF pclntab function recovery
         function package metadata
@@ -125,6 +130,7 @@ mindmap
         GoReSym overlap
         redress overlap
         gore overlap
+        strict python yaml shell linting
       Integrations
         thin IDA adapter
         thin Ghidra adapter
@@ -132,6 +138,7 @@ mindmap
         string address in exports
         function navigation metadata in exports
         type navigation metadata in exports
+        runtime trust summary in exports
         adapters prefer string address
     Planned
       Capability Transfer
@@ -142,11 +149,20 @@ mindmap
         bounded CFG guided deobfuscation
       Strategic Product Directions
         Go code peeling and user-code isolation
+        stdlib runtime dependency fingerprinting
         Go version tracking and build correlation
+        function level similarity scoring
         Go metadata knowledge network
+        protected commercial Go software workflows
+        enterprise feature gate and license check triage
         trust-aware recovery UX
         deferred thin JEB integration
         deferred thin Binary Ninja integration
+        deferred thin Rizin integration
+        explicit host-platform MCP handoff
+        workstation-aware remote RE orchestration
+        Diaphora and BinExport informed version tracking
+        external dynamic or symbolic sidecar orchestration
         dual runtime modes local and server
         gorectl control plane
         local embedded project store
@@ -155,8 +171,13 @@ mindmap
         object store backed artifact transfer
       Recovery Breadth
         broader version families
+        Windows PE fixture and bounded evidence
+        PE buildinfo checkpoint
+        PE snapshot and thin export checkpoint
+        PE runtime section heuristic
         PE recovery depth
         Mach-O recovery depth
+        protected binary corpus with strip trimpath PIE garble variants
         typelink and moduledata driven type recovery
       Evidence
         wider differential surfaces
@@ -167,6 +188,9 @@ mindmap
         external orchestration of GoResolver
         external orchestration of gostringungarbler
       Platform
+        codex native skills and subagents
+        taskfile orchestration
+        podman py automation runner
         service API
         protobuf surface
         benchmarks
@@ -206,7 +230,13 @@ mindmap
 - runtime metadata now also exposes a bounded `filetab` bridge through `moduledata_filetab_slice_word_index`, `moduledata_filetab_addr`, `moduledata_filetab_len`, `moduledata_filetab_cap`, and `moduledata_filetab_within_gopclntab`
 - runtime metadata now also exposes a bounded `pctab` bridge through `moduledata_pctab_slice_word_index`, `moduledata_pctab_addr`, `moduledata_pctab_len`, `moduledata_pctab_cap`, and `moduledata_pctab_within_gopclntab`
 - runtime metadata now also exposes a bounded `pclntable` bridge through `moduledata_pclntable_slice_word_index`, `moduledata_pclntable_addr`, `moduledata_pclntable_len`, `moduledata_pclntable_cap`, and `moduledata_pclntable_within_gopclntab`
+- runtime metadata now also exposes a compact `trust_summary`, so the current runtime posture is readable as `symbol_backed`, `go_module_fallback`, `section_heuristic`, or `absent`
+- thin `IDA` and `Ghidra` export payloads now also mirror canonical `runtime.trust_summary`, keeping host-tool consumers on the same bounded runtime posture contract
 - the current `.gopclntab` bridge chain is now dense enough that the next best move is a checkpoint, not another same-shape bridge by default
+- the next breadth checkpoint should be a bounded Windows `PE` fixture before more same-fixture runtime bridge expansion
+- that bounded Windows `PE` checkpoint is now started through a real `fixture.exe` plus `debug/buildinfo` and `analyze` coverage without any `PE` runtime recovery claim
+- that same bounded `PE` checkpoint is now also pinned by snapshot coverage and thin export CLI coverage
+- that same bounded `PE` checkpoint now also exposes `.text` / `.rdata` ranges, a raw `.rdata` `pclntab` magic candidate, and one header-looking `.rdata` `pclntab` candidate with raw `magic`, `quantum`, and `pointer_size` under `trust_summary: "section_heuristic"`
 - runtime metadata now also supports a bounded `.go.module`-based `firstmoduledata` fallback for the current stripped ELF fixture family
 - runtime metadata now also exposes `firstmoduledata_from_go_module_fallback`, making that stripped-fixture fallback source explicit to operators
 - stripped-fixture package UX now keeps `main` as a useful module-local package by reusing `build_info.path` when source-tree evidence is absent, while external packages keep direct `import_path` truth from function recovery
@@ -251,6 +281,7 @@ mindmap
 - `goreveal export ida`
 - `goreveal export ghidra`
 - `goreveal diff sqlite`
+- first bounded function matching through `matched_functions`, with exact-name, source-location, source-file, and module-local normalized-name matches over canonical function surfaces
 
 ### Persistence and Comparison
 
@@ -267,10 +298,12 @@ These are not all immediate roadmap items, but they are now the most important m
 - `Go code peeling / user-code isolation`
 - goal: separate likely user-owned code from stdlib, runtime, and third-party dependency bulk
 - market value: extremely high, because Go binaries are noisy and mainstream RE suites do not solve this problem in a Go-native way
+- first landed slice: engine-owned function classification through `analysis.peeling` and `inspect peeling`, now extended with package-level summaries, per-class function counts, explicit `classification_evidence`, and the first bounded stdlib/runtime fingerprint-assisted refinement
 
 ### Best Mid-Term Workflow Epic
 
 - `Go version tracking / build correlation`
+- first landed slice: `diff sqlite` now emits bounded function matches with `score` and `reason`, using exact-name, source-location, source-file, and module-local normalized-name matching without any decompiler dependency
 - goal: transfer recovered truth, labels, and analyst markup across related Go builds and families
 - market value: very high, especially for malware RE, product security, and internal fleet analysis
 

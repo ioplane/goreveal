@@ -7,6 +7,7 @@ import (
 	"io"
 
 	"github.com/dantte-lp/goreveal/engine"
+	"github.com/dantte-lp/goreveal/engine/peeling"
 	"github.com/dantte-lp/goreveal/schema"
 )
 
@@ -74,6 +75,33 @@ func RunInspectRuntime(ctx context.Context, stdout io.Writer, path string) error
 	}
 
 	return writeJSON(stdout, analysis.Runtime)
+}
+
+// RunInspectPeeling writes the bounded code-peeling layer as canonical JSON.
+func RunInspectPeeling(ctx context.Context, stdout io.Writer, path string) error {
+	analysis, err := engine.New().AnalyzeFile(ctx, path)
+	if err != nil {
+		return fmt.Errorf("inspect peeling %q: %w", path, err)
+	}
+	if analysis.Peeling == nil {
+		return fmt.Errorf("inspect peeling %q: unavailable", path)
+	}
+
+	return writeJSON(stdout, analysis.Peeling)
+}
+
+// RunPeel writes a user-only projection derived from the bounded peeling layer.
+func RunPeel(ctx context.Context, stdout io.Writer, path string) error {
+	analysis, err := engine.New().AnalyzeFile(ctx, path)
+	if err != nil {
+		return fmt.Errorf("peel %q: %w", path, err)
+	}
+	projected := peeling.UserOnlyView(analysis.Peeling)
+	if projected == nil {
+		return fmt.Errorf("peel %q: unavailable", path)
+	}
+
+	return writeJSON(stdout, projected)
 }
 
 // RunSourceTree writes the projected source tree as canonical JSON.

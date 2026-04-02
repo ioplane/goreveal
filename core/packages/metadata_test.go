@@ -16,7 +16,8 @@ func TestEnrichSourceMetadata(t *testing.T) {
 	}
 
 	tree := &schema.SourceTree{
-		Root: "example.com/gorevealfixture",
+		Root:               "example.com/gorevealfixture",
+		SourceEvidenceKind: schema.SourceEvidenceKindDWARFPaths,
 		Packages: []schema.SourcePackage{
 			{
 				Name:            "main",
@@ -48,11 +49,20 @@ func TestEnrichSourceMetadata(t *testing.T) {
 	if got[0].ImportPath != "example.com/gorevealfixture" || got[0].SourceFileCount != 1 || !got[0].ModuleLocal || !got[0].HasSourceEvidence {
 		t.Fatalf("main package = %#v", got[0])
 	}
+	if got[0].SourceEvidenceKind != schema.SourceEvidenceKindDWARFPaths {
+		t.Fatalf("main source evidence kind = %#v", got[0])
+	}
 	if got[1].ImportPath != "runtime" || got[1].SourceFileCount != 1 || got[1].ModuleLocal || !got[1].HasSourceEvidence {
 		t.Fatalf("runtime package = %#v", got[1])
 	}
+	if got[1].SourceEvidenceKind != schema.SourceEvidenceKindDWARFPaths {
+		t.Fatalf("runtime source evidence kind = %#v", got[1])
+	}
 	if got[2].ImportPath != "example.com/gorevealfixture/pkg/sub" || got[2].SourceFileCount != 2 || !got[2].ModuleLocal || !got[2].HasSourceEvidence {
 		t.Fatalf("sub package = %#v", got[2])
+	}
+	if got[2].SourceEvidenceKind != schema.SourceEvidenceKindDWARFPaths {
+		t.Fatalf("sub source evidence kind = %#v", got[2])
 	}
 }
 
@@ -75,6 +85,9 @@ func TestEnrichBuildInfoMetadata(t *testing.T) {
 	if got[0].HasSourceEvidence {
 		t.Fatal("main package should not claim source evidence from build info enrichment alone")
 	}
+	if got[0].SourceEvidenceKind != schema.SourceEvidenceKindPackageFallback {
+		t.Fatalf("main source evidence kind = %#v", got[0])
+	}
 	if got[1].ImportPath != "" {
 		t.Fatalf("runtime import path = %q, want empty", got[1].ImportPath)
 	}
@@ -83,5 +96,8 @@ func TestEnrichBuildInfoMetadata(t *testing.T) {
 	}
 	if got[1].HasSourceEvidence {
 		t.Fatal("runtime package should not gain source evidence without source-tree correlation")
+	}
+	if got[1].SourceEvidenceKind != "" {
+		t.Fatalf("runtime source evidence kind = %#v", got[1])
 	}
 }

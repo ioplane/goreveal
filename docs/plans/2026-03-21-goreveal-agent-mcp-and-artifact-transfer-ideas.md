@@ -94,6 +94,59 @@ Recommended principle:
 - `MCP` sits at the edge
 - `ConnectRPC/gRPC` sits at the center
 
+## Host-Platform MCP Interop
+
+If `IDA` or `Ghidra` MCP servers exist in the operator environment, `GoREveal` MCP should complement them, not compete with them.
+
+Recommended workflow:
+1. `goreveal mcp` or `gorectl mcp` produces canonical Go-specific analysis and export-ready truth.
+2. The agent passes that result to a host-platform MCP server for annotation or import.
+
+Recommended principle:
+- `GoREveal` MCP is the Go-native knowledge source
+- host-platform MCP remains the analyst workspace integration layer
+- do not duplicate `IDA` / `Ghidra` workspace semantics inside `GoREveal` MCP
+
+### Explicit IDA / Ghidra MCP Handoff
+
+The intended workflow should be described more concretely:
+1. agent calls `goreveal` MCP `analyze_binary` or a future `export_ida` / `export_ghidra`-style tool
+2. agent receives canonical Go-specific schema or an export payload
+3. agent passes that result to the host-platform MCP server
+4. host-platform MCP applies annotations or imports the payload into the analyst workspace
+
+Concrete tool names will depend on the host-platform MCP server.
+The important contract is the handoff shape, not a hard-coded third-party tool name.
+
+Current local product bridge:
+- `goreveal diff handoff sqlite <database> <left-id> <right-id>` now exists as a thin operator-facing handoff artifact over the bounded review state
+- that CLI path is still local and JSON-only; it does not mutate any host workspace and it does not pretend to be an MCP server
+- this is the right current boundary: `GoREveal` prepares the handoff shape first, then future MCP/operator integration can carry it into `IDA`, `Ghidra`, or a workstation host
+- the current near-term execution order is now captured separately in `docs/plans/2026-04-01-goreveal-next-execution-plan.md`, where workstation/MCP hardening is the next default move
+- the current handoff artifact now also carries structured `target_profiles` for `ida` and `ghidra`, explicit export-contract IDs, preferred transport hints, artifact-role metadata, workspace phases, host action lists, explicit binding-entrypoint hints, required-artifact hints, and expected host-outcome hints, so the next MCP/operator step can bind to a clearer per-target contract instead of only flat recommendation lists
+
+Example operator reading:
+- `GoREveal MCP` answers Go-specific questions and prepares canonical payloads
+- `IDA` / `Ghidra` MCP applies names, comments, structure hints, and other workspace-facing markup
+- `GoREveal` should not try to mirror host-platform project/workspace semantics inside its own MCP surface
+
+### Updated Real-Environment Reading
+
+The host-platform MCP story is no longer only hypothetical.
+
+Measured operator-environment signal:
+- the current RE lab host exposes `ida-pro-mcp`
+- the same host also exposes `ida-pro`, `ghidra`, `pyghidra`, `headless-ida`, `jeb`, and `rizin`
+- `rehelp` already documents remote workstation usage through `Teleport`, which is a good operational pattern for agent-facing orchestration
+
+That makes the intended split more concrete:
+- `GoREveal MCP` should focus on Go-native truth, exports, and transfer workflows
+- host-platform MCP should focus on workspace mutation and analyst interaction
+- remote operator docs should explicitly acknowledge that this handoff may happen through a workstation host rather than on the same local machine
+
+See also:
+- `docs/plans/2026-04-01-goreveal-rehelp-and-re-lab-inventory-notes.md`
+
 ## Recommended MCP Tool Families
 
 ### Local MCP via `goreveal`

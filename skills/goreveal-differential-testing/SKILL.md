@@ -1,30 +1,30 @@
 ---
 name: goreveal-differential-testing
-description: Compare GoREveal behavior against baseline tools and convert those comparisons into explicit expected outcomes.
+description: Turn baseline comparisons into normalized, explicit overlap and divergence evidence.
 metadata:
   short-description: Differential testing workflow
 ---
 
 # GoREveal Differential Testing
 
-## Purpose
+## Use When
 
-Use this skill for behavior comparisons against baseline tools.
+- comparing behavior with baseline tools
+- changing normalization logic
+- changing overlap or divergence policy
+- updating differential reports
 
-## Comparison Targets
+## Workflow
 
-- function recovery
-- package recovery
-- type recovery
-- string recovery
-- source projection
-- deobfuscation behavior
+1. Normalize baseline output first.
+2. Compare only like-for-like fields.
+3. Record overlap, divergence, and uncertainty explicitly.
+4. Convert results into tests, fixtures, or findings.
+5. Keep machine-readable report output current.
 
 ## Rules
 
-- Normalize tool outputs before comparing them.
-- Record overlaps, divergences, and uncertainty explicitly.
-- Better-than-baseline results are allowed, but they must be documented.
-- Baseline mismatches should become tests or findings, not ad hoc opinions.
-- Treat richer `GoREveal` schema surfaces like `external_packages`, package `module_local`, or type `import_path`/`source_file_count`/`module_local`/`user_meaningful` as potential product improvements unless a baseline exposes the same truthful overlap.
-- Keep the machine-readable report path current when overlap or divergence policy changes.
+- baseline mismatch is evidence, not drama
+- richer GoREveal output can be a product improvement, not a bug
+- if GoREveal exceeds the baseline, document why
+- if a comparison is inherently lossy, say so

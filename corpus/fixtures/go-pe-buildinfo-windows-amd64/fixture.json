@@ -1,0 +1,9 @@
+{
+  "name": "go-pe-buildinfo-windows-amd64",
+  "fixture": "fixture.exe",
+  "normalized_path": "corpus/fixtures/go-pe-buildinfo-windows-amd64/fixture.exe",
+  "format": "pe",
+  "goos": "windows",
+  "goarch": "amd64",
+  "notes": "Go-built Windows PE fixture used for bounded build info and format-checkpoint validation."
+}

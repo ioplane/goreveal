@@ -39,6 +39,7 @@ Platform contract:
 - core independent from CLI/plugins/storage
 - SIMD is an optimization layer, not a correctness layer
 - baseline tools are references, not runtime dependencies
+- public-release planning must include an explicit repository license decision
 
 Priority order:
 1. accuracy
@@ -53,7 +54,7 @@ Core modules:
 - `core`: binary parsing and recovery of runtime metadata, functions, packages, types, strings, build information, and file layout
 - `schema`: canonical data model of analysis results
 - `deobfuscation`: garble-aware and string/name/CFG refinement passes over recovered data
-- `engine`: orchestration layer that runs recovery, enrichment, validation, and normalization
+- `engine`: orchestration layer that runs recovery, enrichment, validation, normalization, and bounded analyst-facing layers such as source projection and the current first code-peeling slice
 - `cli`: command-line surface for analysis, inspection, export, diffing, and service mode
 - `storage`: SQLite-first persistence for cache and analysis artifacts
 - `api`: server interface for automation and integrations
@@ -179,6 +180,7 @@ Sprint policy:
 - use capability sprints, not architecture-only sprints
 - every sprint ends with a demonstrable increment
 - correctness and evidence outrank feature breadth
+- once a same-fixture bounded bridge chain is dense enough, prefer a second fixture or a small cross-check over further blind expansion
 
 ## 6. Epic Breakdown and Sprint Structure
 
@@ -230,6 +232,8 @@ Planning assumptions:
 - every major feature must include recovery logic, schema mapping, tests, and user-facing exposure if relevant
 - every performance initiative must include measurement, scalar baseline, optimized path, and regression benchmark
 - every integration initiative must include stable export contract and fixture-based validation
+- code peeling belongs in `engine` as enrichment over canonical truth, not in `core` as recovery logic
+- the next cross-format evidence checkpoint after the current ELF family should be a bounded Windows `PE` fixture
 
 ## 8. Recommended First Scrum Roadmap
 
@@ -281,6 +285,7 @@ Required artifacts before implementation begins:
 - schema principles document
 - testing strategy document
 - Scrum implementation plan
+- server-stack architecture decision before broad server scaffolding
 - `AGENTS.md`, `CLAUDE.md`, `CODEX.md`, `GEMINI.md`
 - required project skills
 

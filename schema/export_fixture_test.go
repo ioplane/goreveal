@@ -26,6 +26,15 @@ func TestFixtureIDAExportSimulation(t *testing.T) {
 	if got.BuildInfo == nil || got.BuildInfo.Path != "example.com/gorevealfixture" {
 		t.Fatalf("build info = %#v", got.BuildInfo)
 	}
+	if got.Runtime == nil || got.Runtime.TrustSummary != schema.RuntimeTrustSummarySymbolBacked {
+		t.Fatalf("runtime = %#v", got.Runtime)
+	}
+	if got.Peeling == nil || len(got.Peeling.Functions) == 0 {
+		t.Fatalf("peeling = %#v", got.Peeling)
+	}
+	if len(got.Peeling.Packages) == 0 {
+		t.Fatalf("peeling packages = %#v", got.Peeling)
+	}
 	if len(got.Functions) == 0 || got.Functions[0].Entry == 0 {
 		t.Fatalf("functions = %#v", got.Functions)
 	}
@@ -50,6 +59,15 @@ func TestFixtureGhidraExportSimulation(t *testing.T) {
 	}
 	if got.Program.ModulePath != "example.com/gorevealfixture" {
 		t.Fatalf("module path = %q", got.Program.ModulePath)
+	}
+	if got.Runtime == nil || got.Runtime.TrustSummary != schema.RuntimeTrustSummarySymbolBacked {
+		t.Fatalf("runtime = %#v", got.Runtime)
+	}
+	if got.Peeling == nil || len(got.Peeling.Functions) == 0 {
+		t.Fatalf("peeling = %#v", got.Peeling)
+	}
+	if len(got.Peeling.Packages) == 0 {
+		t.Fatalf("peeling packages = %#v", got.Peeling)
 	}
 	if len(got.Symbols) == 0 || got.Symbols[0].Address == 0 {
 		t.Fatalf("symbols = %#v", got.Symbols)

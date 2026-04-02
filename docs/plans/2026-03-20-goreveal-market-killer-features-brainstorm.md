@@ -24,6 +24,37 @@ It is now:
 
 This note is a brainstorming and prioritization pass, not a commitment to implement everything below.
 
+## Updated Ecosystem Signal
+
+Recent `rehelp` plus RE-lab inventory work makes the adjacent operator environment more concrete.
+
+Measured real-environment signals now include:
+- host platforms:
+  - `ida-pro`
+  - `ghidra`
+  - `jeb`
+  - `rizin`
+- diff and metadata-transfer adjacencies:
+  - `diaphora`
+  - `binexport`
+  - `binsync`
+- host-platform MCP signal:
+  - `ida-pro-mcp`
+- dynamic and symbolic sidecars:
+  - `frida`
+  - `angr`
+  - `qiling`
+  - `unicorn`
+  - `uftrace`
+  - `z3`
+
+That does not mean `GoREveal` should absorb those engines.
+It does mean the product can plan more confidently around:
+- workstation interop
+- transfer workflows
+- remote orchestration
+- host-platform MCP handoff
+
 ## What The Big RE Platforms Already Do Well
 
 ### IDA Pro
@@ -218,6 +249,44 @@ Potential `GoREveal` version:
 Why it matters:
 - current RE tooling often buries uncertainty behind UI polish
 - for Go recovery, trust boundaries matter a lot
+
+### 5. Protected Commercial Go Software Workflow
+
+Inspired by:
+- the real OSS + Enterprise deployment model in Go products
+- current commercial-hardening practice around `garble`, `-s -w`, `-trimpath`, `PIE`, anti-debugging, and runtime license checks
+
+Potential `GoREveal` version:
+- build-profile awareness for protected Go binaries:
+  - stripped
+  - trimpathed
+  - garbled
+  - PIE
+  - enterprise-gated
+- focused analyst surfaces for:
+  - user-code isolation in heavily linked binaries
+  - locating license checks and feature gates
+  - tracking enterprise-only code paths across builds
+  - recognizing common hardening patterns without pretending anti-obfuscation parity
+
+Why it matters:
+- a large commercial Go target class is neither malware nor toy OSS fixtures
+- enterprise binaries often combine static linking, partial stripping, build-path removal, and licensing logic
+- this target class maps directly to high-value customer workflows better than generic “more parser depth” messaging
+
+PM value:
+- very high
+
+Moat potential:
+- high
+
+Risk:
+- medium
+- easy to overclaim if the work starts as anti-obfuscation branding instead of corpus-backed bounded capability
+
+Recommended rule:
+- treat this as a corpus/comparison and workflow epic first
+- only promote individual parser or deobfuscation slices into the active lane when protected-binary evidence shows a concrete analyst pain point
 - this could become a defining product property if kept consistent
 
 PM value:
@@ -341,6 +410,19 @@ Reason:
 - leverages current persistence, diffing, and schema strengths
 - aligns with malware-family and enterprise build workflows
 - differentiates from narrow Go metadata tools
+- the current bounded `matched_functions` plus `classification_evidence` surfaces now make the first transfer-oriented workflow a realistic next increment rather than a distant concept
+
+## Current Weighted Decision
+
+From the current repository state, the best next move is:
+- do not open a broader parser lane
+- do not add more raw matching rules by default
+- do build the first accepted or annotated transfer workflow on top of current `engine/peeling` and `storage/diff` outputs
+
+Why this wins:
+- it advances both near-term differentiators at once: user-code isolation and build correlation
+- it turns existing bounded signals into analyst workflow value instead of keeping them as report-only metadata
+- it stays above `core`, so the clean-room recovery boundary remains intact
 
 ### Best Long-Term Moat
 
@@ -364,24 +446,44 @@ Those are expensive and dilute the product.
 
 ## Strategic Recommendation
 
-Recommended product direction:
+The current recommended direction is:
 
-1. Keep `Sprint 12` as the current lead lane until runtime/type truth is stronger.
-2. Immediately after that, bias new product work toward **Go code peeling / user-code isolation**.
-3. Treat **Go version tracking / build correlation** as the first major post-accuracy workflow epic.
-4. Treat a **private Go metadata network** as the long-term moat and enterprise differentiator.
-5. Keep `IDA` / `Ghidra` / `JEB` / `Binary Ninja` as host environments and analyst surfaces, not enemies to replace.
+1. Treat `Sprint 12` as effectively complete for the current declared recovery/value scope, not as the default next expansion lane.
+2. Keep `Sprint 13` focused on **workstation handoff contract hardening** over already-landed review and handoff surfaces.
+3. Move next to **review workflow actionability** rather than reopening parser work by inertia.
+4. Keep **thin semantic/source confidence** as a conditional lane, only if it clearly improves analyst value after the handoff/review path settles.
+5. Treat **protected commercial Go workflows** as an evidence-first orchestration lane, not as a default native deobfuscation sprint.
+6. Keep `IDA` / `Ghidra` / `JEB` / `Binary Ninja` / `Rizin` as host environments and analyst surfaces, not enemies to replace.
+
+Related review:
+- `docs/plans/2026-03-31-goreveal-strategic-review.md`
+
+Exploratory note:
+- `docs/plans/2026-03-22-goreveal-v2-ng-plan.md` remains exploratory only and is not the active roadmap baseline
+- `docs/plans/2026-04-01-goreveal-post-sprint12-sprint-plan.md` is the active near-term sprint sequence
 
 ## Suggested Backlog Epics
 
-Potential future epics:
+Recommended near-to-mid-term epics:
 
-- `Epic: Go Code Peeling and User-Code Isolation`
+- `Epic: Workstation Handoff Contract`
+- `Epic: Review Workflow Actionability`
+- `Epic: Thin Semantic and Source Confidence`
+- `Epic: Protected Commercial Go Workflows`
 - `Epic: Go Version Tracking and Markup Transfer`
 - `Epic: Go Metadata Knowledge Network`
-- `Epic: Go-Aware Dynamic Evidence Import`
-- `Epic: Go Obfuscation Workbench`
-- `Epic: Thin JEB / Binary Ninja Integration`
+- `Epic: Thin JEB / Binary Ninja / Rizin Integration`
+
+Implementation note for code peeling:
+- start with function classification from existing `import_path`, `module_local`, `build_info.path`, and `source_file` truth
+- add bounded stdlib/runtime fingerprints later
+- prefer a compact hash such as `xxhash` for first-pass function fingerprints
+- the current landed first slice is exactly that bounded classification layer in `engine`, exposed through `analysis.peeling`, `inspect peeling`, `goreveal peel <binary>`, and thin exports, and it now also includes package-level summaries plus per-class function counts
+
+Implementation note for version tracking:
+- do not start before code peeling MVP
+- first version should be function-level diffing with similarity scoring over canonical function surfaces rather than a decompiler-dependent workflow
+- that first bounded foothold is now started through `diff sqlite matched_functions`, using exact-name, source-location, source-file, and module-local normalized-name matching with `score` and `reason`
 
 ## Sources
 

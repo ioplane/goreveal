@@ -23,7 +23,10 @@ def _run_json(cmd: list[str], *, cwd: Path, env: dict[str, str]) -> dict:
 
 def main() -> int:
     if len(sys.argv) != 2:
-        print("usage: python -m scripts.baseline.generate_fixture_report <fixture>", file=sys.stderr)
+        print(
+            "usage: python -m scripts.baseline.generate_fixture_report <fixture>",
+            file=sys.stderr,
+        )
         return 2
 
     fixture = sys.argv[1]

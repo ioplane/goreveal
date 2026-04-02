@@ -1,35 +1,37 @@
 ---
 name: goreveal-perf-simd
-description: Apply GoREveal performance and SIMD rules so optimizations remain measurable, reversible, and semantically safe.
+description: Apply GoREveal’s measure-first, scalar-first performance policy before SIMD or low-level optimization work.
 metadata:
   short-description: Performance and SIMD discipline
 ---
 
 # GoREveal Performance and SIMD
 
-## Purpose
+## Use When
 
-Use this skill before any non-trivial performance or SIMD change.
+- optimizing hot paths
+- adding hashes/fingerprints over large datasets
+- considering architecture-specific acceleration
 
 ## Required Order
 
-1. measure hotspot
-2. implement or confirm scalar reference path
-3. improve scalar path if useful
-4. add SIMD path only if still justified
+1. measure the hotspot
+2. confirm a scalar reference path
+3. improve scalar path if worthwhile
+4. add SIMD only if still justified
 
 ## Hard Rules
 
 - no SIMD without scalar fallback
 - no SIMD without equivalence tests
-- no SIMD without benchmark evidence
-- no architecture-specific path without explicit gating
-- no optimization that changes schema semantics or provenance meaning
+- no SIMD without benchmarks
+- no architecture-specific path without gating
+- no optimization that changes schema semantics
 
-## Acceptable Hotspots
+## Common Acceptable Targets
 
 - pattern scanning
 - byte classification
 - hashing and fingerprinting
-- bulk string candidate scan
-- large buffer compare/filter kernels
+- bulk string-candidate scans
+- compare/filter kernels

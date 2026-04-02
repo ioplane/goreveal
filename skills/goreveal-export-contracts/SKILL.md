@@ -1,29 +1,31 @@
 ---
 name: goreveal-export-contracts
-description: Keep GoREveal export formats schema-driven and stable for CLI, SQLite, API, IDA, and Ghidra consumers.
+description: Keep exports schema-driven and thin for CLI, SQLite, API, and RE-tool consumers.
 metadata:
   short-description: Export contract discipline
 ---
 
 # GoREveal Export Contracts
 
-## Purpose
+## Use When
 
-Use this skill whenever user-visible or tool-facing outputs change.
+- changing JSON output
+- changing `IDA` / `Ghidra` payloads
+- changing SQLite export shape
+- deciding whether a new schema field should be projected to exports
 
 ## Rules
 
-- all exports derive from canonical schema
-- plugins consume exported contracts; they do not recompute recovery logic
-- backward-incompatible export changes require explicit documentation
-- provenance/confidence fields must not disappear silently
-- if schema surfaces gain navigation metadata like `external_packages`, package `module_local`, or type `import_path`/`source_file_count`/`module_local`/`user_meaningful`, decide explicitly whether exports should inherit them or intentionally omit them
+- exports derive from canonical schema
+- plugins consume exports and do not recompute recovery logic
+- backward-incompatible changes require explicit docs
+- provenance/confidence must not disappear silently
+- thin exports may project navigation metadata, but they must not invent truth
 
-## Export Surfaces
+## Decision Questions
 
-- JSON
-- protobuf
-- SQLite
-- IDA payloads
-- Ghidra payloads
-- service/API responses
+When schema changes:
+1. Should the export inherit the field?
+2. Is the field already canonical truth?
+3. Would projecting it keep the adapter thinner?
+4. If omitted, is that omission intentional and documented?

@@ -1,51 +1,45 @@
 ---
 name: goreveal-cleanroom
-description: Enforce clean-room work against baseline Go reverse-engineering projects while preserving useful behavioral references.
+description: Keep baseline-tool study clean-room and convert it into findings, fixtures, and tests instead of copied implementation.
 metadata:
   short-description: Clean-room workflow for GoREveal
 ---
 
-# GoREveal Clean-Room Workflow
+# GoREveal Clean-Room
 
-## Purpose
+## Use When
 
-Use this skill whenever baseline repositories or tools are involved.
+- reading `gore`, `redress`, `GoReSym`, `GoResolver`, `gostringungarbler`, or `AlphaGolang`
+- comparing outputs against baseline tools
+- designing a native GoREveal feature inspired by an external project
 
-## Baseline Set
+## Allowed
 
-Current reference set:
-- `gore`
-- `redress`
-- `GoReSym`
-- `GoResolver`
-- `gostringungarbler`
-- `AlphaGolang`
-
-## Allowed Use
-
-- read behavior
-- inspect outputs
-- document edge cases
+- inspect behavior
+- capture edge cases
 - build fixtures
+- write divergence notes
 - write differential tests
-- compare capabilities and limitations
+- extract product lessons
 
-## Forbidden Use
+## Forbidden
 
-- copy implementation code
-- port code structure line-for-line
-- translate AGPL code into “new” local code
-- treat baseline output as unquestionable truth
+- copy code
+- translate code structure line-for-line
+- import AGPL behavior as unexamined truth
+- justify a feature with “baseline does it” and no GoREveal design
 
-## Required Output Style
+## Required Output
 
-When using baseline projects, produce one or more of:
+Produce at least one of:
 - a documented finding
 - a fixture note
 - a differential expectation
-- a consciously designed GoREveal implementation task
+- a consciously designed native implementation task
 
-Current high-value clean-room targets:
-- `redress`-style source reconstruction and source visibility
-- `gore`-style package/type usability improvements
-- `GoReSym`-style stronger runtime truth in a future sprint
+## High-Value Targets
+
+- `GoReSym`-style runtime truth
+- `redress`-style source projection
+- `gore`-style package/type usability
+- bounded deobfuscation ideas that fit raw/refined separation

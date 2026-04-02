@@ -1,4 +1,4 @@
-.PHONY: fmt build-dev-bin test test-differential test-differential-report test-plugins test-snapshots snapshot-update lint fuzz bench verify
+.PHONY: fmt build-dev-bin test test-differential test-differential-report test-plugins test-snapshots snapshot-update lint fuzz bench verify task-build-image lint-python lint-yaml lint-shell lint-scripts format-python protected-matrix
 
 PODMAN ?= podman
 DEV_IMAGE ?= localhost/goreveal:dev
@@ -52,3 +52,23 @@ bench:
 	$(DEV_RUN) $(GO) test -bench=. -benchmem ./...
 
 verify: fmt test
+
+task-build-image:
+	python3 -m scripts.dev.podman_runner build-image
+
+format-python:
+	python3 -m scripts.dev.podman_runner task format-python
+
+lint-python:
+	python3 -m scripts.dev.podman_runner task lint-python
+
+lint-yaml:
+	python3 -m scripts.dev.podman_runner task lint-yaml
+
+lint-shell:
+	python3 -m scripts.dev.podman_runner task lint-shell
+
+lint-scripts: lint-python lint-yaml lint-shell
+
+protected-matrix:
+	python3 -m scripts.dev.podman_runner task protected-matrix

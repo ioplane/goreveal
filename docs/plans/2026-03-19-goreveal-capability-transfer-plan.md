@@ -184,6 +184,59 @@ Sprint mapping:
 - `Sprint 8`: already covers the first practical transfer wave
 - later work should stay thin and contract-driven
 
+### `Rizin`
+
+Role today:
+- deferred headless host-platform adapter opportunity for JSON payload import and automation workflows
+
+Already covered natively:
+- nothing directly; current host-platform transfer work is centered on `IDA` and `Ghidra`
+
+Planned native transfers:
+- thin `export rizin` payloads later if the same canonical export-first contract remains intact
+- bounded headless workflows where `Rizin` is a consumer of canonical truth, not a recovery dependency
+
+Intentionally not copied literally:
+- `Rizin` analysis logic inside `core`
+- any adapter-side recovery logic that duplicates canonical schema work
+
+Sprint mapping:
+- deferred backlog only
+- keep below `JEB` and `Binary Ninja` in current host-platform priority, even if a future adapter may be technically simpler, because current market pull is weaker
+
+## Adjacent Workstation Signals
+
+Recent `rehelp` and RE-lab inventory work sharpens the surrounding transfer picture without changing the clean-room boundary.
+
+Measured workstation adjacencies:
+- host platforms:
+  - `ida-pro`
+  - `ghidra`
+  - `jeb`
+  - `rizin`
+- diffing / metadata-transfer tools:
+  - `diaphora`
+  - `binexport`
+  - `binsync`
+- host-platform MCP signal:
+  - `ida-pro-mcp`
+- dynamic / symbolic sidecars:
+  - `frida`
+  - `angr`
+  - `qiling`
+  - `unicorn`
+  - `uftrace`
+  - `z3`
+
+What this means for transfer planning:
+- future function-level version tracking should be informed by `Diaphora` / `BinExport` as external-reference and workflow inputs, not by copying their implementations
+- host-platform MCP interop is now a real near-term planning target, not only a generic architecture note
+- a thin future `Rizin` adapter is technically more credible because the operator environment already has `rizin` plus related plugins, even if product priority still stays below `JEB` and `Binary Ninja`
+- protected/deobfuscation work now has a realistic external orchestration environment if later measured needs justify it
+
+See also:
+- `docs/plans/2026-04-01-goreveal-rehelp-and-re-lab-inventory-notes.md`
+
 ## Prioritized Transfer Order
 
 The most rational transfer order from the current codebase is now:
@@ -223,6 +276,7 @@ This order follows the project priority:
 - `Sprint 13`
   - selective native transfer from `gostringungarbler` and `GoResolver`
   - focus: bounded deobfuscation, orchestration where native parity is not yet justified
+  - do not start before the bounded `PE` fixture checkpoint and the first code-peeling MVP are complete
 
 ## What Counts As Success
 

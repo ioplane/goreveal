@@ -40,6 +40,10 @@ func EnrichSourceMetadata(pkgs []Package, tree *schema.SourceTree) []Package {
 			pkg.ImportPath = match.ImportPath
 			pkg.SourceFileCount = len(match.Files)
 			pkg.HasSourceEvidence = match.HasFileEvidence
+			pkg.SourceEvidenceKind = match.SourceEvidenceKind
+			if pkg.SourceEvidenceKind == "" {
+				pkg.SourceEvidenceKind = tree.SourceEvidenceKind
+			}
 			pkg.ModuleLocal = scope == sourceScopeModule
 		}
 		enriched = append(enriched, pkg)
@@ -60,6 +64,7 @@ func EnrichBuildInfoMetadata(pkgs []Package, info *schema.BuildInfo) []Package {
 		if pkg.Name == "main" {
 			pkg.ImportPath = info.Path
 			pkg.ModuleLocal = true
+			pkg.SourceEvidenceKind = schema.SourceEvidenceKindPackageFallback
 		}
 		enriched = append(enriched, pkg)
 	}

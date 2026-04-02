@@ -6,7 +6,7 @@
 
 **Architecture:** The implementation is split into capability sprints. Early work establishes architecture docs, agent rules, baseline references, Podman-first repository scaffolding, and the first end-to-end recovery pipeline. Later sprints expand semantic recovery, deobfuscation, persistence, integrations, and performance acceleration while preserving a strict schema-first and clean-room boundary.
 
-**Tech Stack:** Go 1.26, pure Go parsing where possible, SQLite, protobuf, Cobra CLI, `slog`, fuzzing, benchmarks, optional SIMD via architecture-specific implementations and Go 1.26 `simd/archsimd` experiments.
+**Tech Stack:** Go 1.26, pure Go parsing where possible, SQLite, protobuf, `slog`, fuzzing, benchmarks, optional SIMD via architecture-specific implementations and Go 1.26 `simd/archsimd` experiments.
 
 Quantified roadmap checkpoint:
 - `docs/plans/2026-03-20-goreveal-progress-assessment.md`
@@ -14,6 +14,12 @@ Quantified roadmap checkpoint:
 - `docs/plans/2026-03-20-goreveal-deferred-continuation.md`
 - `docs/plans/2026-03-20-goreveal-market-killer-features-brainstorm.md`
 - `docs/plans/2026-03-21-goreveal-runtime-modes-and-storage-ideas.md`
+- `docs/plans/2026-03-31-goreveal-strategic-review.md`
+- `docs/plans/2026-03-31-goreveal-baseline-comparison-plan.md`
+- `docs/plans/2026-04-01-goreveal-protected-binary-comparison-plan.md`
+- `docs/plans/2026-04-01-goreveal-next-execution-plan.md`
+- `docs/plans/2026-04-01-goreveal-post-sprint12-sprint-plan.md`
+- `docs/architecture/2026-03-31-goreveal-server-stack-decision.md`
 
 Deferred-resume note:
 - use `docs/plans/2026-03-20-goreveal-deferred-continuation.md` as the first handoff file before resuming implementation work
@@ -34,10 +40,68 @@ Completed:
 
 In progress:
 - Sprint 7 / Task 7.1 (maintenance lane)
-- Sprint 12 / Task 12.2 (first semantic decode started)
+- Sprint 12 / workflow-value lane after protected-binary stabilization
+- Sprint 13 / workstation handoff contract hardening
+- Sprint 14 / review workflow actionability operator-loop slice
+
+Later ordered horizon:
+- Sprint 15 / thin semantic and source confidence
+- Sprint 16 / protected commercial Go workflows
+- Sprint 17 / server control-plane foundations
+- Sprint 18 / metadata and remote interop platform
+- Sprint 19 / public release readiness and licensing
+- Sprint 20 / evidence expansion and comparative automation
+- Sprint 21 / build correlation and version tracking
+- Sprint 22 / metadata knowledge network
+- Sprint 23 / analyst workspace automation and replay
+- Sprint 24 / comparative knowledge packs and decision support
+
+## PM+DEV Sprint Task Model
+
+Use the active sprint plan as the source of truth for scope, but track execution through paired PM and DEV tasks:
+
+- `PM-*`
+  Outcome-definition, stop-conditions, ranking, and support-policy work
+- `DEV-*`
+  Bounded implementation slices, verification, and doc-sync work
+
+Task scoring model:
+- `Value`
+  `1-5`, where `5` means direct operator/product leverage
+- `Risk`
+  `1-5`, where `5` means likely scope drift or semantic instability
+- `Evidence`
+  `1-5`, where `5` means the task can be proven by existing tests/fixtures/comparison paths
+
+Execution rule:
+- prefer high-`Value`, low-`Risk`, high-`Evidence` tasks first
+- if two tasks have similar value, choose the one that leaves behind the clearer stop-condition or operator-visible increment
+
+Current PM+DEV bias:
+- active sprint work should come from the backlog tables in `docs/plans/2026-04-01-goreveal-post-sprint12-sprint-plan.md`
+- if a candidate task has `Value >= 4`, `Risk <= 2`, and `Evidence >= 4`, it is a default good next move
+- if a task has high value but `Risk >= 4`, defer it unless it unblocks the active sprint
+
+Post-Sprint12 sprint reset:
+- use `docs/plans/2026-04-01-goreveal-post-sprint12-sprint-plan.md` as the current near-term sprint baseline
+- treat older `Sprint 13` deobfuscation notes as deferred follow-up, not the active next sprint
+- treat `docs/plans/2026-03-22-goreveal-v2-ng-plan.md` as exploratory only, not the active sprint sequence
+- treat `transfer_review_plan` plus `goreveal diff next sqlite ...` as the first bounded `Sprint 14` checkpoint, not as speculative backlog
 
 Current implementation notes:
 - All development and verification are container-first through Podman.
+- repo-local operator entrypoints now exist through both `make ...` and `task ...`.
+- `scripts/dev/podman_runner.py` is now the canonical Podman automation layer behind those entrypoints.
+- repo-local Codex configuration is now standardized through `.agents/skills/`, `.codex/agents/`, and `.codex/config.toml`.
+- script-facing verification now has an explicit strict baseline through `ruff`, `ty`, `yamllint`, and `shellcheck`.
+- `task lint-scripts` and `make lint-scripts` are now green through the dev container.
+- `analysis.runtime` now also exposes a compact `trust_summary`, so operators can distinguish symbol-backed and fallback/heuristic runtime posture without manually reading many raw fields.
+- thin `IDA` and `Ghidra` exports now also mirror canonical `runtime.trust_summary`, keeping the export contract schema-driven and avoiding plugin-side runtime posture inference.
+- a first bounded Windows `PE` checkpoint is now landed through a real Go-built `fixture.exe`, `debug/buildinfo` coverage, and `analyze` coverage without introducing any `PE` runtime recovery claim.
+- that bounded `PE` checkpoint is now also locked by canonical snapshot coverage and thin export CLI coverage, so cross-format breadth is no longer resting on one narrow unit test path.
+- that `PE` checkpoint now also includes the first bounded runtime section heuristic: `analysis.runtime` exposes `.text` / `.rdata` ranges, a raw `.rdata` `pclntab` magic candidate, and one header-looking `.rdata` `pclntab` candidate with raw `magic`, `quantum`, and `pointer_size` fields for the current fixture, while still avoiding any `moduledata` or generic `PE` parser claim.
+- the first engine-owned code-peeling MVP slice is now landed: `analysis.peeling` exposes function-level `user | stdlib | runtime | third_party` classification derived only from existing canonical function/build-info truth, plus package-level summaries and per-class function counts, `inspect peeling` is available, `goreveal peel <binary>` now projects the bounded user-only view, and thin exports now mirror the canonical peeling surface without plugin-side inference.
+- the next bounded code-peeling refinement is now also landed: function-level peeling output carries explicit `classification_evidence`, and `engine/peeling` now has a small bounded fingerprint-assisted refinement for `runtime` and `stdlib` classification when import-path truth is absent but known name/source fingerprints exist.
 - `analyze`, `inspect functions`, and `inspect packages` are working.
 - `inspect functions` now exposes bounded `package`, `import_path`, and `module_local` metadata derived from recovered function names plus `build_info` for `main`.
 - `inspect functions` now also exposes bounded `source_file` truth from the existing `pclntab`/`gosym` line table, so the function surface is no longer only symbol names plus addresses.
@@ -48,6 +112,7 @@ Current implementation notes:
 - `inspect types` and `inspect strings` are working.
 - `inspect strings` now also exposes bounded absolute `addr` truth by combining already-known region base addresses with candidate offsets.
 - `source-tree` package nodes now also expose explicit `has_file_evidence`, making rich vs fallback-backed package nodes distinguishable without reading implementation notes.
+- fresh external reruns now confirm that the current bounded file-evidence path is not fixture-local: measured `ELF`, `PE`, and `Mach-O` targets all expose real file visibility in the current product surface.
 - `inspect packages` now also exposes explicit `has_source_evidence`, making source-backed package metadata distinguishable from bounded fallback-backed package metadata without broadening package heuristics.
 - `export ida` and `export ghidra` now also preserve canonical string `address`, so thin adapters do not need plugin-side recomputation for string locations.
 - `export ida` and `export ghidra` now also preserve bounded function navigation metadata from canonical schema, so thin adapters can consume package/source locality without plugin-side inference.
@@ -137,6 +202,8 @@ Current implementation notes:
 - Initial plugin-ready export contracts are implemented for `IDA` and `Ghidra`.
 - `export ida <binary>` and `export ghidra <binary>` are available as stable v1 JSON payloads.
 - Stored-run diffing is implemented for SQLite-backed analyses through `goreveal diff sqlite <db> <left-id> <right-id>`.
+- stored-run diffing now also carries the first bounded version-tracking-adjacent function-matching surface: `matched_functions` records exact-name, source-location, source-file, and module-local normalized-name matches with `score`, `reason`, and optional peeling class context, without turning `storage/diff` into a decompiler-dependent matcher.
+- stored-run diffing now also carries the first package-level transfer summary surface: `transfer_packages` aggregates candidate, ready, review, and accepted counts over the existing bounded transfer contract instead of introducing a broader matcher.
 - A thin, container-testable `IDA` adapter is now started as an action-builder over the stable export contract.
 - The `IDA` adapter now has fixture-driven validation against real `export ida` output from the canonical Go fixture.
 - The `Ghidra` adapter now mirrors the same thin, fixture-driven contract pattern over `export ghidra`.
@@ -157,7 +224,7 @@ The current priority model is:
 - `speed`: how quickly the work can produce a demonstrable, low-regret increment
 
 Current top candidates from this state:
-- `Sprint 12 semantic runtime decode`
+- `Sprint 12 post-summary export decision and second-fixture checkpoint`
   - criticality: very high
   - importance: very high
   - speed: medium
@@ -179,28 +246,53 @@ Current top candidates from this state:
   - speed: low
 
 `P0: highest current criticality`
-- move `Sprint 12` from bounded evidence accumulation into the first very small semantic decode
-- keep that decode fixture-local, tightly cross-checked, and explicitly non-generic until broader evidence exists
-- avoid parser explosion by landing only one semantic bridge at a time
+- keep the new compact runtime trust/evidence summary stable across the bounded runtime and export surfaces
+- choose the next bounded Windows `PE` slice beyond the current section/header heuristic only when it stays clearly evidence-backed
+- keep the new `PE` runtime section heuristic clearly labeled as `section_heuristic`, not semantic runtime truth
+- avoid reopening package/type heuristic work before the `PE` checkpoint strengthens evidence breadth
 
 `P1: important after P0`
 - keep `Sprint 7` healthy enough that new claims stay evidence-backed
 - reopen `Sprint 11` only if new runtime truth changes package/type/source classification semantics
+- widen code peeling only through bounded engine-owned slices over canonical truth
 - continue service/API only after runtime-semantic truth is less heuristic
+- keep repo automation, agent configuration, and script-lint policy synchronized as supporting infrastructure rather than a competing execution lane
 
 `P2: deliberately deferred`
 - aggressive SIMD/performance work
 - rich plugin adapters
 - release polish beyond current operator-grade docs
-- market-differentiation epics such as Go code peeling / user-code isolation, Go version tracking, and a Go metadata knowledge network until runtime/type truth is stronger
+- function-level version tracking until code peeling MVP exists
+- metadata-network work until code peeling and version-tracking foundations exist
 - dual runtime mode work, `gorectl`, and server storage architecture remain valid future epics, but stay behind the current runtime/type accuracy lane
 - MCP agent surfaces and object-store-backed artifact transfer are valid future platform epics, but should remain downstream of the core server/API decision rather than lead it
 
 Recommended execution order from the current state:
-1. begin the first tiny semantic-runtime step in `Sprint 12`
+1. keep the new runtime trust/evidence summary stable across runtime and export surfaces
 2. keep `Sprint 7` as maintenance/evidence hygiene
-3. return to broader capability transfer only after runtime truth is less heuristic
-4. keep service/API and performance behind accuracy work
+3. treat the bounded Windows `PE` checkpoint as landed and deepen it only if one more very small evidence-backed slice is clearly justified
+4. keep widening code peeling and transfer surfaces only through bounded engine/storage-owned slices over canonical truth
+5. treat the protected-binary comparison lane as active, now with the old `garble v0.15.0` release-gap resolved for planning purposes when a local upstream checkout is available
+6. treat the first bounded `elf_function_foothold = "address_only"` surface as landed on the current garbled `linux/amd64` rows
+7. treat the `arm64` widening checkpoint as landed and the bounded Linux-architecture portability fix for `address_only` footholds as landed too
+8. treat the compact protected runtime surface as stabilized across runtime, export-contract, and plugin-consumer boundaries
+9. return by default to workflow/value work unless a newly measured protected-specific analyst pain point clearly outranks it
+10. treat the first compact `transfer_review` queue and explicit `projected_package` transfer projection as the first concrete workflow/value checkpoint after protected-binary stabilization
+11. treat the new package-first `transfer_review_packages` triage surface as the next bounded workflow/value checkpoint over the same existing transfer state, not as a new matcher lane
+12. treat the new `transfer_review_focus` first-pass bundle as the first explicit recommended next step over that existing review state
+13. treat the bounded CLI/operator projection for that focused review pass as landed through `goreveal diff review sqlite ...`
+14. use the measured `rehelp` and RE-lab inventory as the current workstation/interop baseline, not as a reason to expand `core`
+15. treat the compact machine-readable `handoff` block on `goreveal diff review sqlite ...` as the first workstation-facing review bridge, not the final interop shape
+16. treat `goreveal diff handoff sqlite ...` as the first dedicated operator-facing handoff projection over that bridge
+17. after landing that dedicated handoff projection, harden explicit host-platform MCP and workstation handoff planning around the now-measured `ida-pro-mcp`, `Diaphora`, `BinExport`, `rizin`, and dynamic/symbolic sidecars
+18. keep service/API and performance behind accuracy work
+19. use the fresh external comparison and universal-workbench comparison as the current product baseline for deciding whether another semantic slice truly outranks workflow/value and interop work
+20. after the later server and remote-interop horizon, separate public-release/licensing hardening from evidence/comparison automation instead of blending them into one catch-all sprint
+
+Current repo-ops checkpoint:
+- Codex-native skills and subagents are now established as a portable repo contract.
+- `Taskfile.yml` and `scripts/dev/podman_runner.py` now provide the main operator UX on top of the existing `Makefile`.
+- strict Python/YAML/shell verification is now part of the expected dev-container workflow, not an ad hoc local-only check.
 
 ## Product/Risk Snapshot
 
@@ -248,6 +340,7 @@ Current risks:
 - the current semantic layer is still not strong enough to justify rewriting package/type heuristics or to claim typelinks-driven type recovery
 - the first semantic typelink bridge is not yet strong enough to replace the current source-tree/DWARF-backed package/type heuristics, so changing those heuristics now would overfit the product to one fixture
 - the imported `gobfd` `golangci-lint` policy is now fully integrated and `make lint` is green; future hygiene work should keep that baseline green instead of reopening config churn
+- the protected-binary lane now has a first explicit garble-collapse explanation surface: garbled ELF rows preserve bounded runtime posture, expose `unknown` ELF `pclntab` magic, preserve nonzero header-level function/file-count hints, preserve monotonic `functab` PC-offset hints, preserve bounded absolute `PC` address hints within `.text`, preserve a first sampled absolute `PC` foothold, preserve the compact analyst-facing `elf_function_foothold = "address_only"` surface with its count hint on both `linux/amd64` and `linux/arm64`, preserve a compact projection of whether that foothold is backed by `moduledata_text` or `elf_text_section`, preserve the current `moduledata` bridges, and carry `elf_function_recovery_blocker = "custom_pclntab_magic"` when function recovery collapses
 
 ---
 
@@ -661,6 +754,8 @@ Current risks:
 
 ## Chunk 13: Sprint 13 - Selective Deobfuscation Transfer
 
+> Legacy deferred note: this chunk is no longer the active next sprint. The active `Sprint 13` baseline is now workstation handoff contract hardening in `docs/plans/2026-04-01-goreveal-post-sprint12-sprint-plan.md`.
+
 ### Task 13.1: Bounded string refinement transfer from `gostringungarbler`
 
 **Files:**
@@ -670,6 +765,7 @@ Current risks:
 
 - [ ] Add bounded garble-aware string refinement that preserves raw/refined separation.
 - [ ] Validate only safe overlap surfaces before claiming parity.
+- [ ] Do not start this task before the bounded Windows `PE` fixture checkpoint and first code-peeling MVP are complete.
 
 ### Task 13.2: Bounded name/symbol refinement transfer from `GoResolver`
 
@@ -681,6 +777,7 @@ Current risks:
 - [ ] Transfer only bounded, schema-friendly refinement ideas from `GoResolver`.
 - [ ] Do not clone the full CFG-similarity engine into the early product line.
 - [ ] Keep orchestration and comparison paths available while native refinement matures.
+- [ ] Prefer external orchestration first if garble-constraint solving becomes active work later.
 
 ---
 
