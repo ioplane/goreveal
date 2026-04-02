@@ -39,6 +39,12 @@ On the stripped ELF fixture only, `GoREveal` now also has:
 - bounded `.go.module`-based fallback for `firstmoduledata_addr` in the current ELF family
 - bounded `main` package preservation through `build_info.path` when source-tree evidence is absent
 - bounded empty-array type degradation (`[]` instead of JSON `null`) when no truthful `DWARF` type surface exists
+- bounded raw ELF `pclntab` header evidence showing the observed `magic`, `quantum`, `pointer_size`, and whether the magic is one of the currently recognised standard values
+
+On the current Windows `PE` fixture only, `GoREveal` now also has:
+- bounded `.text` / `.rdata` range evidence
+- a raw `.rdata` `pclntab` magic candidate count and first-hit address
+- one header-looking `.rdata` `pclntab` candidate with raw `magic`, `quantum`, and `pointer_size`
 
 ## Claims We Cannot Make Yet
 
@@ -57,6 +63,10 @@ We cannot honestly claim:
 - `GoReSym` parity on runtime semantics
 - runtime-driven type recovery on stripped binaries
 - broad package/type heuristic replacement on stripped binaries
+- general `PE` `pcHeader` decoding support
+- general `PE` `pclntab` decoding support
+- `PE` `moduledata` recovery support
+- general support for recovering functions from binaries whose ELF `pclntab` header uses a non-standard custom magic and encrypted `entryOff`
 
 None of those claims follow from the current semantic slices.
 

@@ -1,0 +1,25 @@
+# GoREveal project-scoped Codex configuration.
+# Keep this file conservative: it should encode stable project policy,
+# not per-user preferences.
+
+[project]
+name = "goreveal"
+
+instructions = "AGENTS.md"
+
+[skills]
+directory = ".agents/skills"
+
+[subagents]
+directory = ".codex/agents"
+
+[verification]
+preferred_entrypoints = ["task", "make"]
+automation_runner = "scripts/dev/podman_runner.py"
+script_linters = ["ruff", "ty", "yamllint", "shellcheck"]
+
+[mcp]
+# Project-scoped MCP servers can be added here later if the team wants
+# portable repo-local defaults. Keep OpenAI docs access and workstation-
+# specific connectors in user config unless the project explicitly owns them.
+enabled = true

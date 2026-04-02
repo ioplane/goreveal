@@ -1,3 +1,4 @@
+---
 version: "2"
 
 # This policy is rebased from /opt/projects/repositories/gobfd/.golangci.yml.

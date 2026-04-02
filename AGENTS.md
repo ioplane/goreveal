@@ -125,7 +125,7 @@ Current repository state is still early-stage. Until full code scaffolding exist
   - use `docs/architecture/2026-03-19-goreveal-sprint12-runtime-spike-notes.md` as the initial runtime-spike reference
   - use `docs/architecture/2026-03-20-goreveal-semantic-claim-boundaries.md` when documenting or extending semantic-runtime claims
   - keep Sprint 12 bounded around field-specific `moduledata` cross-checks and tiny semantic steps such as the typelinks/itablinks slice headers, memory-range block, `.rodata` range, `.text` range, fixture-local typelink resolution, and the current `pcHeader` / `funcnametab` / `cutab` / `filetab` / `pctab` / `pclntable` bridges, not a broad parser
-  - small user-facing Sprint 12 slices are also allowed when they only project already-known truth, such as bounded function/source metadata, string candidate absolute addresses, or thin export-layer projection of canonical function/type/string fields into RE-tool payloads
+  - small user-facing Sprint 12 slices are also allowed when they only project already-known truth, such as bounded function/source metadata, string candidate absolute addresses, first engine-owned code-peeling classification from canonical function/build-info truth, or thin export-layer projection of canonical function/type/string fields into RE-tool payloads
   - if thin adapters already receive stronger canonical location truth, they should consume it directly instead of recomputing or discarding it; fallback logic is fine, duplicate inference is not
   - after the current `.gopclntab` bridge chain checkpoint, do not add more blind same-fixture pcln bridges by default; prefer a second fixture or a very small runtime-to-heuristic cross-check
   - the stripped ELF checkpoint is now part of the active Sprint 12 contract:
@@ -158,19 +158,35 @@ Planned major areas:
 All development commands must run inside the project Podman dev container.
 Preferred flow once container scaffolding exists:
 - `podman build -f deployments/docker/Containerfile.dev -t goreveal:dev .`
+- `task build-image`
+- `task lint`
+- `task test`
+- `task test-differential`
+- `task test-differential-report`
+- `task test-plugins`
+- `task snapshot-update`
 - `make lint`
 - `make test`
 - `make test-differential`
 - `make test-differential-report`
 - `make test-plugins`
 - `make snapshot-update`
+- `make lint-scripts`
+- `task lint-scripts`
 - differential and corpus-specific commands documented in project skills should also run through the dev container
 - keep verification sequential; avoid overlapping build/test runs against the same bind-mounted workspace
 - treat `.golangci.yml` as a staged policy imported from `gobfd`: preserve the shared rule philosophy, keep `make lint` green, and adapt future rule changes deliberately instead of silently weakening the policy
+- Python, YAML, and shell checks are part of the supported verification surface:
+  - `ruff`
+  - `ty`
+  - `yamllint`
+  - `shellcheck`
+- `scripts/dev/podman_runner.py` is the canonical Podman automation entrypoint behind `make` and `task`
+- Podman socket discovery may come from `PODMAN_BASE_URL`, `CONTAINER_HOST`, or `DOCKER_HOST`; do not assume only `XDG_RUNTIME_DIR`-based rootless layouts
 
 ## Project Skills
 
-Use the project skills in `skills/` whenever they match the task:
+Use the project skills whenever they match the task:
 - `goreveal-navigation`
 - `goreveal-cleanroom`
 - `goreveal-corpus-validation`
@@ -179,3 +195,13 @@ Use the project skills in `skills/` whenever they match the task:
 - `goreveal-perf-simd`
 - `goreveal-export-contracts`
 - `goreveal-release-ops`
+
+Codex-native portable layout:
+- canonical repo-local skills now live in `.agents/skills/`
+- `skills/` remains as a compatibility mirror for current repo workflows
+- repo-local subagents live in `.codex/agents/`
+- project-scoped Codex config lives in `.codex/config.toml`
+
+Additional coordination skills:
+- `goreveal-doc-sync`
+- `goreveal-sprint12-runtime`

@@ -29,10 +29,14 @@ cd goreveal
 # Build the dev container
 podman build -f deployments/docker/Containerfile.dev -t goreveal:dev .
 
+# Install Python automation helper
+python3 -m pip install -e .
+
 # Run verification
 make fmt
 make test
 make lint
+make lint-scripts
 ```
 
 ## Architecture
@@ -79,19 +83,48 @@ Core planning and architecture live under [docs/](docs/).
 | Feature map | [docs/plans/2026-03-19-goreveal-feature-map.md](docs/plans/2026-03-19-goreveal-feature-map.md) |
 | Progress assessment | [docs/plans/2026-03-20-goreveal-progress-assessment.md](docs/plans/2026-03-20-goreveal-progress-assessment.md) |
 | Functional assessment | [docs/plans/2026-03-20-goreveal-functional-assessment.md](docs/plans/2026-03-20-goreveal-functional-assessment.md) |
+| Strategic review | [docs/plans/2026-03-31-goreveal-strategic-review.md](docs/plans/2026-03-31-goreveal-strategic-review.md) |
+| External binary matrix evaluation | [docs/plans/2026-03-31-goreveal-external-binary-matrix-evaluation.md](docs/plans/2026-03-31-goreveal-external-binary-matrix-evaluation.md) |
+| Baseline comparison plan | [docs/plans/2026-03-31-goreveal-baseline-comparison-plan.md](docs/plans/2026-03-31-goreveal-baseline-comparison-plan.md) |
+| Initial baseline comparison results | [docs/plans/2026-04-01-goreveal-initial-baseline-comparison-results.md](docs/plans/2026-04-01-goreveal-initial-baseline-comparison-results.md) |
+| Next execution plan | [docs/plans/2026-04-01-goreveal-next-execution-plan.md](docs/plans/2026-04-01-goreveal-next-execution-plan.md) |
+| Post-Sprint12 sprint plan | [docs/plans/2026-04-01-goreveal-post-sprint12-sprint-plan.md](docs/plans/2026-04-01-goreveal-post-sprint12-sprint-plan.md) |
+| Universal RE workbench comparison | [docs/plans/2026-04-01-goreveal-universal-re-workbench-comparison.md](docs/plans/2026-04-01-goreveal-universal-re-workbench-comparison.md) |
+| REHelp and RE lab inventory notes | [docs/plans/2026-04-01-goreveal-rehelp-and-re-lab-inventory-notes.md](docs/plans/2026-04-01-goreveal-rehelp-and-re-lab-inventory-notes.md) |
+| Protected binary comparison plan | [docs/plans/2026-04-01-goreveal-protected-binary-comparison-plan.md](docs/plans/2026-04-01-goreveal-protected-binary-comparison-plan.md) |
+| Protected binary initial results | [docs/plans/2026-04-01-goreveal-protected-binary-initial-results.md](docs/plans/2026-04-01-goreveal-protected-binary-initial-results.md) |
+| Garble Go 1.26 support research | [docs/plans/2026-04-01-garble-go126-support-research.md](docs/plans/2026-04-01-garble-go126-support-research.md) |
+| Review gap checklist | [docs/plans/2026-03-31-goreveal-review-gap-checklist.md](docs/plans/2026-03-31-goreveal-review-gap-checklist.md) |
+| Commercialization notes | [docs/plans/2026-03-31-goreveal-commercialization-and-compliance-notes.md](docs/plans/2026-03-31-goreveal-commercialization-and-compliance-notes.md) |
 | Deferred continuation | [docs/plans/2026-03-20-goreveal-deferred-continuation.md](docs/plans/2026-03-20-goreveal-deferred-continuation.md) |
 | Runtime modes and storage ideas | [docs/plans/2026-03-21-goreveal-runtime-modes-and-storage-ideas.md](docs/plans/2026-03-21-goreveal-runtime-modes-and-storage-ideas.md) |
+| Server stack decision | [docs/architecture/2026-03-31-goreveal-server-stack-decision.md](docs/architecture/2026-03-31-goreveal-server-stack-decision.md) |
 | MCP and artifact transfer ideas | [docs/plans/2026-03-21-goreveal-agent-mcp-and-artifact-transfer-ideas.md](docs/plans/2026-03-21-goreveal-agent-mcp-and-artifact-transfer-ideas.md) |
 | Repo-local skills | [skills/README.md](skills/README.md) |
 
 ## Current Product Surface
 
 - canonical schema-backed `analyze`
-- `inspect functions`, `inspect runtime`, `inspect packages`, `inspect types`, `inspect strings`
+- `inspect functions`, `inspect runtime`, `inspect packages`, `inspect types`, `inspect strings`, `inspect peeling`
+- `peel`
 - `source-tree`
 - `deobfuscate`
 - `export sqlite`, `export ida`, `export ghidra`
-- SQLite persistence and stored-run diffing
+- `diff sqlite`, `diff review sqlite`, `diff handoff sqlite`, `diff next sqlite`
+- first engine-owned code-peeling layer over canonical truth, now with function classifications, explicit `classification_evidence`, package-level summaries, a small bounded stdlib/runtime fingerprint refinement, and a user-only projection through `peel`
+- SQLite persistence and stored-run diffing, now including bounded function matching in `diff sqlite` through `exact_name`, `source_location`, `source_file`, and `module_local_normalized_name` reasons
+- current bounded transfer foundation is now split cleanly across `engine/peeling` for classification/evidence and `storage/diff` for explainable build-to-build matches, `transfer_candidates`, deterministic `accepted_transfers`, and package-level `transfer_packages` summaries
+- that same transfer foundation now also carries a first compact analyst-facing `transfer_review` queue for pending human-review items plus explicit `projected_package`, a package-first `transfer_review_packages` triage surface, a bounded `transfer_review_focus` first-pass bundle for the recommended next package, and an explicit `goreveal diff review sqlite ...` projection for the focused review pass
+- that same review foundation now also carries a compact `transfer_review_plan` action queue with package-ordered attached review items, and `goreveal diff next sqlite ...` now exposes the recommended next review pass as its own operator-facing projection with self-contained `recommended_actions`, a compact `review_checklist`, a compact `review_snapshot`, explicit `review_progress`, a compact `up_next` package snapshot, and an `upcoming_packages` horizon that now also carries sample pair and strongest-match context instead of requiring operators to derive them from the larger review payload
+- that review-oriented CLI path now also carries a compact machine-readable `handoff` block with left/right input context and recommended host-platform targets, and `goreveal diff handoff sqlite ...` now exposes that handoff as a dedicated operator-facing artifact instead of only an embedded review field
+- that same handoff artifact now also carries a self-describing artifact bundle plus structured `target_profiles` for `ida` and `ghidra`, including explicit export contract IDs, preferred transport hints, artifact-role metadata, workspace phases, host action lists, binding-entrypoint hints, required-artifact hints, and expected host-outcome hints, so workstation guidance is no longer only a flat list of recommendations
+- a thin source-visibility increment is now landed too: when DWARF-backed source projection is unavailable, `source_tree` can fall back to line-table-backed package/file evidence with explicit `pathless_file_evidence`
+- the protected-binary lane now covers a purpose-built enterprise-gated sample across `amd64` and `arm64`, with the first real `garble` rows on both `linux/amd64` and `linux/arm64`
+- current empirical checks already show strong stripped-`ELF` behavior on external binaries, strong bounded `PE` footholds rather than posture-only output, and a real `Mach-O` function/package/peeling foothold without widened runtime claims
+- fresh external reruns now also confirm real file visibility on measured `ELF`, `PE`, and `Mach-O` targets, so the current practical gap is richer semantic/source confidence and stronger workstation handoff rather than raw file absence
+- the current real baseline comparison plus the widened protected matrix now show the clearest remaining practical gap is no longer generic format breadth and no longer Linux-architecture portability inside the protected lane: the bounded `elf_function_foothold = "address_only"` projection now survives on both `linux/amd64` and `linux/arm64`, while named-function recovery under custom `pclntab` magic still remains unresolved
+- the protected lane now also carries a compact analyst-facing explanation surface for that foothold: `elf_function_foothold_text_source` distinguishes `moduledata_text` and `elf_text_section`, and the bounded foothold span is projected directly through `elf_function_foothold_start_addr` / `elf_function_foothold_end_addr`
+- that same protected runtime surface is now locked into the thin `IDA` / `Ghidra` export contracts through `schema` tests and plugin consumer tests, so downstream adapters inherit it without adapter-local recovery logic
 - differential validation against `GoReSym`, `redress`, and `gore`
 - thin `IDA` and `Ghidra` adapters
 
@@ -108,10 +141,13 @@ Core planning and architecture live under [docs/](docs/).
 
 | Lane | Reading |
 |---|---|
-| `Sprint 12` | Primary lane for bounded runtime-semantic depth and analyst-facing trust signals |
+| `Sprint 12` | Primary lane for bounded runtime trust plus the first engine-owned code-peeling increments |
 | `Sprint 7` | Maintenance lane for differential evidence and claim hygiene |
 | `Sprint 11` | Completed usability checkpoint for package/type/source surfaces |
-| Future platform epics | Server mode, `gorectl`, MCP surfaces, object-store-backed transfer, and multi-tenant artifact workflows |
+| Current checkpoint | Windows `PE` bounded runtime posture plus the first `PE` and `Mach-O` function/package/peeling footholds are landed |
+| Next differentiator lane | Use the completed fresh external comparison, the universal RE workbench comparison, the dedicated next-execution plan, the current intermediate rerun, and the widened protected matrix as the evidence baseline. That baseline now shows stable non-garbled `arm64` results across `linux`, `windows`, and `darwin`, a truthful `elf_function_foothold = "address_only"` surface on garbled `linux/amd64` and `linux/arm64` rows, real file visibility on measured external and intermediate-rerun `ELF` / `PE` / `Mach-O` targets, and the same compact protected runtime surface locked through export-contract and plugin-consumer tests. The workflow/value lane now includes explicit `diff review sqlite`, `diff handoff sqlite`, and `diff next sqlite` operator paths over the existing review state, with `diff next sqlite` now carrying self-contained `recommended_actions`, a compact `review_checklist`, a compact `review_snapshot`, explicit `review_progress`, a compact `up_next` snapshot, and an `upcoming_packages` horizon with sample pair context for the immediate review pass. The latest bounded timing sample on `rclone-linux-amd64` also shows no operational efficiency regression that would outrank workflow or source-confidence work. `Sprint 14` is now held at its frozen stop-condition by default: extend it only if one named remaining operator inference step still exists. `Sprint 15` is now also frozen by default for the current bounded scope: `source_tree` and enriched package surfaces already expose `source_evidence_kind = dwarf_paths | line_table_files | package_fallback`, and `source_tree` also carries a compact `source_evidence_summary` with per-evidence-class file counts so operators can read both the high-level package landscape and the file-density shape without reconstructing them from the full package list. The active PM queue has therefore moved into `Sprint 16` protected workflow/orchestration ranking, and the first ranked target there is now `garble`-class workflows on the current enterprise-gated sample; the first named pain point there is no longer generic “recovery is weak”, but “current garbled rows do not yield a review-ready anchor set for peel/review/handoff/next despite the existing address-only foothold”. The first bounded neighboring-build rerun in that lane is now landed too and currently confirms the negative workflow result on both measured Linux architectures: no matched functions, no transfer/review packages, no handoff, and no next-step review projection. Later server-mode work remains ordered but deferred: first bounded control-plane foundations, then remote metadata/MCP platform work. |
+| Later sprint horizon | After the current local workflow sequence and the already-deferred server/remote-interoperability work, the next ordered horizons are `Sprint 19` public release readiness and licensing, `Sprint 20` evidence expansion and comparative automation, `Sprint 21` build correlation and version tracking, `Sprint 22` metadata knowledge network, `Sprint 23` analyst workspace automation and replay, and `Sprint 24` comparative knowledge packs and decision support. |
+| Sprint management | Sprint scope, PM+DEV task framing, and indicators now live in [docs/plans/2026-04-01-goreveal-post-sprint12-sprint-plan.md](docs/plans/2026-04-01-goreveal-post-sprint12-sprint-plan.md) and [docs/plans/2026-03-19-goreveal-scrum-implementation-plan.md](docs/plans/2026-03-19-goreveal-scrum-implementation-plan.md). |
 
 ## Verification
 
@@ -123,5 +159,12 @@ Current containerized entrypoints:
 - `make test-differential-report`
 - `make test-plugins`
 - `make test-snapshots`
+- `make lint-scripts`
+- `task build-image`
+- `task test`
+- `task lint`
+- `task lint-scripts`
+- `task verify`
 
 Development is Podman-first. See [deployments/docker/README.md](deployments/docker/README.md).
+The dev image now also bundles `jq`, `yq`, `procps`, and `unzip` for structured-data inspection, YAML work, process debugging, and bounded artifact handling inside the canonical container workflow.

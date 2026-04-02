@@ -4,15 +4,17 @@ const IDAExportContractV1 = "goreveal.export.ida/v1"
 
 // IDAExport is the stable v1 payload for thin IDA-side consumers.
 type IDAExport struct {
-	Contract   string          `json:"contract"`
-	Input      Input           `json:"input"`
-	BuildInfo  *BuildInfo      `json:"build_info,omitempty"`
-	Functions  []IDAFunction   `json:"functions,omitempty"`
-	Packages   []Package       `json:"packages,omitempty"`
-	Types      []IDAType       `json:"types,omitempty"`
-	Strings    []IDAString     `json:"strings,omitempty"`
-	SourceTree *SourceTree     `json:"source_tree,omitempty"`
-	Refined    *RefinedSummary `json:"refined,omitempty"`
+	Contract   string           `json:"contract"`
+	Input      Input            `json:"input"`
+	BuildInfo  *BuildInfo       `json:"build_info,omitempty"`
+	Runtime    *RuntimeMetadata `json:"runtime,omitempty"`
+	Peeling    *PeelingAnalysis `json:"peeling,omitempty"`
+	Functions  []IDAFunction    `json:"functions,omitempty"`
+	Packages   []Package        `json:"packages,omitempty"`
+	Types      []IDAType        `json:"types,omitempty"`
+	Strings    []IDAString      `json:"strings,omitempty"`
+	SourceTree *SourceTree      `json:"source_tree,omitempty"`
+	Refined    *RefinedSummary  `json:"refined,omitempty"`
 }
 
 // IDAFunction carries one function plus its refined display name.
@@ -64,6 +66,8 @@ func NewIDAExport(analysis Analysis) IDAExport {
 		Contract:   IDAExportContractV1,
 		Input:      analysis.Input,
 		BuildInfo:  analysis.BuildInfo,
+		Runtime:    analysis.Runtime,
+		Peeling:    analysis.Peeling,
 		Packages:   analysis.Packages,
 		SourceTree: analysis.SourceTree,
 	}

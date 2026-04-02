@@ -1,29 +1,43 @@
 ---
 name: goreveal-corpus-validation
-description: Manage corpus fixtures, golden snapshots, and evidence expectations for GoREveal recovery behavior.
+description: Manage fixtures, snapshots, and recovery evidence updates without masking semantic changes.
 metadata:
   short-description: Corpus and golden validation
 ---
 
 # GoREveal Corpus Validation
 
-## Purpose
+## Use When
 
-Use this skill when adding or changing corpus fixtures, golden snapshots, or recovery expectations.
+- adding a fixture
+- changing snapshot expectations
+- updating package/type/runtime semantics
+- landing new Sprint 12 evidence surfaces
 
-## Required Quality Layers
+## Required Checks
 
-- fixture metadata
-- canonical snapshot output
-- version or format coverage note
-- provenance/confidence-sensitive review for changed fields
-- review of package/type scope fields such as `external_packages`, package `module_local`, and type `import_path`/`source_file_count`/`module_local`/`user_meaningful` when recovery semantics shift
-- review of bounded runtime fields such as `.typelink` / `.itablink` evidence, `firstmoduledata`/`.go.module` cross-checks, `moduledata_typelink_*` / `moduledata_itablink_*` slice-header fields, `moduledata_*range*` memory-block fields, `moduledata_rodata_*` / `moduledata_text_*` range fields, and the first fixture-local typelink semantic bridge when runtime semantics shift
+- fixture metadata is present
+- snapshot change is explained
+- provenance/confidence meaning stays intact
+- stripped vs rich behavior is still explicit
+- package/type scope fields remain truthful
+- runtime fields remain bounded and non-generic
 
-## Rules
+## Evidence Layers
 
-- Every important recovery claim should be demonstrable on at least one fixture.
-- Snapshot changes must be explained, not blindly refreshed.
-- Prefer adding focused fixtures over one giant “kitchen sink” corpus sample.
-- Keep raw truth and refined truth distinguishable in expected outputs.
-- Preserve truthful external/runtime evidence instead of silently dropping it from snapshots.
+- corpus fixture
+- snapshot output
+- differential comparison where relevant
+- fuzz or benchmark evidence if parser/perf behavior changed
+
+## Current High-Signal Areas
+
+- `external_packages`
+- package `module_local` and `has_source_evidence`
+- type `import_path`, `source_file_count`, `module_local`, `user_meaningful`
+- bounded runtime trust and `moduledata_*` cross-check fields
+
+## Rule
+
+Do not refresh snapshots blindly.
+Every meaningful snapshot change needs a reason.

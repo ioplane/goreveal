@@ -185,14 +185,20 @@ def build_fixture_report(
         baseline="gore",
         subject="types.user_defined",
         status="skipped",
-        note="Current gore type surface is runtime-heavy and not yet a trustworthy user-type parity surface.",
+        note=(
+            "Current gore type surface is runtime-heavy and not yet a trustworthy "
+            "user-type parity surface."
+        ),
     )
     _add_check(
         checks,
         baseline="goresym",
         subject="functions.complete_parity",
         status="skipped",
-        note="Current GoReSym evidence intentionally covers a narrow user-function subset only.",
+        note=(
+            "Current GoReSym evidence intentionally covers a narrow "
+            "user-function subset only."
+        ),
     )
 
     summary = {

@@ -4,14 +4,16 @@ const GhidraExportContractV1 = "goreveal.export.ghidra/v1"
 
 // GhidraExport is the stable v1 payload for thin Ghidra-side consumers.
 type GhidraExport struct {
-	Contract   string          `json:"contract"`
-	Program    GhidraProgram   `json:"program"`
-	Symbols    []GhidraSymbol  `json:"symbols,omitempty"`
-	Packages   []Package       `json:"packages,omitempty"`
-	Types      []GhidraType    `json:"types,omitempty"`
-	Strings    []GhidraString  `json:"strings,omitempty"`
-	SourceTree *SourceTree     `json:"source_tree,omitempty"`
-	Refined    *RefinedSummary `json:"refined,omitempty"`
+	Contract   string           `json:"contract"`
+	Program    GhidraProgram    `json:"program"`
+	Runtime    *RuntimeMetadata `json:"runtime,omitempty"`
+	Peeling    *PeelingAnalysis `json:"peeling,omitempty"`
+	Symbols    []GhidraSymbol   `json:"symbols,omitempty"`
+	Packages   []Package        `json:"packages,omitempty"`
+	Types      []GhidraType     `json:"types,omitempty"`
+	Strings    []GhidraString   `json:"strings,omitempty"`
+	SourceTree *SourceTree      `json:"source_tree,omitempty"`
+	Refined    *RefinedSummary  `json:"refined,omitempty"`
 }
 
 // GhidraProgram contains the program-level identity for import.
@@ -66,6 +68,8 @@ func NewGhidraExport(analysis Analysis) GhidraExport {
 	out := GhidraExport{
 		Contract:   GhidraExportContractV1,
 		Program:    newGhidraProgram(analysis),
+		Runtime:    analysis.Runtime,
+		Peeling:    analysis.Peeling,
 		Packages:   analysis.Packages,
 		SourceTree: analysis.SourceTree,
 	}

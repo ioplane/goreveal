@@ -15,6 +15,7 @@ import (
 	"github.com/dantte-lp/goreveal/deobfuscation"
 	"github.com/dantte-lp/goreveal/deobfuscation/garble"
 	"github.com/dantte-lp/goreveal/deobfuscation/refine"
+	"github.com/dantte-lp/goreveal/engine/peeling"
 	"github.com/dantte-lp/goreveal/engine/projection"
 	"github.com/dantte-lp/goreveal/schema"
 )
@@ -57,7 +58,13 @@ func (Analyzer) AnalyzeFile(ctx context.Context, path string) (schema.Analysis, 
 
 	if analysis.Input.Format == "elf" {
 		analysis = analyzeELFSurfaces(path, analysis)
+	} else if analysis.Input.Format == "pe" {
+		analysis = analyzePESurfaces(path, analysis)
+	} else if analysis.Input.Format == "macho" {
+		analysis = analyzeMachOSurfaces(path, analysis)
 	}
+
+	analysis.Peeling = peeling.Build(analysis)
 
 	if refined, err := deobfuscation.NewPipeline(refine.Pass{}, garble.Pass{}).Run(ctx, analysis); err == nil {
 		if hasRefinedContent(refined) {
@@ -87,12 +94,107 @@ func analyzeELFSurfaces(path string, analysis schema.Analysis) schema.Analysis {
 	}
 	if files, err := projection.ReadSourceFiles(path); err == nil {
 		if tree, buildErr := projection.BuildSourceTree(analysis, files); buildErr == nil {
+			if fallbackTree, fallbackErr := projection.BuildFunctionSourceTree(analysis); fallbackErr == nil &&
+				shouldPreferFunctionSourceTree(tree, fallbackTree) {
+				tree = fallbackTree
+			}
 			analysis.SourceTree = &tree
 			analysis.Packages = packages.EnrichSourceMetadata(analysis.Packages, analysis.SourceTree)
 			analysis.Types = types.EnrichUserMetadata(analysis.Types, analysis.SourceTree)
 		}
+	} else if tree, buildErr := projection.BuildFunctionSourceTree(analysis); buildErr == nil {
+		analysis.SourceTree = &tree
+		analysis.Packages = packages.EnrichSourceMetadata(analysis.Packages, analysis.SourceTree)
 	} else if tree, fallbackErr := projection.BuildFallbackSourceTree(analysis); fallbackErr == nil {
 		analysis.SourceTree = &tree
+	}
+
+	annotateELFFunctionRecoveryBlocker(&analysis)
+	annotateELFFunctionFoothold(&analysis)
+
+	return analysis
+}
+
+func annotateELFFunctionRecoveryBlocker(analysis *schema.Analysis) {
+	if analysis == nil || analysis.Runtime == nil {
+		return
+	}
+	if analysis.Runtime.ELFPclntabHeaderMagicKind != "unknown" {
+		return
+	}
+	if analysis.Runtime.ELFPclntabFunctionCountHint == 0 {
+		return
+	}
+	if len(analysis.Functions) != 0 {
+		return
+	}
+
+	analysis.Runtime.ELFFunctionRecoveryBlocker = "custom_pclntab_magic"
+}
+
+func annotateELFFunctionFoothold(analysis *schema.Analysis) {
+	if analysis == nil || analysis.Runtime == nil {
+		return
+	}
+	if analysis.Runtime.ELFPclntabHeaderMagicKind != "unknown" {
+		return
+	}
+	if analysis.Runtime.ELFPclntabFunctionCountHint == 0 {
+		return
+	}
+	if len(analysis.Functions) != 0 {
+		return
+	}
+	if !analysis.Runtime.ELFFunctabPCOffsetsMonotonic {
+		return
+	}
+	if !analysis.Runtime.ELFFunctabPCAddrHintsWithinText {
+		return
+	}
+	if len(analysis.Runtime.ELFFunctabPCAddrSample) == 0 {
+		return
+	}
+	if !analysis.Runtime.ELFFunctabPCAddrSampleAllWithinText {
+		return
+	}
+
+	analysis.Runtime.ELFFunctionFoothold = "address_only"
+	analysis.Runtime.ELFFunctionFootholdCountHint = analysis.Runtime.ELFPclntabFunctionCountHint
+	analysis.Runtime.ELFFunctionFootholdTextSource = recoveryruntime.ELFTextSourceForProjection(analysis.Runtime)
+	analysis.Runtime.ELFFunctionFootholdStartAddr = analysis.Runtime.ELFFunctabFirstPCAddrHint
+	analysis.Runtime.ELFFunctionFootholdEndAddr = analysis.Runtime.ELFFunctabLastPCAddrHint
+}
+
+func shouldPreferFunctionSourceTree(dwarfTree, functionTree schema.SourceTree) bool {
+	return len(dwarfTree.Files) == 0 && len(functionTree.Files) > 0
+}
+
+func analyzePESurfaces(path string, analysis schema.Analysis) schema.Analysis {
+	if recovered, err := recoveryruntime.ReadMetadata(path); err == nil {
+		analysis.Runtime = &recovered
+	}
+	if recovered, err := functions.Recover(path); err == nil {
+		analysis.Functions = functions.EnrichBuildInfoMetadata(recovered, analysis.BuildInfo)
+		analysis.Packages = packages.Recover(recovered)
+		analysis.Packages = packages.EnrichBuildInfoMetadata(analysis.Packages, analysis.BuildInfo)
+		if tree, buildErr := projection.BuildFunctionSourceTree(analysis); buildErr == nil {
+			analysis.SourceTree = &tree
+			analysis.Packages = packages.EnrichSourceMetadata(analysis.Packages, analysis.SourceTree)
+		}
+	}
+
+	return analysis
+}
+
+func analyzeMachOSurfaces(path string, analysis schema.Analysis) schema.Analysis {
+	if recovered, err := functions.Recover(path); err == nil {
+		analysis.Functions = functions.EnrichBuildInfoMetadata(recovered, analysis.BuildInfo)
+		analysis.Packages = packages.Recover(recovered)
+		analysis.Packages = packages.EnrichBuildInfoMetadata(analysis.Packages, analysis.BuildInfo)
+		if tree, buildErr := projection.BuildFunctionSourceTree(analysis); buildErr == nil {
+			analysis.SourceTree = &tree
+			analysis.Packages = packages.EnrichSourceMetadata(analysis.Packages, analysis.SourceTree)
+		}
 	}
 
 	return analysis

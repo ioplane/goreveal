@@ -14,7 +14,7 @@ This document fixes the intended module ownership and dependency rules for GoREv
 - `schema`
   - owns canonical analysis data structures and provenance/confidence semantics
 - `engine`
-  - owns orchestration of recovery, normalization, enrichment, and export preparation
+  - owns orchestration of recovery, normalization, enrichment, export preparation, and bounded analyst-facing classification layers such as the current first code-peeling slice
 - `deobfuscation`
   - owns refinement passes over recovered data without mutating raw truth
 - `cmd/goreveal`
@@ -57,6 +57,7 @@ Forbidden dependency direction:
 - Any code that parses binary internals belongs in `core`.
 - Any code that defines stable result shape belongs in `schema`.
 - Any code that sequences stages belongs in `engine`.
+- Any code that classifies already-recovered truth for analyst workflows, such as the current code-peeling layer, belongs in `engine` or `deobfuscation`, not in `core`.
 - Any code that improves readability but is not raw recovery belongs in `deobfuscation`.
 - Any code that exists only to render or transport results belongs outside `core`.
 

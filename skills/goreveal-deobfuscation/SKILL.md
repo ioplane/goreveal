@@ -1,32 +1,32 @@
 ---
 name: goreveal-deobfuscation
-description: Guide deobfuscation passes so they improve readability without corrupting raw recovered truth.
+description: Keep deobfuscation as a refinement layer with preserved raw truth and explicit provenance.
 metadata:
   short-description: Deobfuscation rules
 ---
 
 # GoREveal Deobfuscation
 
-## Purpose
+## Use When
 
-Use this skill when implementing or changing deobfuscation logic.
+- implementing garble or symbol-refinement logic
+- adding refined-layer fields
+- evaluating external deobfuscation orchestration
 
-## Core Rules
+## Hard Rules
 
-- deobfuscation is a refinement layer
-- raw recovered truth remains preserved
-- refined outputs must carry provenance and confidence
-- no deobfuscation pass may silently rewrite the canonical raw source of truth
+- raw truth must survive unchanged
+- refined truth must stay separate
+- provenance/confidence must remain explicit
+- no pass may silently overwrite canonical raw recovery
 
-## Typical Targets
+## Evidence Required
 
-- string ungarbling
-- refined symbol names
-- package refinement
-- optional CFG-guided naming hints
+- fixture showing the obfuscation case
+- test proving raw/refined separation
+- comparison note if inspired by an external tool
 
-## Required Evidence
+## Sprint Rule
 
-- fixture demonstrating the obfuscation case
-- test showing raw vs refined separation
-- comparison note if behavior is inspired by a baseline tool
+Do not expand `Sprint 13` ahead of the active `Sprint 12` lane.
+If constraint solving becomes relevant later, prefer external orchestration before native heavy dependencies.

@@ -9,6 +9,8 @@ Rules:
 - Prefer the smallest binary that still exercises the intended behavior.
 - Do not overwrite raw fixture provenance in expected outputs.
 - Prefer adding fixture variants when the goal is validation breadth rather than new user-facing behavior.
+- Snapshot tests auto-discover any fixture directory that contains `expected.analysis.json`.
+- Current canonical fixture families now include `ELF`, bounded `PE`, and a first bounded `Mach-O` foothold.
 
 Snapshot workflow:
 - Run `make test-snapshots` from the repository root to verify current fixtures.

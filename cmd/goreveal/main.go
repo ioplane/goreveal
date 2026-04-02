@@ -27,6 +27,8 @@ func run(ctx context.Context, args []string) error {
 		return runAnalyzeCmd(ctx, args)
 	case "inspect":
 		return runInspectCmd(ctx, args)
+	case "peel":
+		return runPeelCmd(ctx, args)
 	case "source-tree":
 		return runSourceTreeCmd(ctx, args)
 	case "deobfuscate":
@@ -49,7 +51,7 @@ func runAnalyzeCmd(ctx context.Context, args []string) error {
 
 func runInspectCmd(ctx context.Context, args []string) error {
 	if len(args) != 3 {
-		return errors.New("usage: goreveal inspect <functions|packages|types|strings|runtime> <binary>")
+		return errors.New("usage: goreveal inspect <functions|packages|types|strings|runtime|peeling> <binary>")
 	}
 
 	switch args[1] {
@@ -63,9 +65,19 @@ func runInspectCmd(ctx context.Context, args []string) error {
 		return internalcmd.RunInspectStrings(ctx, os.Stdout, args[2])
 	case "runtime":
 		return internalcmd.RunInspectRuntime(ctx, os.Stdout, args[2])
+	case "peeling":
+		return internalcmd.RunInspectPeeling(ctx, os.Stdout, args[2])
 	default:
-		return errors.New("usage: goreveal inspect <functions|packages|types|strings|runtime> <binary>")
+		return errors.New("usage: goreveal inspect <functions|packages|types|strings|runtime|peeling> <binary>")
 	}
+}
+
+func runPeelCmd(ctx context.Context, args []string) error {
+	if len(args) != 2 {
+		return errors.New("usage: goreveal peel <binary>")
+	}
+
+	return internalcmd.RunPeel(ctx, os.Stdout, args[1])
 }
 
 func runSourceTreeCmd(ctx context.Context, args []string) error {
@@ -109,21 +121,53 @@ func runExportCmd(ctx context.Context, args []string) error {
 }
 
 func runDiffCmd(ctx context.Context, args []string) error {
-	if len(args) != 5 || args[1] != "sqlite" {
-		return errors.New("usage: goreveal diff sqlite <database> <left-id> <right-id>")
+	if len(args) == 5 && args[1] == "sqlite" {
+		leftID, err := strconv.ParseInt(args[3], 10, 64)
+		if err != nil {
+			return fmt.Errorf("parse left id %q: %w", args[3], err)
+		}
+		rightID, err := strconv.ParseInt(args[4], 10, 64)
+		if err != nil {
+			return fmt.Errorf("parse right id %q: %w", args[4], err)
+		}
+		return internalcmd.RunDiffSQLite(ctx, os.Stdout, args[2], leftID, rightID)
 	}
-
-	leftID, err := strconv.ParseInt(args[3], 10, 64)
-	if err != nil {
-		return fmt.Errorf("parse left id %q: %w", args[3], err)
+	if len(args) == 6 && args[1] == "review" && args[2] == "sqlite" {
+		leftID, err := strconv.ParseInt(args[4], 10, 64)
+		if err != nil {
+			return fmt.Errorf("parse left id %q: %w", args[4], err)
+		}
+		rightID, err := strconv.ParseInt(args[5], 10, 64)
+		if err != nil {
+			return fmt.Errorf("parse right id %q: %w", args[5], err)
+		}
+		return internalcmd.RunDiffReviewSQLite(ctx, os.Stdout, args[3], leftID, rightID)
 	}
-	rightID, err := strconv.ParseInt(args[4], 10, 64)
-	if err != nil {
-		return fmt.Errorf("parse right id %q: %w", args[4], err)
+	if len(args) == 6 && args[1] == "handoff" && args[2] == "sqlite" {
+		leftID, err := strconv.ParseInt(args[4], 10, 64)
+		if err != nil {
+			return fmt.Errorf("parse left id %q: %w", args[4], err)
+		}
+		rightID, err := strconv.ParseInt(args[5], 10, 64)
+		if err != nil {
+			return fmt.Errorf("parse right id %q: %w", args[5], err)
+		}
+		return internalcmd.RunDiffHandoffSQLite(ctx, os.Stdout, args[3], leftID, rightID)
 	}
-	return internalcmd.RunDiffSQLite(ctx, os.Stdout, args[2], leftID, rightID)
+	if len(args) == 6 && args[1] == "next" && args[2] == "sqlite" {
+		leftID, err := strconv.ParseInt(args[4], 10, 64)
+		if err != nil {
+			return fmt.Errorf("parse left id %q: %w", args[4], err)
+		}
+		rightID, err := strconv.ParseInt(args[5], 10, 64)
+		if err != nil {
+			return fmt.Errorf("parse right id %q: %w", args[5], err)
+		}
+		return internalcmd.RunDiffNextSQLite(ctx, os.Stdout, args[3], leftID, rightID)
+	}
+	return errors.New("usage: goreveal diff sqlite <database> <left-id> <right-id> | goreveal diff review sqlite <database> <left-id> <right-id> | goreveal diff handoff sqlite <database> <left-id> <right-id> | goreveal diff next sqlite <database> <left-id> <right-id>")
 }
 
 func errUsageRoot() error {
-	return errors.New("usage: goreveal analyze <binary> | goreveal inspect <functions|packages|types|strings|runtime> <binary> | goreveal source-tree <binary> | goreveal deobfuscate <binary> | goreveal export <sqlite|ida|ghidra> [args] | goreveal diff sqlite <database> <left-id> <right-id>")
+	return errors.New("usage: goreveal analyze <binary> | goreveal inspect <functions|packages|types|strings|runtime|peeling> <binary> | goreveal peel <binary> | goreveal source-tree <binary> | goreveal deobfuscate <binary> | goreveal export <sqlite|ida|ghidra> [args] | goreveal diff sqlite <database> <left-id> <right-id> | goreveal diff review sqlite <database> <left-id> <right-id> | goreveal diff handoff sqlite <database> <left-id> <right-id> | goreveal diff next sqlite <database> <left-id> <right-id>")
 }

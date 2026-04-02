@@ -10,7 +10,6 @@ import json
 from pathlib import Path
 from typing import Any
 
-
 IDA_CONTRACT_V1 = "goreveal.export.ida/v1"
 
 
@@ -20,7 +19,7 @@ def load_export(source: str | Path | dict[str, Any]) -> dict[str, Any]:
     else:
         text = str(source)
         stripped = text.lstrip()
-        if stripped.startswith("{") or stripped.startswith("["):
+        if stripped.startswith(("{", "[")):
             payload = json.loads(text)
         else:
             payload = json.loads(Path(source).read_text(encoding="utf-8"))
@@ -35,57 +34,57 @@ def build_actions(payload: dict[str, Any]) -> list[dict[str, Any]]:
     payload = load_export(payload)
     actions: list[dict[str, Any]] = []
 
-    for function in payload.get("functions", []):
-        actions.append(
-            {
-                "kind": "function",
-                "start": function["entry"],
-                "end": function["end"],
-                "name": function.get("refined_name") or function["name"],
-                "raw_name": function["name"],
-            }
-        )
+    actions.extend(
+        {
+            "kind": "function",
+            "start": function["entry"],
+            "end": function["end"],
+            "name": function.get("refined_name") or function["name"],
+            "raw_name": function["name"],
+        }
+        for function in payload.get("functions", [])
+    )
 
-    for typ in payload.get("types", []):
-        actions.append(
-            {
-                "kind": "type",
-                "name": typ.get("refined_name") or typ["name"],
-                "raw_name": typ["name"],
-                "type_kind": typ["kind"],
-            }
-        )
+    actions.extend(
+        {
+            "kind": "type",
+            "name": typ.get("refined_name") or typ["name"],
+            "raw_name": typ["name"],
+            "type_kind": typ["kind"],
+        }
+        for typ in payload.get("types", [])
+    )
 
-    for string in payload.get("strings", []):
-        actions.append(
-            {
-                "kind": "string",
-                "value": string.get("refined_value") or string["value"],
-                "raw_value": string["value"],
-                "address": string.get("address"),
-                "offset": string["offset"],
-                "region": string["region"],
-            }
-        )
+    actions.extend(
+        {
+            "kind": "string",
+            "value": string.get("refined_value") or string["value"],
+            "raw_value": string["value"],
+            "address": string.get("address"),
+            "offset": string["offset"],
+            "region": string["region"],
+        }
+        for string in payload.get("strings", [])
+    )
 
-    for package in payload.get("packages", []):
-        actions.append(
-            {
-                "kind": "package",
-                "name": package["name"],
-                "function_count": package.get("function_count", 0),
-            }
-        )
+    actions.extend(
+        {
+            "kind": "package",
+            "name": package["name"],
+            "function_count": package.get("function_count", 0),
+        }
+        for package in payload.get("packages", [])
+    )
 
     source_tree = payload.get("source_tree") or {}
-    for file_name in source_tree.get("files", []):
-        actions.append(
-            {
-                "kind": "source_file",
-                "name": file_name,
-                "root": source_tree.get("root", ""),
-            }
-        )
+    actions.extend(
+        {
+            "kind": "source_file",
+            "name": file_name,
+            "root": source_tree.get("root", ""),
+        }
+        for file_name in source_tree.get("files", [])
+    )
 
     return actions
 
