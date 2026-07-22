@@ -211,6 +211,11 @@ fields. An intentional v1 change requires a separate compatibility decision.
 - Modify: `schema/analysis.go:34-46`
 - Modify: `engine/engine.go:23-115`
 - Modify: `cmd/goreveal/internal/analyze.go:14-118`
+- Create: `cmd/goreveal/internal/analysis_policy.go`
+- Modify: `cmd/goreveal/internal/deobfuscate.go`
+- Modify: `cmd/goreveal/internal/export_ida.go`
+- Modify: `cmd/goreveal/internal/export_ghidra.go`
+- Modify: `cmd/goreveal/internal/export_sqlite.go`
 - Test: `engine/engine_test.go`
 - Test: `cmd/goreveal/internal/analyze_test.go`
 - Test: `schema/export_test.go`
@@ -380,6 +385,10 @@ git commit -m "fix(engine): expose analysis stage diagnostics"
 - Modify: `schema/export_ghidra.go:80-102`
 - Modify: `storage/sqlite/store.go`
 - Modify: `storage/diff/diff.go`
+- Modify: `engine/engine.go`
+- Modify: `engine/engine_test.go`
+- Modify: `cmd/goreveal/internal/diff.go`
+- Modify: `cmd/goreveal/internal/analyze_test.go`
 - Test: `deobfuscation/pipeline_test.go`
 - Test: `deobfuscation/garble/strings_test.go`
 - Test: `schema/export_test.go`
@@ -524,7 +533,7 @@ snapshots contain deterministic raw entity IDs and Task 0 v1 bytes do not move.
 - [ ] **Step 10: Commit**
 
 ```bash
-git add schema deobfuscation storage/diff storage/sqlite corpus/fixtures
+git add schema deobfuscation engine storage/diff storage/sqlite cmd/goreveal/internal corpus/fixtures
 git commit -m "fix(schema): key refined evidence to raw entities"
 ```
 
@@ -648,17 +657,20 @@ git commit -m "fix(runtime): reject exclusive text endpoint"
 ### Task 5: Close RT1-S0 with clean-room and evidence synchronization
 
 **Files:**
-- Modify: `docs/tmp/draft/go-bp.md:342-440`
+- Verify: `docs/tmp/draft/go-bp.md` in full
 - Modify: `docs/architecture/2026-03-20-goreveal-semantic-claim-boundaries.md`
 - Modify: `docs/plans/2026-03-20-goreveal-functional-assessment.md`
 - Modify: `README.md`
 - Modify: `AGENTS.md`
 
-- [ ] **Step 1: Replace direct-code-reuse recommendations**
+- [ ] **Step 1: Verify the historical research draft remains clean-room safe**
 
-Rewrite the three GoReSym fork/copy recommendations as clean-room behavior
-study, upstream-Go primary-source research, fixture manifests, and differential
-comparison. Preserve the draft as a draft; do not promote its old advice.
+Review the entire draft, not only previously known line ranges. It must retain
+the historical-draft warning and may discuss baseline behavior, but must not
+recommend copying, translating, forking, or directly reusing baseline
+implementation code. Any actionable recommendation must use upstream-Go
+primary-source research, independently designed readers, fixture manifests,
+and differential comparison.
 
 - [ ] **Step 2: Record only landed S0 claims**
 
@@ -668,7 +680,7 @@ Do not mark S1/S2A/S2B planned fields as available.
 - [ ] **Step 3: Run documentation consistency checks**
 
 ```bash
-rg -n 'copy|fork|translate|direct code' docs/tmp/draft/go-bp.md
+rg -n '(?i)copy|fork|translate|direct code|reuse|использ.*напрям' docs/tmp/draft/go-bp.md
 rg -n 'Sprint (12|13|14|15|16)|Sprint [A-E]|RT1-S' README.md AGENTS.md docs/plans docs/superpowers
 git diff --check
 ```
@@ -1150,12 +1162,19 @@ git commit -m "feat(buildinfo): expose module and dependency provenance"
 - Create: `core/identity/identity_test.go`
 - Modify: `schema/identity.go`
 - Modify: `engine/engine.go`
+- Modify: `engine/engine_test.go`
 - Update: fixture manifests
+- Update: existing `corpus/fixtures/*/expected.analysis.json` snapshots
 
-- [ ] **Step 1: Write digest/architecture/build-ID tests**
+- [ ] **Step 1: Write digest/architecture/build-ID and stage-policy tests**
 
 Cover a known byte digest, ELF amd64, PE amd64, Mach-O amd64, absent build ID,
-truncated notes, and a non-Go binary.
+truncated notes, and a non-Go binary. Table-test the newly attempted
+`entity_identity` stage as `available`, `unavailable`, `unsupported`, and
+`failed`, following the S0 invariant of exactly one ordered diagnostic per
+attempted stage. A malformed or contradictory identity is `failed`; it blocks
+refinement, persistence, diff, and export rather than being published as an
+empty available identity.
 
 - [ ] **Step 2: Run and verify RED**
 
@@ -1180,8 +1199,14 @@ typed unavailable result, not an empty high-confidence value.
 
 ```bash
 python3 -m scripts.dev.podman_runner exec -- /usr/local/go/bin/go test ./core/identity ./engine -v
+make snapshot-update
+git diff -- corpus/fixtures
 make test
 ```
+
+Expected: every canonical fixture snapshot records deterministic identity or
+an explicit non-available identity diagnostic. Review all snapshot changes;
+do not accept an empty high-confidence build ID.
 
 - [ ] **Step 6: Commit**
 
@@ -1204,6 +1229,7 @@ git commit -m "feat(identity): bind analysis to exact binary bytes"
 - Create: `corpus/fixtures/go-elf-pie-linux-amd64/fixture.bin`
 - Create: `corpus/fixtures/go-elf-pie-linux-amd64/fixture.json`
 - Create: `corpus/fixtures/go-elf-pie-linux-amd64/expected.analysis.json`
+- Update: existing `corpus/fixtures/*/expected.analysis.json` snapshots
 - Create: `docs/evidence/rt1-s2a-closure.md`
 
 - [ ] **Step 1: Write table tests before implementation**
@@ -1261,8 +1287,10 @@ the pre-RT1 v1 bytes must remain unchanged.
 ```bash
 python3 -m scripts.dev.podman_runner exec -- /usr/local/go/bin/go test ./core/location ./core/pclntab ./core/runtime -v
 python3 -m scripts.dev.podman_runner exec -- /usr/local/go/bin/go test ./schema -run 'Test(IDA|Ghidra)ExportV1FrozenBytes' -v
+make snapshot-update
+git diff -- corpus/fixtures
 make test
-git add schema core/location core/pclntab core/runtime corpus/fixtures/go-elf-pie-linux-amd64
+git add schema core/location core/pclntab core/runtime corpus/fixtures
 git commit -m "feat(core): add explicit address location mapping"
 ```
 

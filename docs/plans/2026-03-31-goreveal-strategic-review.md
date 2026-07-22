@@ -1,12 +1,14 @@
 # GoREveal Strategic Review
 
-> Status: strategic review
+> Status: historical strategic review; superseded for execution by the
+> [RT1 product design](../superpowers/specs/2026-07-22-goreveal-rt1-product-design.md)
+> and [RT1 Horizon A plan](../superpowers/plans/2026-07-22-goreveal-rt1-horizon-a.md)
 > Date: 2026-03-31
 > Purpose: consolidate the external strategic review into a repo-native planning document and translate it into concrete roadmap, architecture, and documentation updates.
 
 ## Summary
 
-This review confirms the current high-level product reading:
+This review records the high-level product reading at that checkpoint:
 - the project is materially ahead as a platform product
 - the main remaining gap is still runtime-semantic accuracy depth
 - `Sprint 12` remains the correct primary lane
@@ -208,11 +210,15 @@ Do not:
 - rewrite package/type heuristics before runtime-semantic truth is materially stronger
 - treat metadata-network ideas as active implementation work before code peeling and version tracking foundations exist
 
-## Recommended Execution Order
+## Historical Recommended Execution Order
+
+This order is preserved as decision evidence only. It is not an executable
+backlog; the active sequence is RT1-S0, S1, S2A, S2B, then the S3 promotion
+decision.
 
 1. treat `Sprint 14` as frozen by default for the current declared local scope unless one named remaining operator inference step can still be demonstrated
 2. treat `Sprint 15` as frozen by default unless one new named source-confidence inference step is explicitly demonstrated
-3. move active PM ranking into `Sprint 16` protected workflow/orchestration selection
+3. historically, move PM ranking into `Sprint 16` protected workflow/orchestration selection
 4. treat any further `Sprint 13` workstation-contract work as optional and thin
 5. repository license decision
 6. one bounded protected-specific DEV increment only if the `Sprint 16` ranking names a first measured analyst pain point clearly enough to justify corpus/comparison work

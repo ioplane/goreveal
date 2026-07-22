@@ -76,19 +76,21 @@ Core planning and architecture live under [docs/](docs/).
 
 | Area | Entry Point |
 |---|---|
+| Active product design | [docs/superpowers/specs/2026-07-22-goreveal-rt1-product-design.md](docs/superpowers/specs/2026-07-22-goreveal-rt1-product-design.md) |
+| Active Horizon A execution plan | [docs/superpowers/plans/2026-07-22-goreveal-rt1-horizon-a.md](docs/superpowers/plans/2026-07-22-goreveal-rt1-horizon-a.md) |
 | Platform contract | [docs/architecture/2026-03-19-goreveal-platform-contract.md](docs/architecture/2026-03-19-goreveal-platform-contract.md) |
 | Go 1.26 practices | [docs/architecture/2026-03-19-goreveal-go126-best-practices.md](docs/architecture/2026-03-19-goreveal-go126-best-practices.md) |
 | Testing strategy | [docs/architecture/2026-03-19-goreveal-testing-strategy.md](docs/architecture/2026-03-19-goreveal-testing-strategy.md) |
-| Sprint / roadmap plan | [docs/plans/2026-03-19-goreveal-scrum-implementation-plan.md](docs/plans/2026-03-19-goreveal-scrum-implementation-plan.md) |
+| Historical Scrum delivery record | [docs/plans/2026-03-19-goreveal-scrum-implementation-plan.md](docs/plans/2026-03-19-goreveal-scrum-implementation-plan.md) |
 | Feature map | [docs/plans/2026-03-19-goreveal-feature-map.md](docs/plans/2026-03-19-goreveal-feature-map.md) |
-| Progress assessment | [docs/plans/2026-03-20-goreveal-progress-assessment.md](docs/plans/2026-03-20-goreveal-progress-assessment.md) |
-| Functional assessment | [docs/plans/2026-03-20-goreveal-functional-assessment.md](docs/plans/2026-03-20-goreveal-functional-assessment.md) |
-| Strategic review | [docs/plans/2026-03-31-goreveal-strategic-review.md](docs/plans/2026-03-31-goreveal-strategic-review.md) |
+| Historical progress assessment | [docs/plans/2026-03-20-goreveal-progress-assessment.md](docs/plans/2026-03-20-goreveal-progress-assessment.md) |
+| Historical functional assessment | [docs/plans/2026-03-20-goreveal-functional-assessment.md](docs/plans/2026-03-20-goreveal-functional-assessment.md) |
+| Historical strategic review | [docs/plans/2026-03-31-goreveal-strategic-review.md](docs/plans/2026-03-31-goreveal-strategic-review.md) |
 | External binary matrix evaluation | [docs/plans/2026-03-31-goreveal-external-binary-matrix-evaluation.md](docs/plans/2026-03-31-goreveal-external-binary-matrix-evaluation.md) |
 | Baseline comparison plan | [docs/plans/2026-03-31-goreveal-baseline-comparison-plan.md](docs/plans/2026-03-31-goreveal-baseline-comparison-plan.md) |
 | Initial baseline comparison results | [docs/plans/2026-04-01-goreveal-initial-baseline-comparison-results.md](docs/plans/2026-04-01-goreveal-initial-baseline-comparison-results.md) |
-| Next execution plan | [docs/plans/2026-04-01-goreveal-next-execution-plan.md](docs/plans/2026-04-01-goreveal-next-execution-plan.md) |
-| Post-Sprint12 sprint plan | [docs/plans/2026-04-01-goreveal-post-sprint12-sprint-plan.md](docs/plans/2026-04-01-goreveal-post-sprint12-sprint-plan.md) |
+| Historical next-execution record | [docs/plans/2026-04-01-goreveal-next-execution-plan.md](docs/plans/2026-04-01-goreveal-next-execution-plan.md) |
+| Historical post-Sprint12 plan | [docs/plans/2026-04-01-goreveal-post-sprint12-sprint-plan.md](docs/plans/2026-04-01-goreveal-post-sprint12-sprint-plan.md) |
 | Universal RE workbench comparison | [docs/plans/2026-04-01-goreveal-universal-re-workbench-comparison.md](docs/plans/2026-04-01-goreveal-universal-re-workbench-comparison.md) |
 | REHelp and RE lab inventory notes | [docs/plans/2026-04-01-goreveal-rehelp-and-re-lab-inventory-notes.md](docs/plans/2026-04-01-goreveal-rehelp-and-re-lab-inventory-notes.md) |
 | Protected binary comparison plan | [docs/plans/2026-04-01-goreveal-protected-binary-comparison-plan.md](docs/plans/2026-04-01-goreveal-protected-binary-comparison-plan.md) |

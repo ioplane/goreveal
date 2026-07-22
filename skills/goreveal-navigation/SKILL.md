@@ -1,6 +1,6 @@
 ---
 name: goreveal-navigation
-description: Navigate GoREveal module ownership, active roadmap, and bounded Sprint 12 contract before making changes.
+description: Navigate GoREveal module ownership, the active RT1 train, and preserved compatibility boundaries before making changes.
 metadata:
   short-description: Navigate GoREveal safely
 ---
@@ -19,14 +19,18 @@ metadata:
 - `docs/architecture/2026-03-19-goreveal-platform-contract.md`
 - `docs/architecture/2026-03-19-goreveal-module-map.md`
 - `docs/architecture/2026-03-20-goreveal-semantic-claim-boundaries.md`
-- `docs/plans/2026-03-19-goreveal-scrum-implementation-plan.md`
-- `docs/plans/2026-03-31-goreveal-strategic-review.md`
+- `docs/superpowers/specs/2026-07-22-goreveal-rt1-product-design.md`
+- `docs/superpowers/plans/2026-07-22-goreveal-rt1-horizon-a.md`
+
+The March/April Scrum and strategic plans are historical evidence, not active
+execution authority.
 
 ## Workflow
 
 1. Identify the owning module.
 2. State whether the work changes recovery truth, schema surface, enrichment logic, export behavior, or docs only.
-3. Check whether the task is inside the active `Sprint 12` lane.
+3. Check whether the task is inside the active RT1 sequence
+   `S0 -> S1 -> S2A -> S2B -> S3` and satisfies its promotion gate.
 4. Check whether the task requires corpus, snapshot, differential, or benchmark evidence.
 5. Refuse to put plugin, storage, or analyst UX logic into `core`.
 
@@ -36,7 +40,8 @@ metadata:
 - `core` recovers truth from binaries; it does not own analyst-facing classification.
 - `engine` owns orchestration and future code-peeling style enrichment.
 - `deobfuscation` refines readability without overwriting raw truth.
-- bounded Sprint 12 runtime fields are contract slices, not permission for a broad runtime parser rewrite.
+- bounded Sprint 12 runtime fields remain compatibility/evidence slices, not
+  an active queue or permission for a broad runtime parser rewrite.
 
 ## Deliverable
 

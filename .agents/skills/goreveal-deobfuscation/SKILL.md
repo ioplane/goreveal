@@ -26,5 +26,9 @@ description: Keep deobfuscation as a refinement layer with preserved raw truth a
 
 ## Sprint Rule
 
-Do not expand `Sprint 13` ahead of the active `Sprint 12` lane.
-If constraint solving becomes relevant later, prefer external orchestration before native heavy dependencies.
+RT1-S0 keyed raw/refined correctness is the only active deobfuscation work
+before promotion. String extents and later deobfuscation hypotheses remain
+behind the RT1 gates; broad garble work is a protected later outcome, not an
+implicit continuation of the historical Sprint 13 queue. If constraint solving
+becomes relevant, validate it through external orchestration before accepting
+native heavy dependencies.

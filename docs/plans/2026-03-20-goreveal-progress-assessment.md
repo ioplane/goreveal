@@ -1,6 +1,8 @@
 # GoREveal Progress Assessment
 
-> Status: product/program checkpoint
+> Status: historical product/program checkpoint; superseded for execution by
+> the [RT1 product design](../superpowers/specs/2026-07-22-goreveal-rt1-product-design.md)
+> and [RT1 Horizon A plan](../superpowers/plans/2026-07-22-goreveal-rt1-horizon-a.md)
 > Date: 2026-03-20
 > Purpose: quantify current progress by feature block, baseline-tool comparison, and sprint lane so planning can use a stable percentage view instead of only narrative notes.
 
@@ -160,7 +162,10 @@ The percentages confirm the current strategy:
 16. `Sprint 14` is now started in bounded form through `transfer_review_plan` and `goreveal diff next sqlite <database> <left-id> <right-id>`, and that plan now carries package-ordered attached review items plus self-contained `recommended_actions`, explicit `review_progress`, a compact `up_next` snapshot, and an `upcoming_packages` horizon with sample pair context, so review actionability is no longer only a sequencing note.
 17. the later horizon is now explicit too: `Sprint 17` server control-plane foundations and `Sprint 18` metadata/remote interop platform stay ordered but deferred behind local workflow maturity
 
-## Near-Term Priority
+## Historical Near-Term Priority
+
+The priorities below record the March/April checkpoint and are not an active
+queue. Current work follows RT1-S0 through RT1-S3 and its promotion gates.
 
 The next highest-value low-regret work is now:
 - keep the new bounded `Mach-O` foothold stable: function/package/peeling only, no broad runtime claims
@@ -170,28 +175,28 @@ The next highest-value low-regret work is now:
 - keep the re-opened workflow/value lane stable now that `transfer_review`, `transfer_review_packages`, `transfer_review_focus`, `transfer_review_plan`, `diff review sqlite`, `diff handoff sqlite`, and `diff next sqlite` are all landed, with the next-step path now carrying self-contained `recommended_actions`, and use the fresh external comparison as evidence that this lane is backed by real cross-format utility rather than fixture-local success
 - after that, harden explicit host-platform MCP and workstation handoff planning on top of the now-landed `diff handoff sqlite` bridge, using the measured `rehelp` / RE-lab environment as the real interop baseline
 - the first bounded hardening slices inside that lane are now landed too through structured per-target `target_profiles` for `ida` and `ghidra`, plus explicit export-contract IDs, preferred transport hints, artifact roles, workspace phases, and host actions; the next handoff step should build on that shape instead of replacing it
-- the current low-regret next step is therefore to treat both `Sprint 14` and `Sprint 15` as frozen by default for the current scope, move active PM ranking into `Sprint 16`, and keep protected work corpus/comparison-first rather than reopening parser or deobfuscation lanes by drift
+- the then-current low-regret recommendation was to freeze `Sprint 14` and `Sprint 15`, rank `Sprint 16`, and keep protected work corpus/comparison-first; this is historical and no longer selects work
 - after the current local sequence settles, the next later product horizon should move into server/control-plane and remote interop only in that order: first bounded control-plane foundations, then remote metadata/MCP platform work
 - only reopen the protected lane immediately if one new protected-specific analyst surface clearly promises materially better signal than the current `address_only` + text-source + span projection
 - avoid reopening broad parser or heuristic-rewrite work
 
-Current deferred-resume handoff:
+Historical deferred-resume handoff:
 - `docs/plans/2026-03-20-goreveal-deferred-continuation.md`
 
-Current product-direction brainstorming:
+Historical product-direction brainstorming:
 - `docs/plans/2026-03-20-goreveal-market-killer-features-brainstorm.md`
 
-Current cross-platform empirical validation:
+Historical cross-platform empirical validation:
 - `docs/plans/2026-03-31-goreveal-external-binary-matrix-evaluation.md`
 
-Current real baseline comparison:
+Historical real baseline comparison:
 - `docs/plans/2026-04-01-goreveal-initial-baseline-comparison-results.md`
 
-Current universal-workbench comparison:
+Historical universal-workbench comparison:
 - `docs/plans/2026-04-01-goreveal-universal-re-workbench-comparison.md`
 
-Current execution order:
+Historical execution order (superseded):
 - `docs/plans/2026-04-01-goreveal-next-execution-plan.md`
 
-Current sprint baseline:
+Historical sprint baseline (superseded):
 - `docs/plans/2026-04-01-goreveal-post-sprint12-sprint-plan.md`

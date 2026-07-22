@@ -1,9 +1,12 @@
 # GoREveal v2 (NG) — Go-Native RE Platform
 
 > Status: exploratory only, not active roadmap baseline
-> Note: this document is intentionally parked. The active product baseline is the current roadmap plus `docs/plans/2026-04-01-goreveal-post-sprint12-sprint-plan.md`.
+> Note: this document is intentionally parked. The active product baseline is
+> the [RT1 product design](../superpowers/specs/2026-07-22-goreveal-rt1-product-design.md)
+> plus [RT1 Horizon A](../superpowers/plans/2026-07-22-goreveal-rt1-horizon-a.md).
 
-> **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **Historical note for agentic workers:** do not execute the checkboxes in
+> this exploratory document. Re-evaluate any idea through the RT1 gates first.
 
 **Goal:** Transform GoREveal from a recovery+transfer layer into a self-sufficient Go binary reverse engineering platform that fully replaces IDA/Ghidra/JEB/Binary Ninja for Go binary analysis.
 

@@ -19,24 +19,34 @@ IDA Pro's auto-analysis fails on large stripped Go binaries because:
 4. **Hex-Rays decompilation fails** — wrong function boundaries + Go ABI =
    Hex-Rays can't build valid control flow graph
 
-Observed in Teleport 18.10.0 (410MB, 458K functions):
-- IDA identified 248K functions (54% of actual) via auto-analysis
-- goreveal identified all 458K functions from pclntab
+Field observation in Teleport 18.10.0 (410 MB), pending the forced-plugin and
+artifact-identity baseline defined by RT1-S1:
+- IDA identified 248K functions; the earlier 54% ratio used the unverified
+  goreveal entry count as its denominator
+- goreveal emitted about 458,600 pclntab-derived function entries; completeness,
+  uniqueness, boundary validity, and the denominator have not yet been proven
 - Hex-Rays decompiled only 2 of 9 key license functions
 - 3 functions couldn't be created (wrong boundaries)
 - 4 functions decompilation failed (Go ABI)
 
+These are research observations, not accepted product metrics. The 9/9 result
+below is a target hypothesis, not a completed experiment.
+
 ## Solution: goreveal → idacli → IDA pipeline
 
-### Architecture
+### Proposed target architecture
+
+The diagram describes a candidate workflow. It is not the current capability
+map and must not override RT1 promotion gates.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
 │  PHASE 1: GOREVEAL (Go-native, pclntab ground truth)               │
 │                                                                     │
 │  goreveal analyze <binary>                                         │
-│    ├── core/pclntab → function entries, ends, names (458K)          │
-│    ├── core/types → Go type info from typelinks                    │
+│    ├── core/pclntab → candidate function entries/ends/names         │
+│    ├── core/types → truthful current type surface (mainly DWARF);   │
+│    │                broad typelinks recovery is not yet claimed     │
 │    ├── core/strings → embedded strings                             │
 │    ├── core/runtime → moduledata, pclntab layout                   │
 │    └── core/packages → Go package metadata                        │
@@ -84,10 +94,10 @@ Observed in Teleport 18.10.0 (410MB, 458K functions):
 │  idacli decompile --targets @license-functions.txt                  │
 │    For each target address:                                         │
 │      1. get_func_start(addr) — now finds correct function          │
-│      2. hexrays.decompile(addr) — works because boundary is correct │
+│      2. hexrays.decompile(addr) — test whether boundary repair helps│
 │      3. Write pseudocode to JSONL output                            │
 │                                                                     │
-│  Result: all 9 license functions decompiled successfully            │
+│  Target: measure whether all 9 functions become decompilable        │
 │                                                                     │
 └─────────────────────────────────────────────────────────────────────┘
 ```
@@ -96,11 +106,11 @@ Observed in Teleport 18.10.0 (410MB, 458K functions):
 
 | Problem | IDA alone | goreveal + idacli |
 |---|---|---|
-| Function boundaries | Heuristic (wrong for Go) | pclntab (authoritative) |
-| Function names | Missing (stripped) | pclntab (all 458K names) |
-| Function count | 248K (54%) | 458K (100%) |
-| Hex-Rays decompile | Fails (wrong boundaries) | Works (correct boundaries) |
-| Go stack check | Not recognized | goreveal marks in export |
+| Function boundaries | Heuristic, incomplete in the field observation | pclntab-derived provider evidence, subject to identity/range/host-conflict verification |
+| Function names | Missing in the field observation | candidate pclntab names; coverage pending baseline validation |
+| Function count | 248K observed | about 458,600 emitted entries; not a proven 100% denominator |
+| Hex-Rays decompile | 2/9 observed | improvement is an RT1-S3 acceptance hypothesis |
+| Go stack check | Not recognized in the observation | future classifier candidate after measured promotion, not current export truth |
 
 ### Implementation plan
 
@@ -130,9 +140,10 @@ type IDAFunction struct {
 }
 ```
 
-goreveal's `core/pclntab/pclntab.go` already reads pclntab — add prologue
-detection: read first 8 bytes at each function entry, check for
-`49 3b 66 10` (cmp rsp, [r14+10h]) pattern.
+This was an early proposal for prologue detection. RT1 does not accept it as a
+current claim: any classifier must be architecture/version aware, preserve raw
+bytes and provenance, use explicit unsupported states, and pass corpus and
+benchmark promotion gates before export.
 
 #### Task 2: idacli new task `import-goreveal`
 
@@ -215,12 +226,14 @@ This enables version comparison (18.7.2 vs 18.10.0) without IDA.
 
 ### Validation criteria
 
-1. After `import-goreveal`, IDA function count should match goreveal's
-   (458K for Teleport 18.10.0)
+1. After a verified preview/apply, reconcile IDA actions against the exact
+   artifact identity and every accepted goreveal entity; do not use raw count
+   equality as proof of correctness
 2. All license-related functions (FromPEM, checkLicense, IsExpired, etc.)
    should have correct boundaries and be decompilable
 3. Function names should match goreveal's pclntab output
-4. Hex-Rays decompilation success rate should be >90% (vs ~20% without import)
+4. Measure Hex-Rays success on the fixed target set against the forced-plugin
+   baseline; `>90%` is a research target, not a present result
 
 ### Alternative approaches considered
 
@@ -232,7 +245,10 @@ This enables version comparison (18.7.2 vs 18.10.0) without IDA.
 | Ghidra + Go plugin | Free, good Go support | Not Hex-Rays, different workflow | Alternative |
 | Manual IDA + GoReSym | Works today | Manual, not scalable | Current fallback |
 
-### Sprint plan
+### Historical hypothesis sequence
+
+This table is superseded by RT1. None of its rows is an active sprint or a
+landed capability.
 
 | Sprint | Tasks | Deliverable |
 |---|---|---|
@@ -240,4 +256,4 @@ This enables version comparison (18.7.2 vs 18.10.0) without IDA.
 | Sprint B | idacli: implement import-goreveal task | New task that fixes function boundaries |
 | Sprint C | idacli: pipeline orchestration | Single-command Go RE workflow |
 | Sprint D | goreveal: diff capability | Version comparison without IDA |
-| Sprint E | Validation on Teleport 18.10.0 | 9/9 license functions decompiled |
+| Sprint E | Validation on Teleport 18.10.0 | Target: measure 9/9 license functions; no result claimed |

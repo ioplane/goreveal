@@ -1,5 +1,13 @@
 # GoReveal Design Guide: архитектура Go-платформы для реверс-инжиниринга
 
+> **Status (2026-07-22): historical research draft, not implementation
+> authority.** The GoREveal clean-room contract in `AGENTS.md` overrides every
+> recommendation below. Baseline projects may supply observable behavior and
+> test ideas only; their implementation code and structure must not be copied
+> or translated. Library versions, benchmark claims, licensing assumptions,
+> and architecture choices in this draft require current independent
+> verification through the RT1 gates.
+
 **GoReveal — это платформа реверс-инжиниринга Go-бинарников, которая объединяет подходы gore, GoReSym и redress в единую MIT-лицензированную библиотеку с CLI, gRPC API и плагинами для IDA/Ghidra.** Этот guide определяет выбор библиотек, структуру проекта, паттерны и CI/CD-пайплайн для разработки на Go 1.26 (2026). Все рекомендации основаны на текущем состоянии экосистемы Go, benchmark-данных и практиках ведущих проектов. Фокус — на минимальных зависимостях, cross-compilation без CGo и максимальной производительности при анализе бинарников размером 100MB+.
 
 ---
@@ -341,9 +349,9 @@ type Store interface {
 
 **GoRE (goretk/gore)** использует code-generated structs для каждой версии Go moduledata (`moduledata_1_7_32`, `moduledata_1_16_64` и т.д.), читая их через `encoding/binary.Read()`. Подход проще в поддержке, но ограничен: **только little-endian**, нет resilience к обфускации, загружает целые секции в память.
 
-**GoReSym (mandiant/GoReSym)** форкает код Go runtime, переименовывает `internal/` пути и экспортирует структуры. Даёт **идентичный парсинг runtime** (точность = Go compiler), поддерживает все endianness, ARM64/x86, byte scanning для модифицированного pclntab magic. Минус: **ручной merge upstream** при каждом релизе Go.
+**GoReSym (mandiant/GoReSym)** демонстрирует полезные наблюдаемые сценарии: несколько поколений runtime metadata, разные архитектуры и поиск кандидатов при повреждённом или изменённом metadata. Эти наблюдения не доказывают идентичность с компилятором и не являются источником истины без проверки на известных сборках.
 
-**Рекомендация для GoReveal: гибридный подход.** Используем GoReSym-style forked runtime для pclntab и type parsing (где точность критична), gore-style generated structs для moduledata (меняется чаще всего, проще обновлять).
+**Рекомендация для GoReveal: независимый clean-room подход.** Форматы и version-specific поведение исследуются по исходникам upstream Go и контролируемым бинарникам. Поведение baseline-инструментов превращается в findings, fixtures и differential expectations. Реализация проектируется заново в границах `core`/`schema`, начиная с bounded pure-Go reference path.
 
 ### Ключевые Go runtime структуры
 
@@ -365,7 +373,7 @@ defer mmap.Unmap(data)
 pclntab := data[section.Offset : section.Offset+section.Size]
 ```
 
-GoReSym v3.2 решил OOM-проблемы через **streaming pclntab candidates** по каналам вместо хранения всех в памяти. GoReveal должен использовать тот же подход: mmap + streaming + bounded concurrency.
+Наблюдаемые memory-pressure случаи baseline-инструментов следует воспроизвести отдельными benchmark fixtures. Решение GoREveal выбирается только по собственным profiling/benchmark данным; streaming, mmap и bounded concurrency остаются кандидатами, а не заимствуемой реализацией.
 
 ### Параллелизация анализа: pipeline pattern
 
@@ -395,7 +403,7 @@ Open Binary → Detect Version → Parse Pclntab → Find Moduledata
 | **redress** | CLI (обёртка gore) | AGPL-3.0 | ~1,140 | Зависит от gore |
 | **GoReSym** | CLI + парсер | MIT | ~746 | Не библиотека, fork maintenance |
 
-**AGPL-3.0 gore/redress несовместим** с closed-source IDA/Ghidra плагинами. GoReveal core **должен быть MIT** — это позволяет интеграцию с любыми consumers. Код GoReSym (MIT) может быть использован напрямую.
+Лицензии baseline-проектов необходимо учитывать при исследовании и распространении артефактов. Независимо от лицензии baseline, GoREveal не использует их код напрямую: разрешены только clean-room behavioral study, fixtures и differential evidence. Лицензия самого GoREveal требует отдельного решения maintainers и не выводится из лицензий соседних проектов.
 
 ### Единый API core-библиотеки
 
@@ -436,7 +444,7 @@ analyzer.Run(ctx)
 ### Стратегия рефакторинга
 
 - **Файловый слой:** Единый `BinaryFile` interface с ELF/PE/Mach-O реализациями, backed by mmap (edsrzf/mmap-go). Lazy loading секций.
-- **Parser слой:** GoReSym-based forked runtime code для pclntab/gosym/types (MIT-совместимо). Go-generated moduledata structs для быстрого обновления при новых версиях Go.
+- **Parser слой:** independently designed pure-Go readers, основанные на upstream Go format/runtime evidence, bounded reads и versioned fixture manifests; baseline behavior используется только для differential tests.
 - **Analysis слой:** Concurrent pipeline с errgroup. Streaming results через iter.Seq2.
 - **Output слой:** JSON (encoding/json), Protobuf (ConnectRPC), IDA Python script, Ghidra Java bridge.
 - **Shared internal/:** Единый `internal/` пакет для byte-level utilities, version detection, error types, logging setup.
@@ -637,6 +645,6 @@ check: generate fmt lint test
 
 ## Заключение: ключевые решения и что делать иначе
 
-GoReveal строится на трёх фундаментальных решениях. **Первое — MIT-лицензированный core**, написанный с нуля на базе GoReSym-подхода (forked runtime для парсеров) и gore API-дизайна (чистый Go-пакет для consumers). AGPL gore не подходит для closed-source IDA/Ghidra плагинов. **Второе — zero-CGo стек**: modernc/sqlite, `CGO_ENABLED=0` builds, GoReleaser для всех платформ одной командой. Это радикально упрощает cross-compilation и deployment. **Третье — streaming-first архитектура**: mmap для файлового доступа, iter.Seq2 для API, channels для pipeline — решает OOM-проблемы, которые GoReSym исправлял в v3.2.
+GoReveal должен опираться на три проверяемых направления. **Первое — clean-room core**: upstream Go служит первичным источником форматов, а baseline-инструменты дают только behavioral findings и differential fixtures; лицензия GoREveal остаётся отдельным решением maintainers. **Второе — минимальный переносимый стек**: zero-CGo и конкретные зависимости принимаются только после compatibility/evidence gate. **Третье — measure-first обработка больших бинарников**: streaming, mmap и concurrency допускаются лишь после profiling, с reference scalar path и доказанной эквивалентностью.
 
 Минимальный набор внешних зависимостей за пределами stdlib: **pgx/v5** (PostgreSQL), **cobra** (CLI), **cockroachdb/errors** (stack traces), **connectrpc** (API), **testify** (тесты), **edsrzf/mmap-go** (memory-mapped I/O). Всё остальное — stdlib Go 1.26: slog, encoding/json, errors.Join, errgroup, debug/elf|pe|macho, iter. Этот стек обеспечивает баланс между минимальными зависимостями и production-ready функциональностью для серьёзного RE-инструмента.
