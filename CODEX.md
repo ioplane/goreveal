@@ -2,6 +2,9 @@
 
 Read `AGENTS.md` first.
 
+For planned product work, read the active RT1 design and Horizon A plan linked
+from `AGENTS.md`; older numbered sprint plans are historical records.
+
 Use this file as an implementation overlay.
 
 Focus areas:

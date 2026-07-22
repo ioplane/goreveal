@@ -4,6 +4,10 @@
 > Date: 2026-07-22
 > Decision owner: maintainers
 > Supersedes as active execution guidance:
+> - `docs/plans/2026-03-20-goreveal-deferred-continuation.md`
+> - `docs/plans/2026-03-31-goreveal-baseline-comparison-plan.md`
+> - `docs/plans/2026-04-01-goreveal-protected-binary-comparison-plan.md`
+> - `docs/plans/2026-04-01-goreveal-next-execution-plan.md`
 > - `docs/plans/2026-04-01-goreveal-post-sprint12-sprint-plan.md`
 > - `docs/plans/2026-07-22-goreveal-sprint-roadmap-post-ida-experience.md`
 > - `docs/plans/2026-07-22-goreveal-proposal-post-ida-experience.md`
