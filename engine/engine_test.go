@@ -5,12 +5,48 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/dantte-lp/goreveal/core/recoveryerr"
 	recoverystrings "github.com/dantte-lp/goreveal/core/strings"
 	"github.com/dantte-lp/goreveal/schema"
 )
+
+func TestAnalyzerZeroValueMatchesNew(t *testing.T) {
+	t.Parallel()
+
+	path := filepath.Join("..", "corpus", "fixtures", "go-elf-buildinfo-linux-amd64", "fixture.bin")
+	want, err := New().AnalyzeFile(context.Background(), path)
+	if err != nil {
+		t.Fatalf("New().AnalyzeFile() error = %v", err)
+	}
+	got, err := (Analyzer{}).AnalyzeFile(context.Background(), path)
+	if err != nil {
+		t.Fatalf("Analyzer{}.AnalyzeFile() error = %v", err)
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("Analyzer{}.AnalyzeFile() differs from New():\nwant=%#v\ngot=%#v", want, got)
+	}
+}
+
+func TestAnalyzerRejectsPartialStageOperations(t *testing.T) {
+	t.Parallel()
+
+	partial := Analyzer{ops: stageOps{
+		buildInfo: func(string) (schema.BuildInfo, error) { return schema.BuildInfo{}, nil },
+	}}
+	_, err := partial.AnalyzeFile(context.Background(), writeIngestibleELF(t))
+	if err == nil || !strings.Contains(err.Error(), "incomplete stage operations") || !strings.Contains(err.Error(), "runtime") {
+		t.Fatalf("AnalyzeFile() error = %v, want explicit incomplete stage operations", err)
+	}
+
+	_, err = partial.AnalyzeFile(nil, writeIngestibleELF(t)) //nolint:staticcheck // Nil is intentional to verify error precedence.
+	if err == nil || err.Error() != "analyze file: nil context" {
+		t.Fatalf("AnalyzeFile(nil) error = %v, want nil context precedence", err)
+	}
+}
 
 func TestAnalyzeFileRecordsStageFailure(t *testing.T) {
 	t.Parallel()
@@ -47,7 +83,7 @@ func TestAnalyzeFileRecordsStageFailure(t *testing.T) {
 	}
 }
 
-func TestAnalyzeFileDoesNotRefineUnavailablePrerequisite(t *testing.T) {
+func TestAnalyzeFileRefinesOnlyAvailableFamilies(t *testing.T) {
 	t.Parallel()
 
 	ops := successfulStageOps()
@@ -58,16 +94,60 @@ func TestAnalyzeFileDoesNotRefineUnavailablePrerequisite(t *testing.T) {
 			nil,
 		)
 	}
+	ops.refine = func(_ context.Context, analysis schema.Analysis) (schema.RefinedAnalysis, error) {
+		if len(analysis.Functions) != 0 || len(analysis.Packages) != 0 {
+			return schema.RefinedAnalysis{}, errors.New("unavailable function family leaked into refinement")
+		}
+		return schema.RefinedAnalysis{
+			Functions: []schema.RefinedFunction{{Name: "invented.function"}},
+			Packages:  []schema.RefinedPackage{{Name: "invented-package"}},
+			Types:     []schema.RefinedType{{Name: analysis.Types[0].Name}},
+			Strings:   []schema.RefinedString{{Value: analysis.Strings[0].Value}},
+		}, nil
+	}
 
 	got, err := newAnalyzerForTest(ops).AnalyzeFile(context.Background(), writeIngestibleELF(t))
 	if err != nil {
 		t.Fatalf("AnalyzeFile() error = %v", err)
 	}
-	if got.Refined != nil {
-		t.Fatalf("AnalyzeFile() refined = %#v, want no derivation from unavailable functions", got.Refined)
+	if got.Refined == nil {
+		t.Fatal("AnalyzeFile() refined = nil, want available type/string families")
 	}
-	if _, ok := diagnosticForStage(got.Diagnostics, schema.AnalysisStageRefinement); ok {
-		t.Fatalf("AnalyzeFile() diagnostics = %#v, want refinement not attempted", got.Diagnostics)
+	if len(got.Refined.Functions) != 0 || len(got.Refined.Packages) != 0 ||
+		len(got.Refined.Types) != 1 || len(got.Refined.Strings) != 1 {
+		t.Fatalf("AnalyzeFile() refined = %#v, want only type/string families", got.Refined)
+	}
+	if diagnostic, ok := diagnosticForStage(got.Diagnostics, schema.AnalysisStageRefinement); !ok || diagnostic.Status != schema.StageStatusAvailable {
+		t.Fatalf("AnalyzeFile() refinement diagnostic = %#v, exists=%v", diagnostic, ok)
+	}
+}
+
+func TestAnalyzeFileRefinesAvailableStringsWithoutFunctionEvidence(t *testing.T) {
+	t.Parallel()
+
+	ops := successfulStageOps()
+	ops.functions = func(string) ([]schema.Function, error) {
+		return nil, recoveryerr.NewUnavailable(recoveryerr.CodePclntabNotFound, "function evidence is absent", nil)
+	}
+	ops.types = func(string) ([]schema.Type, error) {
+		return nil, recoveryerr.NewUnavailable(recoveryerr.CodeDWARFNotFound, "type evidence is absent", nil)
+	}
+	ops.refine = func(_ context.Context, analysis schema.Analysis) (schema.RefinedAnalysis, error) {
+		if len(analysis.Functions) != 0 || len(analysis.Packages) != 0 || len(analysis.Types) != 0 {
+			return schema.RefinedAnalysis{}, errors.New("nonavailable raw family leaked into refinement")
+		}
+		return schema.RefinedAnalysis{
+			Strings: []schema.RefinedString{{Value: analysis.Strings[0].Value}},
+		}, nil
+	}
+
+	got, err := newAnalyzerForTest(ops).AnalyzeFile(context.Background(), writeIngestibleELF(t))
+	if err != nil {
+		t.Fatalf("AnalyzeFile() error = %v", err)
+	}
+	if got.Refined == nil || len(got.Refined.Strings) != 1 || len(got.Refined.Functions) != 0 ||
+		len(got.Refined.Packages) != 0 || len(got.Refined.Types) != 0 {
+		t.Fatalf("AnalyzeFile() refined = %#v, want strings only", got.Refined)
 	}
 }
 
@@ -316,17 +396,21 @@ func TestAnalyzeFileRejectsEmptyStageEvidence(t *testing.T) {
 			},
 			assert: func(t *testing.T, analysis schema.Analysis) {
 				t.Helper()
-				if len(analysis.Functions) != 0 || analysis.Packages != nil || analysis.Peeling != nil || analysis.Refined != nil {
+				if len(analysis.Functions) != 0 || analysis.Packages != nil || analysis.Peeling != nil {
 					t.Fatalf("empty functions derived payload: %#v", analysis)
 				}
 				for _, stage := range []schema.AnalysisStage{
 					schema.AnalysisStagePackages,
 					schema.AnalysisStagePeeling,
-					schema.AnalysisStageRefinement,
 				} {
 					if _, exists := diagnosticForStage(analysis.Diagnostics, stage); exists {
 						t.Fatalf("diagnostics = %#v, want no derived %q claim", analysis.Diagnostics, stage)
 					}
+				}
+				if analysis.Refined == nil || len(analysis.Refined.Functions) != 0 ||
+					len(analysis.Refined.Packages) != 0 || len(analysis.Refined.Types) != 1 ||
+					len(analysis.Refined.Strings) != 1 {
+					t.Fatalf("Refined = %#v, want only available type/string families", analysis.Refined)
 				}
 			},
 		},
@@ -345,8 +429,10 @@ func TestAnalyzeFileRejectsEmptyStageEvidence(t *testing.T) {
 				if analysis.Packages != nil {
 					t.Fatalf("Packages = %#v, want nil", analysis.Packages)
 				}
-				if _, exists := diagnosticForStage(analysis.Diagnostics, schema.AnalysisStageRefinement); exists {
-					t.Fatalf("diagnostics = %#v, want no refinement claim", analysis.Diagnostics)
+				if analysis.Refined == nil || len(analysis.Refined.Packages) != 0 ||
+					len(analysis.Refined.Functions) != 1 || len(analysis.Refined.Types) != 1 ||
+					len(analysis.Refined.Strings) != 1 {
+					t.Fatalf("Refined = %#v, want only available function/type/string families", analysis.Refined)
 				}
 			},
 		},
@@ -546,6 +632,16 @@ func TestAnalyzeFileAcceptsSourceTreeNodeEvidence(t *testing.T) {
 				Files: []string{"main.go"},
 			},
 		},
+		{
+			name: "external-only node tree",
+			tree: schema.SourceTree{
+				Root: "example.com/fixture",
+				ExternalPackages: []schema.SourcePackage{{
+					Name:       "fmt",
+					ImportPath: "fmt",
+				}},
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -612,8 +708,21 @@ func successfulStageOps() stageOps {
 				}},
 			}, nil
 		},
-		refine: func(context.Context, schema.Analysis) (schema.RefinedAnalysis, error) {
-			return schema.RefinedAnalysis{Functions: []schema.RefinedFunction{{Name: "main.main"}}}, nil
+		refine: func(_ context.Context, analysis schema.Analysis) (schema.RefinedAnalysis, error) {
+			refined := schema.RefinedAnalysis{}
+			for _, function := range analysis.Functions {
+				refined.Functions = append(refined.Functions, schema.RefinedFunction{Name: function.Name})
+			}
+			for _, pkg := range analysis.Packages {
+				refined.Packages = append(refined.Packages, schema.RefinedPackage{Name: pkg.Name})
+			}
+			for _, typ := range analysis.Types {
+				refined.Types = append(refined.Types, schema.RefinedType{Name: typ.Name})
+			}
+			for _, candidate := range analysis.Strings {
+				refined.Strings = append(refined.Strings, schema.RefinedString{Value: candidate.Value})
+			}
+			return refined, nil
 		},
 	}
 }
@@ -986,31 +1095,6 @@ func TestAnalyzePEFixtureIncludesBoundedRuntimeSectionHeuristic(t *testing.T) {
 	}
 	if mainPeel.Classification != schema.PeelingClassUser || mainPeel.ClassificationEvidence != schema.PeelingEvidenceModuleLocal {
 		t.Fatalf("AnalyzeFile() PE main.main peeling = %#v", mainPeel)
-	}
-}
-
-func TestShouldPreferFunctionSourceTree(t *testing.T) {
-	t.Parallel()
-
-	if !shouldPreferFunctionSourceTree(
-		schema.SourceTree{},
-		schema.SourceTree{Files: []string{"main.go"}, PathlessFileEvidence: true},
-	) {
-		t.Fatal("shouldPreferFunctionSourceTree() = false, want true when function tree adds module-local files")
-	}
-
-	if shouldPreferFunctionSourceTree(
-		schema.SourceTree{Files: []string{"main.go"}},
-		schema.SourceTree{Files: []string{"main.go"}, PathlessFileEvidence: true},
-	) {
-		t.Fatal("shouldPreferFunctionSourceTree() = true, want false when DWARF tree already has module-local files")
-	}
-
-	if shouldPreferFunctionSourceTree(
-		schema.SourceTree{},
-		schema.SourceTree{},
-	) {
-		t.Fatal("shouldPreferFunctionSourceTree() = true, want false when fallback adds no files")
 	}
 }
 

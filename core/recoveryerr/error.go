@@ -21,7 +21,6 @@ const (
 	CodeBuildInfoNotFound                 Code = "build_info_not_found"
 	CodeRuntimeUnsupportedContainer       Code = "runtime_unsupported_container"
 	CodeRuntimeMetadataNotFound           Code = "runtime_metadata_not_found"
-	CodePclntabUnsupportedContainer       Code = "pclntab_unsupported_container"
 	CodePclntabNotFound                   Code = "pclntab_not_found"
 	CodeDWARFUnsupportedContainer         Code = "dwarf_unsupported_container"
 	CodeDWARFNotFound                     Code = "dwarf_not_found"

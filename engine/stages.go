@@ -38,6 +38,46 @@ type stageOps struct {
 	refine     func(context.Context, schema.Analysis) (schema.RefinedAnalysis, error)
 }
 
+func (ops stageOps) isZero() bool {
+	return ops.buildInfo == nil &&
+		ops.runtime == nil &&
+		ops.functions == nil &&
+		ops.types == nil &&
+		ops.strings == nil &&
+		ops.sourceTree == nil &&
+		ops.peeling == nil &&
+		ops.refine == nil
+}
+
+func (ops stageOps) missing() []string {
+	missing := make([]string, 0, 8)
+	if ops.buildInfo == nil {
+		missing = append(missing, "build_info")
+	}
+	if ops.runtime == nil {
+		missing = append(missing, "runtime")
+	}
+	if ops.functions == nil {
+		missing = append(missing, "functions")
+	}
+	if ops.types == nil {
+		missing = append(missing, "types")
+	}
+	if ops.strings == nil {
+		missing = append(missing, "strings")
+	}
+	if ops.sourceTree == nil {
+		missing = append(missing, "source_tree")
+	}
+	if ops.peeling == nil {
+		missing = append(missing, "peeling")
+	}
+	if ops.refine == nil {
+		missing = append(missing, "refinement")
+	}
+	return missing
+}
+
 func productionStageOps() stageOps {
 	return stageOps{
 		buildInfo:  buildinfo.Read,
@@ -125,7 +165,7 @@ func stringEvidence(recovered recoverystrings.Result) (string, string) {
 }
 
 func sourceTreeEvidence(tree schema.SourceTree) (string, string) {
-	if len(tree.Files) != 0 || len(tree.Packages) != 0 || len(tree.ExternalPackages) != 0 {
+	if sourceTreeHasEvidence(tree) {
 		return "", ""
 	}
 	return string(recoveryerr.CodeSourceTreeNotFound), "source-tree evidence is absent"
@@ -172,21 +212,24 @@ func appendDerivedDiagnostic(analysis *schema.Analysis, stage schema.AnalysisSta
 	})
 }
 
-func allStagesAvailable(analysis schema.Analysis, stages ...schema.AnalysisStage) bool {
+func anyStageAvailable(analysis schema.Analysis, stages ...schema.AnalysisStage) bool {
 	for _, stage := range stages {
-		available := false
-		for _, diagnostic := range analysis.Diagnostics {
-			if diagnostic.Stage == stage {
-				available = diagnostic.Status == schema.StageStatusAvailable
-				break
-			}
-		}
-		if !available {
-			return false
+		if stageAvailable(analysis, stage) {
+			return true
 		}
 	}
 
-	return true
+	return false
+}
+
+func stageAvailable(analysis schema.Analysis, stage schema.AnalysisStage) bool {
+	for _, diagnostic := range analysis.Diagnostics {
+		if diagnostic.Stage == stage {
+			return diagnostic.Status == schema.StageStatusAvailable
+		}
+	}
+
+	return false
 }
 
 func recoverSourceTree(path string, analysis schema.Analysis) (schema.SourceTree, error) {
@@ -203,30 +246,46 @@ func recoverSourceTree(path string, analysis schema.Analysis) (schema.SourceTree
 		files, err := projection.ReadSourceFiles(path)
 		if err == nil {
 			tree, buildErr := projection.BuildSourceTree(analysis, files)
-			if buildErr == nil {
-				if functionTree, functionErr := projection.BuildFunctionSourceTree(analysis); functionErr == nil &&
-					shouldPreferFunctionSourceTree(tree, functionTree) {
-					tree = functionTree
-				}
+			if buildErr == nil && sourceTreeHasEvidence(tree) {
 				return tree, nil
 			}
-			attemptErrors = append(attemptErrors, fmt.Errorf("build DWARF source tree: %w", buildErr))
+			if buildErr != nil {
+				attemptErrors = append(attemptErrors, fmt.Errorf("build DWARF source tree: %w", buildErr))
+			} else {
+				attemptErrors = append(attemptErrors, errors.New("DWARF source tree contains no nodes"))
+			}
 		} else {
 			attemptErrors = append(attemptErrors, fmt.Errorf("read DWARF source files: %w", err))
 		}
 	}
 
 	functionTree, functionErr := projection.BuildFunctionSourceTree(analysis)
-	if functionErr == nil {
+	if functionErr == nil && sourceTreeHasEvidence(functionTree) {
 		return functionTree, nil
 	}
-	attemptErrors = append(attemptErrors, fmt.Errorf("build function source tree: %w", functionErr))
+	if functionErr != nil {
+		attemptErrors = append(attemptErrors, fmt.Errorf("build function source tree: %w", functionErr))
+	} else {
+		attemptErrors = append(attemptErrors, errors.New("function source tree contains no nodes"))
+	}
 
 	fallbackTree, fallbackErr := projection.BuildFallbackSourceTree(analysis)
-	if fallbackErr == nil {
+	if fallbackErr == nil && sourceTreeHasEvidence(fallbackTree) {
 		return fallbackTree, nil
 	}
-	attemptErrors = append(attemptErrors, fmt.Errorf("build package fallback source tree: %w", fallbackErr))
+	if fallbackErr != nil {
+		attemptErrors = append(attemptErrors, fmt.Errorf("build package fallback source tree: %w", fallbackErr))
+	} else {
+		attemptErrors = append(attemptErrors, errors.New("package fallback source tree contains no nodes"))
+	}
 
-	return schema.SourceTree{}, fmt.Errorf("recover source tree: %w", errors.Join(attemptErrors...))
+	return schema.SourceTree{}, recoveryerr.NewUnavailable(
+		recoveryerr.CodeSourceTreeNotFound,
+		"source-tree evidence is absent",
+		errors.Join(attemptErrors...),
+	)
+}
+
+func sourceTreeHasEvidence(tree schema.SourceTree) bool {
+	return len(tree.Files) != 0 || len(tree.Packages) != 0 || len(tree.ExternalPackages) != 0
 }

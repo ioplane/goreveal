@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/dantte-lp/goreveal/core/functions"
 	"github.com/dantte-lp/goreveal/core/ingest"
@@ -28,6 +29,14 @@ func New() Analyzer {
 func (a Analyzer) AnalyzeFile(ctx context.Context, path string) (schema.Analysis, error) {
 	if ctx == nil {
 		return schema.Analysis{}, errors.New("analyze file: nil context")
+	}
+	if a.ops.isZero() {
+		a.ops = productionStageOps()
+	} else if missing := a.ops.missing(); len(missing) != 0 {
+		return schema.Analysis{}, fmt.Errorf(
+			"analyze file: incomplete stage operations: missing %s",
+			strings.Join(missing, ", "),
+		)
 	}
 
 	file, err := ingest.Open(path)
@@ -173,16 +182,42 @@ func (a Analyzer) derivePeeling(analysis *schema.Analysis, functionsAvailable bo
 }
 
 func (a Analyzer) refine(ctx context.Context, analysis *schema.Analysis) {
-	if !allStagesAvailable(*analysis, schema.AnalysisStageFunctions, schema.AnalysisStagePackages) {
+	if !anyStageAvailable(
+		*analysis,
+		schema.AnalysisStageFunctions,
+		schema.AnalysisStagePackages,
+		schema.AnalysisStageTypes,
+		schema.AnalysisStageStrings,
+	) {
 		return
 	}
 
 	refined, available := executeStage(analysis, schema.AnalysisStageRefinement, func() (schema.RefinedAnalysis, error) {
-		return a.ops.refine(ctx, *analysis)
+		result, err := a.ops.refine(ctx, *analysis)
+		if err != nil {
+			return schema.RefinedAnalysis{}, err
+		}
+		return retainAvailableRefinedFamilies(*analysis, result), nil
 	}, refinementEvidence)
 	if available {
 		analysis.Refined = &refined
 	}
+}
+
+func retainAvailableRefinedFamilies(analysis schema.Analysis, refined schema.RefinedAnalysis) schema.RefinedAnalysis {
+	if !stageAvailable(analysis, schema.AnalysisStageFunctions) {
+		refined.Functions = nil
+	}
+	if !stageAvailable(analysis, schema.AnalysisStagePackages) {
+		refined.Packages = nil
+	}
+	if !stageAvailable(analysis, schema.AnalysisStageTypes) {
+		refined.Types = nil
+	}
+	if !stageAvailable(analysis, schema.AnalysisStageStrings) {
+		refined.Strings = nil
+	}
+	return refined
 }
 
 func hasRefinedContent(refined schema.RefinedAnalysis) bool {
@@ -245,8 +280,4 @@ func annotateELFFunctionFoothold(analysis *schema.Analysis) {
 	analysis.Runtime.ELFFunctionFootholdTextSource = recoveryruntime.ELFTextSourceForProjection(analysis.Runtime)
 	analysis.Runtime.ELFFunctionFootholdStartAddr = analysis.Runtime.ELFFunctabFirstPCAddrHint
 	analysis.Runtime.ELFFunctionFootholdEndAddr = analysis.Runtime.ELFFunctabLastPCAddrHint
-}
-
-func shouldPreferFunctionSourceTree(dwarfTree, functionTree schema.SourceTree) bool {
-	return len(dwarfTree.Files) == 0 && len(functionTree.Files) > 0
 }

@@ -2,6 +2,7 @@ package internalcmd
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"os"
 	"path/filepath"
@@ -122,7 +123,7 @@ func TestEnforceAnalysisPolicy(t *testing.T) {
 			),
 		},
 		{
-			name:    "deobfuscate requires all raw and refinement stages",
+			name:    "deobfuscate requires refinement stage",
 			command: analysisCommandDeobfuscate,
 			analysis: available(
 				schema.AnalysisStageFunctions,
@@ -209,6 +210,184 @@ func TestEnforceAnalysisPolicyRejectsUnknownCommand(t *testing.T) {
 	}
 	if policyError.Code != "unknown_analysis_policy" {
 		t.Fatalf("analysisPolicyError.Code = %q, want unknown_analysis_policy", policyError.Code)
+	}
+}
+
+func TestEnforceAnalysisPolicyValidatesDiagnosticVocabulary(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		command  analysisCommand
+		analysis schema.Analysis
+		wantCode string
+	}{
+		{
+			name:    "full analyze rejects unknown stage",
+			command: analysisCommandAnalyze,
+			analysis: schema.Analysis{Diagnostics: []schema.StageDiagnostic{{
+				Stage: "future_stage", Status: schema.StageStatusAvailable,
+			}}},
+			wantCode: "unknown_analysis_stage",
+		},
+		{
+			name:    "full analyze rejects invalid status",
+			command: analysisCommandAnalyze,
+			analysis: schema.Analysis{Diagnostics: []schema.StageDiagnostic{{
+				Stage: schema.AnalysisStageFunctions, Status: "partial",
+			}}},
+			wantCode: "invalid_stage_status",
+		},
+		{
+			name:    "IDA rejects invalid optional status",
+			command: analysisCommandExportIDAV1,
+			analysis: schema.Analysis{Diagnostics: []schema.StageDiagnostic{
+				{Stage: schema.AnalysisStageFunctions, Status: schema.StageStatusAvailable},
+				{Stage: schema.AnalysisStageTypes, Status: "partial"},
+			}},
+			wantCode: "invalid_stage_status",
+		},
+		{
+			name:    "Ghidra rejects invalid optional status",
+			command: analysisCommandExportGhidraV1,
+			analysis: schema.Analysis{Diagnostics: []schema.StageDiagnostic{
+				{Stage: schema.AnalysisStageFunctions, Status: schema.StageStatusAvailable},
+				{Stage: schema.AnalysisStageStrings, Status: "partial"},
+			}},
+			wantCode: "invalid_stage_status",
+		},
+		{
+			name:    "SQLite rejects invalid optional status",
+			command: analysisCommandExportSQLite,
+			analysis: schema.Analysis{Diagnostics: []schema.StageDiagnostic{
+				{Stage: schema.AnalysisStageFunctions, Status: schema.StageStatusAvailable},
+				{Stage: schema.AnalysisStageRuntime, Status: ""},
+			}},
+			wantCode: "invalid_stage_status",
+		},
+		{
+			name:    "machine codes remain extensible",
+			command: analysisCommandAnalyze,
+			analysis: schema.Analysis{Diagnostics: []schema.StageDiagnostic{{
+				Stage: schema.AnalysisStageRuntime, Status: schema.StageStatusFailed, Code: "future_machine_code",
+			}}},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			err := enforceAnalysisPolicy(tt.command, tt.analysis)
+			if tt.wantCode == "" {
+				if err != nil {
+					t.Fatalf("enforceAnalysisPolicy() error = %v", err)
+				}
+				return
+			}
+			var policyError *analysisPolicyError
+			if !errors.As(err, &policyError) || policyError.Code != tt.wantCode {
+				t.Fatalf("enforceAnalysisPolicy() error = %#v, want code %q", err, tt.wantCode)
+			}
+		})
+	}
+}
+
+func TestDeobfuscationPolicyRequiresOnlyUsedRawFamilies(t *testing.T) {
+	t.Parallel()
+
+	available := func(stages ...schema.AnalysisStage) []schema.StageDiagnostic {
+		diagnostics := make([]schema.StageDiagnostic, 0, 1+len(stages))
+		diagnostics = append(diagnostics, schema.StageDiagnostic{
+			Stage: schema.AnalysisStageRefinement, Status: schema.StageStatusAvailable,
+		})
+		for _, stage := range stages {
+			diagnostics = append(diagnostics, schema.StageDiagnostic{Stage: stage, Status: schema.StageStatusAvailable})
+		}
+		return diagnostics
+	}
+
+	tests := []struct {
+		name        string
+		refined     *schema.RefinedAnalysis
+		diagnostics []schema.StageDiagnostic
+		wantCode    string
+	}{
+		{
+			name:        "functions require functions",
+			refined:     &schema.RefinedAnalysis{Functions: []schema.RefinedFunction{{Name: "main.main"}}},
+			diagnostics: available(schema.AnalysisStageFunctions),
+		},
+		{
+			name:    "packages require functions and packages",
+			refined: &schema.RefinedAnalysis{Packages: []schema.RefinedPackage{{Name: "main"}}},
+			diagnostics: available(
+				schema.AnalysisStageFunctions,
+				schema.AnalysisStagePackages,
+			),
+		},
+		{
+			name:        "types require types",
+			refined:     &schema.RefinedAnalysis{Types: []schema.RefinedType{{Name: "main.T"}}},
+			diagnostics: available(schema.AnalysisStageTypes),
+		},
+		{
+			name:        "strings require strings",
+			refined:     &schema.RefinedAnalysis{Strings: []schema.RefinedString{{Value: "fixture"}}},
+			diagnostics: available(schema.AnalysisStageStrings),
+		},
+		{
+			name:    "unused failed family does not block",
+			refined: &schema.RefinedAnalysis{Functions: []schema.RefinedFunction{{Name: "main.main"}}},
+			diagnostics: append(
+				available(schema.AnalysisStageFunctions),
+				schema.StageDiagnostic{Stage: schema.AnalysisStageTypes, Status: schema.StageStatusFailed, Code: "stage_failed"},
+			),
+		},
+		{
+			name:        "missing used prerequisite rejects",
+			refined:     &schema.RefinedAnalysis{Strings: []schema.RefinedString{{Value: "fixture"}}},
+			wantCode:    "stage_not_attempted",
+			diagnostics: available(),
+		},
+		{
+			name:     "nonavailable used prerequisite rejects",
+			refined:  &schema.RefinedAnalysis{Types: []schema.RefinedType{{Name: "main.T"}}},
+			wantCode: "dwarf_not_found",
+			diagnostics: append(
+				available(),
+				schema.StageDiagnostic{
+					Stage: schema.AnalysisStageTypes, Status: schema.StageStatusUnavailable, Code: "dwarf_not_found",
+				},
+			),
+		},
+		{
+			name:        "empty refinement payload rejects",
+			refined:     &schema.RefinedAnalysis{},
+			diagnostics: available(),
+			wantCode:    "refinement_payload_unavailable",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			err := enforceAnalysisPolicy(analysisCommandDeobfuscate, schema.Analysis{
+				Diagnostics: tt.diagnostics,
+				Refined:     tt.refined,
+			})
+			if tt.wantCode == "" {
+				if err != nil {
+					t.Fatalf("enforceAnalysisPolicy() error = %v", err)
+				}
+				return
+			}
+			var policyError *analysisPolicyError
+			if !errors.As(err, &policyError) || policyError.Code != tt.wantCode {
+				t.Fatalf("enforceAnalysisPolicy() error = %#v, want code %q", err, tt.wantCode)
+			}
+		})
 	}
 }
 
@@ -855,6 +1034,24 @@ func TestRunDeobfuscate(t *testing.T) {
 		if !strings.Contains(got, want) {
 			t.Fatalf("RunDeobfuscate() output missing %q in %q", want, got)
 		}
+	}
+}
+
+func TestRunDeobfuscateStrippedFixtureAllowsUnavailableUnusedTypes(t *testing.T) {
+	t.Parallel()
+
+	path := filepath.Join("..", "..", "..", "corpus", "fixtures", "go-elf-stripped-linux-amd64", "fixture.bin")
+
+	var out strings.Builder
+	if err := RunDeobfuscate(context.Background(), &out, path); err != nil {
+		t.Fatalf("RunDeobfuscate() error = %v", err)
+	}
+	var refined schema.RefinedAnalysis
+	if err := json.Unmarshal([]byte(out.String()), &refined); err != nil {
+		t.Fatalf("json.Unmarshal() error = %v", err)
+	}
+	if len(refined.Functions) == 0 || len(refined.Types) != 0 {
+		t.Fatalf("RunDeobfuscate() refined = %#v, want used families without unavailable types", refined)
 	}
 }
 

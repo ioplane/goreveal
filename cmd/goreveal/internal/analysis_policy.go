@@ -65,13 +65,7 @@ var commandPolicies = map[analysisCommand]commandPolicy{
 		requirements: availableStages(schema.AnalysisStageSourceTree),
 	},
 	analysisCommandDeobfuscate: {
-		requirements: availableStages(
-			schema.AnalysisStageFunctions,
-			schema.AnalysisStagePackages,
-			schema.AnalysisStageTypes,
-			schema.AnalysisStageStrings,
-			schema.AnalysisStageRefinement,
-		),
+		requirements: availableStages(schema.AnalysisStageRefinement),
 	},
 	analysisCommandExportSQLite: {
 		requirements:          availableStages(schema.AnalysisStageFunctions),
@@ -119,6 +113,9 @@ func enforceAnalysisPolicy(command analysisCommand, analysis schema.Analysis) er
 			Message: "no explicit policy is registered",
 		}
 	}
+	if err := validateDiagnosticVocabulary(command, analysis.Diagnostics); err != nil {
+		return err
+	}
 
 	byStage := make(map[schema.AnalysisStage]schema.StageDiagnostic, len(analysis.Diagnostics))
 	for _, diagnostic := range analysis.Diagnostics {
@@ -138,7 +135,76 @@ func enforceAnalysisPolicy(command analysisCommand, analysis schema.Analysis) er
 		}
 	}
 
-	for _, requirement := range policy.requirements {
+	if err := enforceStageRequirements(command, byStage, policy.requirements); err != nil {
+		return err
+	}
+	if command == analysisCommandDeobfuscate {
+		return enforceDeobfuscationFamilyPolicy(command, analysis, byStage)
+	}
+
+	return nil
+}
+
+func validateDiagnosticVocabulary(command analysisCommand, diagnostics schema.StageDiagnostics) error {
+	for _, diagnostic := range diagnostics {
+		if !knownAnalysisStage(diagnostic.Stage) {
+			return &analysisPolicyError{
+				Command: command,
+				Stage:   diagnostic.Stage,
+				Status:  diagnostic.Status,
+				Code:    "unknown_analysis_stage",
+				Message: "analysis contains an unknown stage",
+			}
+		}
+		if !knownStageStatus(diagnostic.Status) {
+			return &analysisPolicyError{
+				Command: command,
+				Stage:   diagnostic.Stage,
+				Status:  diagnostic.Status,
+				Code:    "invalid_stage_status",
+				Message: "analysis stage contains an invalid status",
+			}
+		}
+	}
+
+	return nil
+}
+
+func knownAnalysisStage(stage schema.AnalysisStage) bool {
+	switch stage {
+	case schema.AnalysisStageBuildInfo,
+		schema.AnalysisStageRuntime,
+		schema.AnalysisStageFunctions,
+		schema.AnalysisStagePackages,
+		schema.AnalysisStageTypes,
+		schema.AnalysisStageStrings,
+		schema.AnalysisStageSourceTree,
+		schema.AnalysisStagePeeling,
+		schema.AnalysisStageRefinement:
+		return true
+	default:
+		return false
+	}
+}
+
+func knownStageStatus(status schema.StageStatus) bool {
+	switch status {
+	case schema.StageStatusAvailable,
+		schema.StageStatusUnavailable,
+		schema.StageStatusUnsupported,
+		schema.StageStatusFailed:
+		return true
+	default:
+		return false
+	}
+}
+
+func enforceStageRequirements(
+	command analysisCommand,
+	byStage map[schema.AnalysisStage]schema.StageDiagnostic,
+	requirements []stageRequirement,
+) error {
+	for _, requirement := range requirements {
 		diagnostic, exists := byStage[requirement.stage]
 		if !exists {
 			return &analysisPolicyError{
@@ -154,6 +220,59 @@ func enforceAnalysisPolicy(command analysisCommand, analysis schema.Analysis) er
 	}
 
 	return nil
+}
+
+func enforceDeobfuscationFamilyPolicy(
+	command analysisCommand,
+	analysis schema.Analysis,
+	byStage map[schema.AnalysisStage]schema.StageDiagnostic,
+) error {
+	if analysis.Refined == nil || !hasRefinedFamilies(*analysis.Refined) {
+		return &analysisPolicyError{
+			Command: command,
+			Stage:   schema.AnalysisStageRefinement,
+			Status:  schema.StageStatusAvailable,
+			Code:    "refinement_payload_unavailable",
+			Message: "refinement stage published no refined families",
+		}
+	}
+
+	required := make(map[schema.AnalysisStage]bool, 4)
+	if len(analysis.Refined.Functions) != 0 {
+		required[schema.AnalysisStageFunctions] = true
+	}
+	if len(analysis.Refined.Packages) != 0 {
+		required[schema.AnalysisStageFunctions] = true
+		required[schema.AnalysisStagePackages] = true
+	}
+	if len(analysis.Refined.Types) != 0 {
+		required[schema.AnalysisStageTypes] = true
+	}
+	if len(analysis.Refined.Strings) != 0 {
+		required[schema.AnalysisStageStrings] = true
+	}
+
+	stages := []schema.AnalysisStage{
+		schema.AnalysisStageFunctions,
+		schema.AnalysisStagePackages,
+		schema.AnalysisStageTypes,
+		schema.AnalysisStageStrings,
+	}
+	requirements := make([]stageRequirement, 0, len(required))
+	for _, stage := range stages {
+		if required[stage] {
+			requirements = append(requirements, availableStages(stage)...)
+		}
+	}
+
+	return enforceStageRequirements(command, byStage, requirements)
+}
+
+func hasRefinedFamilies(refined schema.RefinedAnalysis) bool {
+	return len(refined.Functions) != 0 ||
+		len(refined.Packages) != 0 ||
+		len(refined.Types) != 0 ||
+		len(refined.Strings) != 0
 }
 
 func policyErrorFromDiagnostic(command analysisCommand, diagnostic schema.StageDiagnostic) error {

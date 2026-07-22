@@ -57,12 +57,6 @@ func Read(path string) (Data, error) {
 			return Data{}, fmt.Errorf("open Mach-O: %w", openErr)
 		}
 		return readMachO(mf)
-	case binaryformat.Unknown:
-		return Data{}, recoveryerr.NewUnsupported(
-			recoveryerr.CodePclntabUnsupportedContainer,
-			"pclntab container is unsupported",
-			nil,
-		)
 	default:
 		return Data{}, fmt.Errorf("detect pclntab container: unhandled format %q", kind)
 	}
