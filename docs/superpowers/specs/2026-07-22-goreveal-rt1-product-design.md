@@ -305,8 +305,13 @@ stored as external evidence bound to binary and provider identity.
 
 - `RT1-S0`: truth restoration;
 - `RT1-S1`: reproducible evidence baseline;
-- `RT1-S2`: identity, build provenance, and location contract v2;
+- `RT1-S2A`: identity, build provenance, location contract, and real PIE evidence;
+- `RT1-S2B`: measured v2 envelope, verifier, and consumer publication;
 - `RT1-S3`: safe Go-to-IDA function preview/apply MVP.
+
+`RT1-S2A` and `RT1-S2B` are separate ten-working-day timeboxes with an
+explicit review boundary. S2B cannot start until S2A closes; S3 cannot start
+until both close. They are not one nominal sprint with a mid-sprint checkpoint.
 
 ### Horizon B: conditional Go semantic depth
 
@@ -330,7 +335,8 @@ Only Horizon A receives immediate file-level implementation plans.
 | --- | --- |
 | `RT1-S0` | injected failures for each attempted analysis stage appear as `failed`, `unsupported`, or `unavailable`; zero refined/raw misassociations in reorder/addition fixtures; zero automatic matches or accepted transfers from non-`1:1` keys; the exclusive `.text` endpoint is rejected |
 | `RT1-S1` | pinned-container `lint`, `test`, differential, plugin, snapshot, script-lint, fuzz-smoke, and benchmark-smoke commands exit `0`; fuzz and benchmark discovery each find at least one real target; rich and stripped ELF canonical snapshots exist; the forced IDA Golang-plugin experiment records binary/tool identities, commands, and raw results |
-| `RT1-S2` | wrong binary, changed artifact byte, wrong image base, and unmappable address fixtures are rejected in every case; v1 consumer fixtures remain green; v2 ELF, PIE ELF, PE, and Mach-O location round trips match fixture manifests exactly; dependency/build-setting output matches the known-source manifest |
+| `RT1-S2A` | binary/build identity and dependency/build-setting output match known-source manifests; ELF, PIE ELF, PE, and Mach-O location tuples round-trip exactly; wrong base and unmappable locations reject; pre-RT1 v1 bytes remain unchanged |
+| `RT1-S2B` | wrong binary, changed envelope byte, wrong image base, missing/changed bundle component, and unmappable address fixtures reject in every case; v1 consumers remain green; the selected v2 envelope passes ELF, PIE ELF, PE, and Mach-O fixtures plus the pre-registered large-artifact RSS/time gate |
 | `RT1-S3` | all identity-mismatch cases are rejected; unsafe mutations and automatic boundary replacements remain `0`; second apply performs `0` mutations; fixture action classification is exact; real-binary before/after results are recorded, and rollout beyond the experiment requires at least one predeclared target to improve from missing/conflicting to usable without regressing any previously usable target |
 | `RT1-S4` | known-source entity decomposition is exact for the supported fixture matrix; auto-labelled function-role/prologue claims meet at least `99%` precision, with unsupported cases left `unknown`; full source identity does not collapse distinct paths to one key |
 | `RT1-S5` | exact raw address/length matches the fixture manifest for every exported string extent; zero zero-length, overflow, unmapped, or cross-segment actions enter preview; refined values cannot change the raw extent; string-to-function-to-caller queries reproduce the fixed host-observation fixture |
@@ -359,7 +365,7 @@ explicit unknown-rate metric.
 | Previous Sprint 22 metadata knowledge network | defer until after `RT1-S10` |
 | Previous Sprint 23 workspace automation/replay | retain host-side replay as an `idacli` concern; broader automation deferred |
 | Previous Sprint 24 comparative knowledge packs | defer until after `RT1-S10` |
-| July Sprint A identity/VA/v2/digest | replace with corrected identity, exact-byte digest, compatibility, and location design in `RT1-S2` |
+| July Sprint A identity/VA/v2/digest | replace with identity/location/PIE in `RT1-S2A` and exact-byte envelope/compatibility work in `RT1-S2B` |
 | July Sprint B prologue classification | split raw evidence from role/ABI/prologue semantics and move to `RT1-S4` |
 | July Sprint C string length | replace display-value length with exact raw extent and host-reference work in `RT1-S5` |
 | July Sprint D type layout | split into runtime type identity `RT1-S6` and gated layouts/methods/interfaces `RT1-S7` |
@@ -454,9 +460,9 @@ receive explicit status/pointer banners instead of silent rewrites.
 ## Open Decisions Assigned to Sprints
 
 - `RT1-S1`: repository license and release-compliance posture;
-- `RT1-S2`: single JSON v2 versus manifest plus streaming records, decided by
+- `RT1-S2B`: single JSON v2 versus manifest plus streaming records, decided by
   the large-artifact memory/size benchmark;
-- `RT1-S2`: exact supported Go build ID sources per format;
+- `RT1-S2A`: exact supported Go build ID sources per format;
 - `RT1-S3`: measurable delta after forced IDA Golang-plugin baseline;
 - `RT1-S6`: smallest supported runtime type version matrix;
 - `RT1-S9`: whether external provider orchestration is sufficient for garbled

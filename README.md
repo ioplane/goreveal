@@ -144,9 +144,10 @@ Core planning and architecture live under [docs/](docs/).
 | Product design | [RT1 product design](docs/superpowers/specs/2026-07-22-goreveal-rt1-product-design.md) is the active scope and decision authority. |
 | `RT1-S0` | Ready: restore truthful stage status, keyed refinement, collision-safe diffing, and half-open range checks. |
 | `RT1-S1` | Follows S0: make every verification gate real and reproducible, pin tools, and record the forced IDA baseline. |
-| `RT1-S2` | Planned: exact binary/build identity, format-neutral locations, and an explicit v2 export while v1 remains frozen. |
-| `RT1-S3` | Promotion-gated: function-only GoREveal-to-idacli preview/apply after the S2 fixture is frozen and a separate idacli plan is approved. |
-| Execution plan | [RT1 Horizon A implementation plan](docs/superpowers/plans/2026-07-22-goreveal-rt1-horizon-a.md) contains file-level TDD tasks for S0-S2 and the S3 promotion gate. |
+| `RT1-S2A` | Planned first timebox: exact binary/build identity, format-neutral locations, real PIE evidence, and unchanged v1 bytes. |
+| `RT1-S2B` | Blocked on S2A: measure and publish the selected v2 envelope, verifier, and consumers. |
+| `RT1-S3` | Promotion-gated: function-only GoREveal-to-idacli preview/apply after the S2B fixture is frozen and a separate idacli plan is approved. |
+| Execution plan | [RT1 Horizon A implementation plan](docs/superpowers/plans/2026-07-22-goreveal-rt1-horizon-a.md) contains file-level TDD tasks for S0-S2B and the S3 promotion gate. |
 | Historical plans | Earlier numbered and post-IDA sprint documents remain evidence and decision history; they are not the active execution queue. |
 
 ## Verification

@@ -20,7 +20,8 @@ This plan is implementation-ready for:
 
 - `RT1-S0` truth restoration;
 - `RT1-S1` reproducible evidence baseline;
-- `RT1-S2` identity, build provenance, and location contract v2.
+- `RT1-S2A` identity, build provenance, location contract, and real PIE evidence;
+- `RT1-S2B` measured v2 envelope, verifier, and consumer publication.
 
 `RT1-S3` has an exact promotion and validation checklist, but idacli code work
 must receive its own plan inside `/opt/projects/repositories/idacli` after the
@@ -53,11 +54,12 @@ container. Keep runs sequential.
 | --- | --- | --- | --- | --- |
 | `RT1-S0` | ready | no silent loss or positional/collision-corrupted truth | approved RT1 design | typed stage status, keyed refinement, `1:1` auto-match only, correct half-open ranges |
 | `RT1-S1` | ready after S0 | every green gate performs real reproducible work | S0 | pinned tools; lint/test/differential/plugins/snapshots/script lint/fuzz/bench green; IDA baseline recorded |
-| `RT1-S2` | planned | exact binary/build identity and format-neutral locations in explicit v2 | S0, S1 gate truth | mismatch rejection, v1 compatibility, four-format v2 round trips, build provenance parity |
-| `RT1-S3` | promotion-gated | safe function-only GoREveal-to-IDA preview/apply | frozen S2 fixture; idacli plan | zero unsafe mutations; idempotency; measurable target improvement |
+| `RT1-S2A` | planned | exact binary/build identity, format-neutral locations, and real PIE evidence | S0, S1 gate truth | identity/provenance parity, v1 freeze, four-format location round trips |
+| `RT1-S2B` | blocked on S2A | measured explicit v2 envelope, reference verifier, and consumers | closed S2A | mismatch rejection, selected-envelope performance, four-format v2 fixtures |
+| `RT1-S3` | promotion-gated | safe function-only GoREveal-to-IDA preview/apply | frozen S2B fixture; idacli plan | zero unsafe mutations; idempotency; measurable target improvement |
 | `RT1-S4` | conditional | Go entity and source semantics | S0 stable IDs | exact entity decomposition; role/prologue precision >=99%; distinct full paths retained |
-| `RT1-S5` | conditional | safe string extents and host-reference navigation | S2 locations, S3 host contract | exact extents; zero unsafe string actions; fixed xref/caller query parity |
-| `RT1-S6` | research-gated | resilient metadata candidates and runtime type identity | S1 corpus gate, S2 locations | zero false selected candidates on negatives; exact supported type identity |
+| `RT1-S5` | conditional | safe string extents and host-reference navigation | S2A locations, S3 host contract | exact extents; zero unsafe string actions; fixed xref/caller query parity |
+| `RT1-S6` | research-gated | resilient metadata candidates and runtime type identity | S1 corpus gate, S2A locations | zero false selected candidates on negatives; exact supported type identity |
 | `RT1-S7` | research-gated | layouts, methods, interfaces, preview-only type apply | S6 | exact two-version layout/edge manifests or documented reduced scope |
 | `RT1-S8` | deferred | collision-safe build lineage and semantic diff | S0, S4, optional host fingerprints | 100% auto-accept precision; zero false collision accepts; deterministic output |
 | `RT1-S9` | deferred | bounded protected/garbled anchor workflow | S8 lineage | twenty verified anchors with zero false accepts or a published negative result |
@@ -106,26 +108,31 @@ container. Keep runs sequential.
 | `docs/evidence/ida-golang-baseline/README.md` | reproducible experiment contract |
 | `docs/evidence/ida-golang-baseline/result.schema.json` | machine-checkable baseline record |
 
-### RT1-S2
+### RT1-S2A
 
 | File | Responsibility |
 | --- | --- |
-| `docs/architecture/2026-07-22-goreveal-identity-and-location-contract.md` | stable v2 ADR |
+| `docs/architecture/2026-07-22-goreveal-identity-and-location-contract.md` | stable identity/location ADR and envelope requirements handed to S2B |
 | `schema/identity.go` | binary, analyzer, module, dependency, and build-setting contracts |
 | `schema/location.go` | preferred base, VA/RVA/file-offset/section and `[start,end)` contract |
-| `schema/export_ida_v2.go` | separate v2 payload and constructor |
-| `schema/export_ghidra_v2.go` | format-neutral v2 host payload if promoted by the ADR |
-| `schema/verify_ida_v2.go` | pure reference validation against exact artifact, binary, and loaded-base inputs |
 | `core/identity/identity.go` | streaming SHA-256, format/architecture dispatch |
 | `core/identity/buildid.go` | clean-room Go build ID extraction with explicit unavailable state |
 | `core/identity/identity_test.go` | known digest, architecture, and build-ID fixtures |
 | `core/buildinfo/buildinfo.go` | preserve main module, deps, replacements, and settings |
 | `core/location/location.go` | ELF/PE/Mach-O mapping implementation |
 | `core/location/location_test.go` | round-trip and unmappable-address fixtures |
-| `cmd/goreveal/main.go` | explicit v1/v2 export selection and `inspect dependencies` |
+| `cmd/goreveal/internal/inspect_dependencies.go` | dependency inventory command |
+
+### RT1-S2B
+
+| File | Responsibility |
+| --- | --- |
+| `schema/export_ida_v2.go` | separate v2 payload and constructor |
+| `schema/export_ghidra_v2.go` | format-neutral v2 host payload if promoted by the ADR |
+| `schema/verify_ida_v2.go` | pure reference validation against exact artifact, binary, and loaded-base inputs |
+| `cmd/goreveal/main.go` | explicit v1/v2 export selection |
 | `cmd/goreveal/internal/export_ida.go` | versioned export dispatch |
 | `cmd/goreveal/internal/verify_ida_export.go` | executable detached-digest and target-context reference verifier |
-| `cmd/goreveal/internal/inspect_dependencies.go` | dependency inventory command |
 | `plugins/ida/goreveal_ida.py` | explicit contract negotiation or unsupported error |
 | `plugins/ghidra/goreveal_ghidra.py` | explicit contract negotiation or unsupported error |
 | plugin and schema fixture tests | v1 frozen and v2 explicit compatibility evidence |
@@ -426,12 +433,23 @@ validation. Persistence rejects them. Change the diff entrypoint to
 `ErrInvalidAnalysis` before allocating match/candidate maps; CLI diff/review/
 handoff/next return nonzero and emit no partial summary.
 
+Legacy refined findings without both `ID` and `RawID` are never reconstructed
+by array position or display value. Normalization keeps raw entities, removes
+the unkeyed refined layer only from the normalized in-memory copy, and appends
+`stage=refinement`, `status=unavailable`,
+`code=legacy_unkeyed_refinement` to diagnostics. The persisted legacy JSON is
+not rewritten on read. A later explicit re-analysis may regenerate keyed
+refinements from raw evidence; diff/export cannot consume the quarantined
+legacy findings.
+
 Add a frozen pre-RT1 SQLite/JSON fixture with all IDs absent plus duplicate
 display names. Assert load/diff backfills deterministic nonzero IDs, preserves
 distinct function entries, and produces no zero-ID candidate or accepted
 transfer. Add duplicate-derived-ID and mismatched-prepopulated-ID fixtures and
-assert fail-closed behavior. Do not rewrite old database rows merely by reading
-them.
+assert fail-closed behavior. Include reordered and segmented unkeyed refined
+strings; assert they are not cross-bound, are unavailable in the normalized
+copy with the stable diagnostic, and remain byte-unchanged in storage. Do not
+rewrite old database rows merely by reading them.
 
 - [ ] **Step 5: Write a reorder-and-segment regression test**
 
@@ -616,7 +634,7 @@ Expected: FAIL because current checks use `<= endExclusive` and
 - [ ] **Step 3: Apply the minimal boundary fix**
 
 Change membership to `addr < endExclusive`. Keep public inclusive-end fields
-unchanged until the RT1-S2 location migration; centralize conversion before
+unchanged until the RT1-S2A location migration; centralize conversion before
 comparison.
 
 - [ ] **Step 4: Run tests and commit**
@@ -645,7 +663,7 @@ comparison. Preserve the draft as a draft; do not promote its old advice.
 - [ ] **Step 2: Record only landed S0 claims**
 
 Update semantic boundaries and functional assessment after the code commits.
-Do not mark S1/S2 planned fields as available.
+Do not mark S1/S2A/S2B planned fields as available.
 
 - [ ] **Step 3: Run documentation consistency checks**
 
@@ -1027,7 +1045,7 @@ git commit -m "docs(evidence): record release and IDA baseline decisions"
 Omit paths that do not exist because the license decision is still blocked;
 do not create a placeholder license.
 
-## RT1-S2 Detailed Tasks
+## RT1-S2A Detailed Tasks — Identity and Location Timebox
 
 ### Task 11: Freeze the identity and location ADR with clean-room research
 
@@ -1186,6 +1204,7 @@ git commit -m "feat(identity): bind analysis to exact binary bytes"
 - Create: `corpus/fixtures/go-elf-pie-linux-amd64/fixture.bin`
 - Create: `corpus/fixtures/go-elf-pie-linux-amd64/fixture.json`
 - Create: `corpus/fixtures/go-elf-pie-linux-amd64/expected.analysis.json`
+- Create: `docs/evidence/rt1-s2a-closure.md`
 
 - [ ] **Step 1: Write table tests before implementation**
 
@@ -1246,6 +1265,27 @@ make test
 git add schema core/location core/pclntab core/runtime corpus/fixtures/go-elf-pie-linux-amd64
 git commit -m "feat(core): add explicit address location mapping"
 ```
+
+- [ ] **Step 6: Close the S2A timebox before envelope work**
+
+Run all established S1 gates sequentially plus the four-format identity/location
+matrix and frozen v1 bytes. Record exact commands, fixture hashes, dependency
+manifest parity, PIE build recipe, mismatch cases, and remaining unsupported
+formats in `docs/evidence/rt1-s2a-closure.md`. Request independent review, then:
+
+```bash
+git add docs/evidence/rt1-s2a-closure.md
+git commit -m "docs: close RT1-S2A identity and location"
+```
+
+If this evidence does not close, stop the timebox with `reduce`/`blocked`; do
+not start Task 15.
+
+## RT1-S2B Detailed Tasks — Envelope and Consumer Timebox
+
+Start this timebox only after RT1-S2A closes with reviewed identity, build,
+location, PIE, and unchanged-v1 evidence. Do not carry unfinished S2A work into
+S2B under the same sprint label.
 
 ### Task 15: Build and measure v2 envelope candidates without changing v1
 
@@ -1455,16 +1495,16 @@ git add schema cmd/goreveal plugins corpus/fixtures docs/evidence/rt1-s2-artifac
 git commit -m "feat(export): publish measured identity-bound IDA v2"
 ```
 
-### Task 17: Close RT1-S2 evidence and compatibility
+### Task 17: Close RT1-S2B evidence and compatibility
 
 **Files:**
 - Modify: `README.md`
 - Modify: `AGENTS.md`
 - Modify: `docs/architecture/2026-03-20-goreveal-semantic-claim-boundaries.md`
 - Modify: `docs/plans/2026-03-19-goreveal-feature-map.md`
-- Create: `docs/evidence/rt1-s2-closure.md`
+- Create: `docs/evidence/rt1-s2b-closure.md`
 
-- [ ] **Step 1: Run all S2 mismatch and round-trip fixtures**
+- [ ] **Step 1: Run all S2B mismatch and round-trip fixtures**
 
 Wrong binary, modified provider byte, wrong base, unmappable location, and
 unknown contract must all reject. ELF, PIE ELF, PE, and Mach-O must round-trip.
@@ -1490,7 +1530,7 @@ transport envelope.
 
 ```bash
 git add README.md AGENTS.md docs
-git commit -m "docs: close RT1-S2 identity contract"
+git commit -m "docs: close RT1-S2B export contract"
 ```
 
 ## RT1-S3 Promotion and Cross-Repository Plan Gate
@@ -1550,7 +1590,7 @@ boundary is a durable architecture decision.
 immutable `idacli.go-preview/v1` artifact without a self-digest. `go-apply`
 receives preview path plus expected
 `sha256:<lowercase-hex>`, rehashes exact bytes, validates embedded provider and
-IDB identities, and applies the embedded actions. Consume the S2 reference
+IDB identities, and applies the embedded actions. Consume the S2B reference
 verifier fixtures rather than reinterpreting GoREveal VA/RVA/base rules.
 
 - [ ] **Step 4: Keep first apply conservative**
@@ -1714,7 +1754,7 @@ Expected:
 - v1 and v2 contract fixtures pass;
 - mismatch fixtures reject;
 - no uncommitted generated files remain;
-- closure evidence links every claimed RT1-S0/S1/S2 gate.
+- closure evidence links every claimed RT1-S0/S1/S2A/S2B gate.
 
 Before merging Horizon A, request independent code review against the RT1
 design and this plan. Fix every Critical and Important issue before proceeding
