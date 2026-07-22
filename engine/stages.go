@@ -294,7 +294,10 @@ func recoverSourceTreeWithOps(
 	} else {
 		switch sourceTreeCandidate(functionTree) {
 		case sourceTreeCandidateModuleFiles:
-			return functionTree, nil
+			if len(unexpectedErrors) == 0 {
+				return functionTree, nil
+			}
+			candidate = &functionTree
 		case sourceTreeCandidateExternalOnly:
 			if candidate == nil {
 				candidate = &functionTree
@@ -304,7 +307,10 @@ func recoverSourceTreeWithOps(
 		}
 	}
 	if candidate != nil {
-		return *candidate, nil
+		if len(unexpectedErrors) == 0 {
+			return *candidate, nil
+		}
+		return schema.SourceTree{}, sourceTreeRecoveryError(attemptErrors, unexpectedErrors)
 	}
 	return recoverPackageSourceTreeWithOps(analysis, ops, attemptErrors, unexpectedErrors)
 }
@@ -316,7 +322,10 @@ func recoverPackageSourceTreeWithOps(
 ) (schema.SourceTree, error) {
 	fallbackTree, fallbackErr := ops.buildFallbackTree(analysis)
 	if fallbackErr == nil && sourceTreeHasEvidence(fallbackTree) {
-		return fallbackTree, nil
+		if len(unexpectedErrors) == 0 {
+			return fallbackTree, nil
+		}
+		return schema.SourceTree{}, sourceTreeRecoveryError(attemptErrors, unexpectedErrors)
 	}
 	if fallbackErr != nil {
 		recordSourceTreeFailure(&attemptErrors, &unexpectedErrors, "build package fallback source tree", fallbackErr)
@@ -324,11 +333,15 @@ func recoverPackageSourceTreeWithOps(
 		recordSourceTreeAbsence(&attemptErrors, "package fallback source tree contains no nodes")
 	}
 
+	return schema.SourceTree{}, sourceTreeRecoveryError(attemptErrors, unexpectedErrors)
+}
+
+func sourceTreeRecoveryError(attemptErrors, unexpectedErrors []error) error {
 	if len(unexpectedErrors) != 0 {
-		return schema.SourceTree{}, fmt.Errorf("recover source tree: %w", errors.Join(unexpectedErrors...))
+		return fmt.Errorf("recover source tree: %w", errors.Join(unexpectedErrors...))
 	}
 
-	return schema.SourceTree{}, recoveryerr.NewUnavailable(
+	return recoveryerr.NewUnavailable(
 		recoveryerr.CodeSourceTreeNotFound,
 		"source-tree evidence is absent",
 		errors.Join(attemptErrors...),
