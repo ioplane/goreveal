@@ -1,6 +1,6 @@
 # GoREveal Feature Map
 
-> Status: navigation note
+> Status: historical navigation snapshot; active authority is the [RT1 design](../superpowers/specs/2026-07-22-goreveal-rt1-product-design.md)
 > Date: 2026-03-19
 > Purpose: provide a high-signal map of what GoREveal already does, what is planned, and what is intentionally delegated to other tools or kept out of scope.
 

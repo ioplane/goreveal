@@ -7,7 +7,7 @@
   <img src="https://img.shields.io/badge/Language-Go%201.26-1a73e8?style=for-the-badge" alt="Language">
   <img src="https://img.shields.io/badge/Mode-Local%20%2B%20Server-34a853?style=for-the-badge" alt="Mode">
   <img src="https://img.shields.io/badge/Focus-Go%20Binary%20RE-ea4335?style=for-the-badge" alt="Focus">
-  <img src="https://img.shields.io/badge/Status-Sprint%2012-0b57d0?style=for-the-badge" alt="Status">
+  <img src="https://img.shields.io/badge/Status-RT1%20Horizon%20A-0b57d0?style=for-the-badge" alt="Status">
 </p>
 
 ---
@@ -141,13 +141,13 @@ Core planning and architecture live under [docs/](docs/).
 
 | Lane | Reading |
 |---|---|
-| `Sprint 12` | Primary lane for bounded runtime trust plus the first engine-owned code-peeling increments |
-| `Sprint 7` | Maintenance lane for differential evidence and claim hygiene |
-| `Sprint 11` | Completed usability checkpoint for package/type/source surfaces |
-| Current checkpoint | Windows `PE` bounded runtime posture plus the first `PE` and `Mach-O` function/package/peeling footholds are landed |
-| Next differentiator lane | Use the completed fresh external comparison, the universal RE workbench comparison, the dedicated next-execution plan, the current intermediate rerun, and the widened protected matrix as the evidence baseline. That baseline now shows stable non-garbled `arm64` results across `linux`, `windows`, and `darwin`, a truthful `elf_function_foothold = "address_only"` surface on garbled `linux/amd64` and `linux/arm64` rows, real file visibility on measured external and intermediate-rerun `ELF` / `PE` / `Mach-O` targets, and the same compact protected runtime surface locked through export-contract and plugin-consumer tests. The workflow/value lane now includes explicit `diff review sqlite`, `diff handoff sqlite`, and `diff next sqlite` operator paths over the existing review state, with `diff next sqlite` now carrying self-contained `recommended_actions`, a compact `review_checklist`, a compact `review_snapshot`, explicit `review_progress`, a compact `up_next` snapshot, and an `upcoming_packages` horizon with sample pair context for the immediate review pass. The latest bounded timing sample on `rclone-linux-amd64` also shows no operational efficiency regression that would outrank workflow or source-confidence work. `Sprint 14` is now held at its frozen stop-condition by default: extend it only if one named remaining operator inference step still exists. `Sprint 15` is now also frozen by default for the current bounded scope: `source_tree` and enriched package surfaces already expose `source_evidence_kind = dwarf_paths | line_table_files | package_fallback`, and `source_tree` also carries a compact `source_evidence_summary` with per-evidence-class file counts so operators can read both the high-level package landscape and the file-density shape without reconstructing them from the full package list. The active PM queue has therefore moved into `Sprint 16` protected workflow/orchestration ranking, and the first ranked target there is now `garble`-class workflows on the current enterprise-gated sample; the first named pain point there is no longer generic “recovery is weak”, but “current garbled rows do not yield a review-ready anchor set for peel/review/handoff/next despite the existing address-only foothold”. The first bounded neighboring-build rerun in that lane is now landed too and currently confirms the negative workflow result on both measured Linux architectures: no matched functions, no transfer/review packages, no handoff, and no next-step review projection. Later server-mode work remains ordered but deferred: first bounded control-plane foundations, then remote metadata/MCP platform work. |
-| Later sprint horizon | After the current local workflow sequence and the already-deferred server/remote-interoperability work, the next ordered horizons are `Sprint 19` public release readiness and licensing, `Sprint 20` evidence expansion and comparative automation, `Sprint 21` build correlation and version tracking, `Sprint 22` metadata knowledge network, `Sprint 23` analyst workspace automation and replay, and `Sprint 24` comparative knowledge packs and decision support. |
-| Sprint management | Sprint scope, PM+DEV task framing, and indicators now live in [docs/plans/2026-04-01-goreveal-post-sprint12-sprint-plan.md](docs/plans/2026-04-01-goreveal-post-sprint12-sprint-plan.md) and [docs/plans/2026-03-19-goreveal-scrum-implementation-plan.md](docs/plans/2026-03-19-goreveal-scrum-implementation-plan.md). |
+| Product design | [RT1 product design](docs/superpowers/specs/2026-07-22-goreveal-rt1-product-design.md) is the active scope and decision authority. |
+| `RT1-S0` | Ready: restore truthful stage status, keyed refinement, collision-safe diffing, and half-open range checks. |
+| `RT1-S1` | Follows S0: make every verification gate real and reproducible, pin tools, and record the forced IDA baseline. |
+| `RT1-S2` | Planned: exact binary/build identity, format-neutral locations, and an explicit v2 export while v1 remains frozen. |
+| `RT1-S3` | Promotion-gated: function-only GoREveal-to-idacli preview/apply after the S2 fixture is frozen and a separate idacli plan is approved. |
+| Execution plan | [RT1 Horizon A implementation plan](docs/superpowers/plans/2026-07-22-goreveal-rt1-horizon-a.md) contains file-level TDD tasks for S0-S2 and the S3 promotion gate. |
+| Historical plans | Earlier numbered and post-IDA sprint documents remain evidence and decision history; they are not the active execution queue. |
 
 ## Verification
 

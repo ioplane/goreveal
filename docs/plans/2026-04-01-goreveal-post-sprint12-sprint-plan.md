@@ -1,6 +1,6 @@
 # GoREveal Post-Sprint12 Sprint Plan
 
-> Status: active sprint plan
+> Status: superseded on 2026-07-22 by the [RT1 design](../superpowers/specs/2026-07-22-goreveal-rt1-product-design.md) and [RT1 Horizon A plan](../superpowers/plans/2026-07-22-goreveal-rt1-horizon-a.md); retained as decision history
 > Date: 2026-04-01
 > Purpose: define the near-term sprint set after the current `Sprint 12` checkpoint using the fresh comparisons, strategic review, protected-binary findings, and workstation baseline.
 

@@ -13,7 +13,7 @@
 
 **Targets:** amd64 + arm64 (covers 99% of production Go binaries).
 
-**Existing backlog integration:** This is a historical exploratory mapping of hypothetical future sprints 13-20, not the active sprint baseline. Existing backlog epics (Code Peeling, Version Tracking, Metadata Network) remain governed by the active roadmap and post-`Sprint 12` sprint plan.
+**Existing backlog integration:** This is a historical exploratory mapping of hypothetical future sprints 13-20, not the active sprint baseline. Existing backlog epics (Code Peeling, Version Tracking, Metadata Network) are governed by the RT1 design and plan.
 
 ---
 

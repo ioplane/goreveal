@@ -1,6 +1,6 @@
 # GoREveal Next Execution Plan
 
-> Status: active execution plan
+> Status: superseded on 2026-07-22 by the [RT1 design](../superpowers/specs/2026-07-22-goreveal-rt1-product-design.md) and [RT1 Horizon A plan](../superpowers/plans/2026-07-22-goreveal-rt1-horizon-a.md)
 > Date: 2026-04-01
 > Purpose: turn the current roadmap reading into a concrete near-term execution order after the fresh external comparison, protected-binary stabilization, and workstation baseline research.
 

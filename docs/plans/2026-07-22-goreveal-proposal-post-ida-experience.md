@@ -1,11 +1,18 @@
 ---
-status: proposal
+status: research-input
 date: 2026-07-22
 owners:
   - maintainers
+superseded_by:
+  - ../superpowers/specs/2026-07-22-goreveal-rt1-product-design.md
+  - ../superpowers/plans/2026-07-22-goreveal-rt1-horizon-a.md
 ---
 
 # Proposal: goreveal improvements after IDA Pro RE field experience
+
+> This field report is an RT1 research input, not an implementation queue.
+> Its measured claims remain subject to the forced-plugin baseline defined in
+> RT1-S1.
 
 ## Summary
 

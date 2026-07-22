@@ -1,7 +1,9 @@
 # Methodology: Go Binary Reverse Engineering with goreveal + idacli + IDA
 
 **Date:** 2026-07-22
-**Status:** proposal
+**Status:** research input; superseded as execution guidance by the
+[RT1 product design](../superpowers/specs/2026-07-22-goreveal-rt1-product-design.md)
+and [RT1 Horizon A plan](../superpowers/plans/2026-07-22-goreveal-rt1-horizon-a.md)
 **Authors:** infra4 RE team
 
 ## Problem
@@ -239,4 +241,3 @@ This enables version comparison (18.7.2 vs 18.10.0) without IDA.
 | Sprint C | idacli: pipeline orchestration | Single-command Go RE workflow |
 | Sprint D | goreveal: diff capability | Version comparison without IDA |
 | Sprint E | Validation on Teleport 18.10.0 | 9/9 license functions decompiled |
-

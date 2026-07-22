@@ -1,6 +1,12 @@
 # GoREveal Scrum Implementation Plan
 
-> **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **Status (2026-07-22): historical delivery record.** Active product authority
+> is the [RT1 design](../superpowers/specs/2026-07-22-goreveal-rt1-product-design.md),
+> and active file-level execution lives in the
+> [RT1 Horizon A plan](../superpowers/plans/2026-07-22-goreveal-rt1-horizon-a.md).
+
+> **Historical execution note:** the checkboxes below record the original
+> delivery sequence. Do not start new work from them; use the active RT1 plan.
 
 **Goal:** Build GoREveal as a clean-room Go binary reverse-engineering platform with accuracy-first recovery, schema-driven outputs, differential validation, and selective SIMD acceleration.
 
@@ -58,7 +64,7 @@ Later ordered horizon:
 
 ## PM+DEV Sprint Task Model
 
-Use the active sprint plan as the source of truth for scope, but track execution through paired PM and DEV tasks:
+Within this historical record, scope was tracked through paired PM and DEV tasks:
 
 - `PM-*`
   Outcome-definition, stop-conditions, ranking, and support-policy work
@@ -78,7 +84,7 @@ Execution rule:
 - if two tasks have similar value, choose the one that leaves behind the clearer stop-condition or operator-visible increment
 
 Current PM+DEV bias:
-- active sprint work should come from the backlog tables in `docs/plans/2026-04-01-goreveal-post-sprint12-sprint-plan.md`
+- the then-active sprint work came from the backlog tables in `docs/plans/2026-04-01-goreveal-post-sprint12-sprint-plan.md`
 - if a candidate task has `Value >= 4`, `Risk <= 2`, and `Evidence >= 4`, it is a default good next move
 - if a task has high value but `Risk >= 4`, defer it unless it unblocks the active sprint
 

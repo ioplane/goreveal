@@ -1,6 +1,6 @@
 # GoREveal Baseline Comparison Plan
 
-> Status: initial pass completed, follow-up plan active
+> Status: historical comparison plan; RT1-S1 now owns baseline evidence work
 > Date: 2026-03-31
 > Purpose: run a real, evidence-backed comparison between `GoREveal` and the current Go RE baselines after the first bounded `Mach-O` foothold, so the next roadmap step is chosen from measured gaps rather than intuition.
 

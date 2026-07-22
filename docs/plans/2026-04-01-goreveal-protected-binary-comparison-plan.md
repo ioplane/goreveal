@@ -1,6 +1,6 @@
 # GoREveal Protected Binary Comparison Plan
 
-> Status: active next lane
+> Status: historical research lane; RT1-S9 is the promotion-gated successor
 > Date: 2026-04-01
 > Purpose: turn the commercial-software protection research into a bounded comparison and corpus plan, so `GoREveal` can be evaluated against realistic protected Go binaries without prematurely expanding `core` claims.
 

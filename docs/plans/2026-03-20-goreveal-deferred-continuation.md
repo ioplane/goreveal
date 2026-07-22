@@ -1,6 +1,6 @@
 # GoREveal Deferred Continuation Handoff
 
-> Status: deferred continuation checkpoint
+> Status: historical continuation checkpoint; superseded on 2026-07-22 by the [RT1 design](../superpowers/specs/2026-07-22-goreveal-rt1-product-design.md)
 > Date: 2026-03-20
 > Purpose: capture the current product/engineering state and the next active tasks so work can resume later without rebuilding context from chat history.
 
@@ -11,7 +11,7 @@ Strategic follow-up:
 - `docs/plans/2026-04-01-goreveal-rehelp-and-re-lab-inventory-notes.md` now records measured workstation and interop signals from `rehelp` and the remote RE lab host
 - `docs/plans/2026-04-01-goreveal-universal-re-workbench-comparison.md` now records the role-based comparison between `GoREveal` and general-purpose RE workbenches
 - `docs/plans/2026-04-01-goreveal-next-execution-plan.md` now records the concrete near-term execution order
-- `docs/plans/2026-04-01-goreveal-post-sprint12-sprint-plan.md` now records the active sprint sequence after the current `Sprint 12` checkpoint
+- `docs/plans/2026-04-01-goreveal-post-sprint12-sprint-plan.md` recorded the then-active sprint sequence after the `Sprint 12` checkpoint
 
 ## Current Checkpoint
 
@@ -219,7 +219,7 @@ If continuing later, start with:
 - then harden explicit host-platform MCP and workstation handoff planning using the measured `rehelp` / RE-lab inventory as the real operator baseline and the now-landed `diff handoff sqlite` bridge as the review-path handoff
 - then keep the fresh external comparison and universal-workbench comparison as the planning baseline so future roadmap decisions are judged against real workstation value, not only fixture-local recovery growth
 - then follow `docs/plans/2026-04-01-goreveal-next-execution-plan.md` as the concrete near-term ordering artifact
-- then follow `docs/plans/2026-04-01-goreveal-post-sprint12-sprint-plan.md` as the active sprint sequence
+- this handoff originally pointed to `docs/plans/2026-04-01-goreveal-post-sprint12-sprint-plan.md`; use RT1 instead
 - then keep the new `classification_evidence`, `pathless_file_evidence`, and transfer-review surfaces stable while deciding whether workflow/value or another bounded semantic step has the highest leverage
 - then any required rich/stripped/runtime-export contract stabilization
 - then treat post-`Sprint 18` work as its own later horizon: public-release/licensing hardening first, broader evidence/comparison automation second

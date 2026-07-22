@@ -1,6 +1,6 @@
 # GoREveal Functional Assessment
 
-> Status: working product/strategy note
+> Status: historical product/strategy snapshot; active authority is the [RT1 design](../superpowers/specs/2026-07-22-goreveal-rt1-product-design.md)
 > Date: 2026-03-20
 > Purpose: reassess current GoREveal functionality against the feature map and baseline Go RE tools, then translate that into an updated roadmap and sprint strategy.
 

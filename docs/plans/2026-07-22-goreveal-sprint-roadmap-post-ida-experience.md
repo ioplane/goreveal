@@ -1,11 +1,17 @@
 ---
-status: draft
+status: superseded
 date: 2026-07-22
 owners:
   - maintainers
+superseded_by:
+  - ../superpowers/specs/2026-07-22-goreveal-rt1-product-design.md
+  - ../superpowers/plans/2026-07-22-goreveal-rt1-horizon-a.md
 ---
 
 # Plan: goreveal improvements after IDA Pro RE experience
+
+> Retained as research and decision history. Do not execute this A-E sequence;
+> use the RT1 sprint registry and Horizon A task plan.
 
 ## Context
 
