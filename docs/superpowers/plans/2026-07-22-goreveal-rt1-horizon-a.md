@@ -1,10 +1,16 @@
 # GoREveal RT1 Horizon A Implementation Plan
 
 > **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
+>
+> **Standalone-first amendment (2026-07-22):** tasks through `RT1-S2B`
+> remain active. The old `RT1-S3` promotion tasks are suspended planning input,
+> not executable work. `RT1-S2C`, `RT1-R1`, `RT1-S3A`, and `RT1-S3B` require a
+> new implementation plan after written approval of
+> `../specs/2026-07-22-goreveal-standalone-release-ida-bootstrap-design.md`.
 
-**Goal:** Restore trustworthy GoREveal analysis and verification, publish an identity- and location-safe v2 provider contract, and validate the first conservative GoREveal-to-idacli function preview/apply workflow.
+**Goal:** Restore trustworthy GoREveal analysis and verification and publish an identity- and location-safe v2 provider contract through `RT1-S2B`.
 
-**Architecture:** GoREveal remains the Go-native evidence provider. Horizon A first makes stage status, raw/refined identity, diff cardinality, and verification truthful; it then adds binary/build identity and a format-neutral location contract without changing v1 implicitly. Stateful IDA mutation remains in idacli and is promoted through a separate reviewed plan after the provider contract is frozen.
+**Architecture:** GoREveal remains the standalone Go-native evidence provider. Horizon A first makes stage status, raw/refined identity, diff cardinality, and verification truthful; it then adds binary/build identity and a format-neutral location contract without changing v1 implicitly. Standalone release qualification precedes all stateful IDA work, which remains external to GoREveal and requires a separate reviewed plan.
 
 **Tech Stack:** Go 1.26, `debug/buildinfo`, `debug/elf`, `debug/pe`, `debug/macho`, SHA-256, SQLite, JSON contracts, Python plugin fixtures, Podman, Taskfile, golangci-lint, Ruff, ty, yamllint, shellcheck.
 
@@ -15,6 +21,7 @@
 Design authority:
 
 - `docs/superpowers/specs/2026-07-22-goreveal-rt1-product-design.md`
+- `docs/superpowers/specs/2026-07-22-goreveal-standalone-release-ida-bootstrap-design.md`
 
 This plan is implementation-ready for:
 
@@ -23,10 +30,10 @@ This plan is implementation-ready for:
 - `RT1-S2A` identity, build provenance, location contract, and real PIE evidence;
 - `RT1-S2B` measured v2 envelope, verifier, and consumer publication.
 
-`RT1-S3` has an exact promotion and validation checklist, but idacli code work
-must receive its own plan inside `/opt/projects/repositories/idacli` after the
-v2 fixture is frozen. This prevents two repositories from being changed by one
-atomic task or commit.
+The old `RT1-S3` checklist is retained as historical planning input. It is
+superseded by the approved standalone-first sequence and authorizes no idacli
+or plugin work. A replacement plan must first close `RT1-S2C` and `RT1-R1`,
+then split headless bootstrap (`RT1-S3A`) from the thin plugin (`RT1-S3B`).
 
 Later sprints are defined by outcomes, dependencies, and gates in the sprint
 registry below. Create their file-level plans only when their Definition of
@@ -56,14 +63,17 @@ container. Keep runs sequential.
 | `RT1-S1` | ready after S0 | every green gate performs real reproducible work | S0 | pinned tools; lint/test/differential/plugins/snapshots/script lint/fuzz/bench green; IDA baseline recorded |
 | `RT1-S2A` | planned | exact binary/build identity, format-neutral locations, and real PIE evidence | S0, S1 gate truth | identity/provenance parity, v1 freeze, four-format location round trips |
 | `RT1-S2B` | blocked on S2A | measured explicit v2 envelope, reference verifier, and consumers | closed S2A | mismatch rejection, selected-envelope performance, four-format v2 fixtures |
-| `RT1-S3` | promotion-gated | safe function-only GoREveal-to-IDA preview/apply | frozen S2B fixture; idacli plan | zero unsafe mutations; idempotency; measurable target improvement |
+| `RT1-S2C` | needs replacement plan | standalone performance/SIMD qualification and release closure | closed S2B | scalar-first decisions, safe dispatch, reproducible release evidence |
+| `RT1-R1` | release milestone | contract-complete standalone release | closed S2C, legal/compliance gate | no standalone claim depends on an RE-tool integration |
+| `RT1-S3A` | needs replacement plan | safe headless GoREveal-to-IDA database bootstrap | closed R1; idacli plan | selective speed gate, zero unsafe mutations, idempotency, preseed decision |
+| `RT1-S3B` | needs replacement plan | thin interactive IDA plugin | closed S3A | shared action classification, no duplicated recovery/mapping logic |
 | `RT1-S4` | conditional | Go entity and source semantics | S0 stable IDs | exact entity decomposition; role/prologue precision >=99%; distinct full paths retained |
-| `RT1-S5` | conditional | safe string extents and host-reference navigation | S2A locations, S3 host contract | exact extents; zero unsafe string actions; fixed xref/caller query parity |
+| `RT1-S5` | conditional | safe string extents and host-reference navigation | S2A locations, S3A host contract | exact extents; zero unsafe string actions; fixed xref/caller query parity |
 | `RT1-S6` | research-gated | resilient metadata candidates and runtime type identity | S1 corpus gate, S2A locations | zero false selected candidates on negatives; exact supported type identity |
 | `RT1-S7` | research-gated | layouts, methods, interfaces, preview-only type apply | S6 | exact two-version layout/edge manifests or documented reduced scope |
 | `RT1-S8` | deferred | collision-safe build lineage and semantic diff | S0, S4, optional host fingerprints | 100% auto-accept precision; zero false collision accepts; deterministic output |
 | `RT1-S9` | deferred | bounded protected/garbled anchor workflow | S8 lineage | twenty verified anchors with zero false accepts or a published negative result |
-| `RT1-S10` | deferred | evidence-backed release baseline | S0-S3 minimum, supported-matrix decision | linked release claims, compatibility, pinned image/SBOM, performance envelope |
+| `RT1-S10` | deferred | expanded supported-matrix and public-release baseline | R1, semantic and supported-matrix decisions | widened linked claims, compatibility, pinned image/SBOM, performance envelope |
 
 ## File Responsibility Map
 
@@ -1041,7 +1051,7 @@ sensitive material; commit hashes and bounded results only.
 - [ ] **Step 5: Replace proposal `TBD` with evidence references**
 
 Do not rewrite the proposal as active. Link the measured result and state
-whether RT1-S3 has a positive delta hypothesis.
+whether `RT1-S3A` selective/preseed bootstrap has a positive delta hypothesis.
 
 - [ ] **Step 6: Verify and commit**
 
@@ -1561,7 +1571,12 @@ git add README.md AGENTS.md docs
 git commit -m "docs: close RT1-S2B export contract"
 ```
 
-## RT1-S3 Promotion and Cross-Repository Plan Gate
+## Suspended RT1-S3 Planning Input
+
+> The standalone-first design supersedes this section. Tasks 18-19 are retained
+> to preserve useful fixture and safety ideas, but they must not be executed.
+> Their replacement is a new plan that separates `RT1-S3A` headless bootstrap
+> from `RT1-S3B` interactive plugin work after `RT1-R1` closes.
 
 ### Task 18: Consolidate and promote the idacli implementation plan
 
@@ -1786,4 +1801,4 @@ Expected:
 
 Before merging Horizon A, request independent code review against the RT1
 design and this plan. Fix every Critical and Important issue before proceeding
-to RT1-S3.
+to the separately approved `RT1-S2C` replacement plan.

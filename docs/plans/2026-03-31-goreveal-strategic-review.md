@@ -2,6 +2,8 @@
 
 > Status: historical strategic review; superseded for execution by the
 > [RT1 product design](../superpowers/specs/2026-07-22-goreveal-rt1-product-design.md)
+> plus its
+> [standalone-first refinement](../superpowers/specs/2026-07-22-goreveal-standalone-release-ida-bootstrap-design.md)
 > and [RT1 Horizon A plan](../superpowers/plans/2026-07-22-goreveal-rt1-horizon-a.md)
 > Date: 2026-03-31
 > Purpose: consolidate the external strategic review into a repo-native planning document and translate it into concrete roadmap, architecture, and documentation updates.
@@ -213,8 +215,8 @@ Do not:
 ## Historical Recommended Execution Order
 
 This order is preserved as decision evidence only. It is not an executable
-backlog; the active sequence is RT1-S0, S1, S2A, S2B, then the S3 promotion
-decision.
+backlog; the active sequence is RT1-S0, S1, S2A, S2B, S2C, the standalone R1
+release gate, then separate S3A headless-bootstrap and S3B plugin decisions.
 
 1. treat `Sprint 14` as frozen by default for the current declared local scope unless one named remaining operator inference step can still be demonstrated
 2. treat `Sprint 15` as frozen by default unless one new named source-confidence inference step is explicitly demonstrated

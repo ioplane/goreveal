@@ -3,6 +3,8 @@
 > Status: approved direction
 > Date: 2026-07-22
 > Decision owner: maintainers
+> Standalone-first refinement:
+> `2026-07-22-goreveal-standalone-release-ida-bootstrap-design.md`
 > Supersedes as active execution guidance:
 > - `docs/plans/2026-03-20-goreveal-deferred-continuation.md`
 > - `docs/plans/2026-03-31-goreveal-baseline-comparison-plan.md`
@@ -23,9 +25,13 @@ The active product sequence is:
 
 1. restore correctness and trustworthy gates;
 2. define binary identity, build provenance, and address semantics;
-3. deliver a safe function-only `GoREveal -> idacli -> IDA` preview/apply slice;
-4. deepen Go-specific entity, string, runtime type, method, and interface truth;
-5. strengthen build lineage, protected-binary workflow, and release evidence.
+3. qualify standalone performance, including a measured SIMD decision, and
+   ship the contract-complete `RT1-R1` standalone release;
+4. deliver a safe headless `GoREveal -> idacli -> IDA` database bootstrap;
+5. add a thin interactive IDA plugin over the same frozen contracts;
+6. deepen Go-specific entity, string, runtime type, method, and interface truth;
+7. strengthen build lineage, protected-binary workflow, and broader release
+   evidence.
 
 The project will not execute the July `A-E` proposal literally. That proposal
 is retained as field-research input.
@@ -90,6 +96,11 @@ The user-facing objective is therefore:
 Host-tool observations may return to GoREveal only as identity-bound external
 evidence. They do not overwrite GoREveal raw recovery. Plugins consume exports
 and apply reviewed actions; they do not become a second Go recovery engine.
+
+The next release is standalone-first. No IDA, Ghidra, `idacli`, IDAPython,
+idalib, or plugin dependency may be required to recover, inspect, store,
+compare, verify, or export canonical GoREveal truth. Optional integrations
+begin only after the `RT1-R1` standalone release gate closes.
 
 ## Delivery Methodology
 
@@ -255,9 +266,10 @@ consumer compatibility. The rollout requires:
 - consumer negotiation or an explicit unsupported-contract error;
 - a documented removal policy before v1 can be retired.
 
-### Safe workspace mutation
+### Safe workspace mutation and bootstrap
 
-The first IDA apply slice is function-only and conservative:
+The first IDA integration is an external headless database bootstrap, followed
+by a thin interactive plugin. Both are function-only and conservative:
 
 - default operation is read-only preview;
 - wrong identity or unmappable address is rejected;
@@ -268,6 +280,12 @@ The first IDA apply slice is function-only and conservative:
 - `del_func` and automatic boundary replacement are forbidden;
 - apply uses an isolated IDB copy/checkpoint;
 - applying the same reviewed plan twice is a no-op.
+
+The default bootstrap mode is `selective`: it imports a bounded requested set
+and schedules only bounded IDA analysis. The opt-in `preseed` mode imports all
+exact, mappable function boundaries and safe names without enabling global
+autoanalysis. IDA still owns file loading, segment creation, database format,
+analysis queues, and database saving; GoREveal does not write `.i64` files.
 
 Strings and types remain separate later gates.
 
@@ -301,17 +319,22 @@ stored as external evidence bound to binary and provider identity.
 
 ## RT1 Execution Train
 
-### Horizon A: committed correctness and integration path
+### Horizon A: committed standalone release and integration path
 
 - `RT1-S0`: truth restoration;
 - `RT1-S1`: reproducible evidence baseline;
 - `RT1-S2A`: identity, build provenance, location contract, and real PIE evidence;
 - `RT1-S2B`: measured v2 envelope, verifier, and consumer publication;
-- `RT1-S3`: safe Go-to-IDA function preview/apply MVP.
+- `RT1-S2C`: standalone performance and SIMD qualification plus release closure;
+- `RT1-R1`: contract-complete standalone release milestone;
+- `RT1-S3A`: safe headless Go-to-IDA database bootstrap;
+- `RT1-S3B`: thin interactive IDA plugin over the S3A contracts.
 
 `RT1-S2A` and `RT1-S2B` are separate ten-working-day timeboxes with an
-explicit review boundary. S2B cannot start until S2A closes; S3 cannot start
-until both close. They are not one nominal sprint with a mid-sprint checkpoint.
+explicit review boundary. S2B cannot start until S2A closes. S2C cannot start
+until S2B closes. IDA work cannot start until S2C and the R1 release gate close.
+S3B cannot start until the headless S3A contracts and large-binary experiment
+close. These are not one nominal sprint with internal checkpoints.
 
 ### Horizon B: conditional Go semantic depth
 
@@ -324,7 +347,7 @@ until both close. They are not one nominal sprint with a mid-sprint checkpoint.
 
 - `RT1-S8`: build lineage and semantic diff;
 - `RT1-S9`: protected and garbled anchor workflow;
-- `RT1-S10`: release baseline.
+- `RT1-S10`: expanded supported-matrix and public-release baseline.
 
 Detailed outcomes, tasks, dependencies, and gates live in the RT1 program plan.
 Only Horizon A receives immediate file-level implementation plans.
@@ -337,14 +360,17 @@ Only Horizon A receives immediate file-level implementation plans.
 | `RT1-S1` | pinned-container `lint`, `test`, differential, plugin, snapshot, script-lint, fuzz-smoke, and benchmark-smoke commands exit `0`; fuzz and benchmark discovery each find at least one real target; rich and stripped ELF canonical snapshots exist; the forced IDA Golang-plugin experiment records binary/tool identities, commands, and raw results |
 | `RT1-S2A` | binary/build identity and dependency/build-setting output match known-source manifests; ELF, PIE ELF, PE, and Mach-O location tuples round-trip exactly; wrong base and unmappable locations reject; pre-RT1 v1 bytes remain unchanged |
 | `RT1-S2B` | wrong binary, changed envelope byte, wrong image base, missing/changed bundle component, and unmappable address fixtures reject in every case; v1 consumers remain green; the selected v2 envelope passes ELF, PIE ELF, PE, and Mach-O fixtures plus the pre-registered large-artifact RSS/time gate |
-| `RT1-S3` | all identity-mismatch cases are rejected; unsafe mutations and automatic boundary replacements remain `0`; second apply performs `0` mutations; fixture action classification is exact; real-binary before/after results are recorded, and rollout beyond the experiment requires at least one predeclared target to improve from missing/conflicting to usable without regressing any previously usable target |
+| `RT1-S2C` | every standalone release obligation links to passing evidence; CPU capability reporting is deterministic; each measured hotspot has a scalar baseline and a recorded keep/reject SIMD decision; any shipped optimized path passes equivalence, dispatch, representative-hardware, and end-to-end gates; release artifacts, SBOM, matrix, limitations, and workflows are reproducible |
+| `RT1-R1` | the contract-complete standalone artifact is actually published with checksums, SBOM, supported matrix, compatibility evidence, and limitations; no claimed standalone capability requires an RE-tool integration; any unresolved legal/compliance gate leaves R1 open and blocks IDA implementation |
+| `RT1-S3A` | `selective` never schedules global analysis and is at least `4x` faster than conventional full analysis to the first usable registered large-binary target; all identity-mismatch cases reject; unsafe mutations and automatic boundary replacements remain `0`; second apply performs `0` mutations; `preseed` has an evidence-backed promote-or-experimental decision |
+| `RT1-S3B` | plugin and headless action classifications are identical; the plugin contains no recovery or address-mapping implementation; incremental selective import and coverage reporting work on a real IDB; every mutation remains identity-bound, previewed, approved, and idempotent |
 | `RT1-S4` | known-source entity decomposition is exact for the supported fixture matrix; auto-labelled function-role/prologue claims meet at least `99%` precision, with unsupported cases left `unknown`; full source identity does not collapse distinct paths to one key |
 | `RT1-S5` | exact raw address/length matches the fixture manifest for every exported string extent; zero zero-length, overflow, unmapped, or cross-segment actions enter preview; refined values cannot change the raw extent; string-to-function-to-caller queries reproduce the fixed host-observation fixture |
 | `RT1-S6` | selected metadata candidates match fixture ground truth on the declared supported matrix; negative/malformed fixtures produce zero false selected candidates and zero panics; runtime type address/name/kind/size matches the fixture manifest exactly |
 | `RT1-S7` | field offsets and method/interface edges match manifests exactly on at least two supported Go versions including one stripped fixture; otherwise the sprint takes the documented `reduce` exit and publishes only type identity and proven relations; type apply remains preview-only |
 | `RT1-S8` | auto-accept precision is `100%` on known-source neighboring and unrelated negative build pairs; collision-derived false accepts are `0`; output is deterministic; lower-confidence or host-fingerprint-only matches remain review candidates |
 | `RT1-S9` | Definition of Ready fixes the anchor set and false-positive budget before implementation; default minimum is twenty independently verified anchors across a neighboring clean/protected build pair with zero false accepted anchors; otherwise publish the negative result and freeze the lane |
-| `RT1-S10` | every supported-target and release claim links to an evidence record; compatibility fixtures pass; release images and SBOM are pinned; small/medium p95 runtime and RSS do not regress more than `20%` from the S1 baseline unless the release record documents and accepts the tradeoff; the large-binary envelope is recorded |
+| `RT1-S10` | every widened supported-target and public-release claim links to an evidence record; compatibility fixtures pass; release images and SBOM are pinned; small/medium p95 runtime and RSS do not regress more than `20%` from the R1 baseline unless the release record documents and accepts the tradeoff; the large-binary envelope is recorded |
 
 Coverage below a precision gate is not repaired by guessing. It remains an
 explicit unknown-rate metric.
@@ -354,12 +380,12 @@ explicit unknown-rate metric.
 | Previous lane or item | RT1 disposition |
 | --- | --- |
 | Sprint 12 bounded runtime checkpoint | preserve as evidence baseline; no blind extension; next semantic promotion occurs in `RT1-S6` |
-| Sprint 13 workstation handoff contract | preserve landed handoff surfaces; close historical sprint; function-only provider/consumer binding continues in `RT1-S3` |
+| Sprint 13 workstation handoff contract | preserve landed handoff surfaces; close historical sprint; headless provider/consumer binding continues in `RT1-S3A`, followed by the thin plugin in `RT1-S3B` |
 | Sprint 14 review workflow actionability | preserve and keep frozen; reuse review/next projections in `RT1-S8` rather than adding queue fields in Horizon A |
 | Sprint 15 source-evidence confidence | preserve and keep frozen; stable full-path entity identity and source semantics continue in `RT1-S4` |
 | Sprint 16 protected commercial workflow | migrate the evidence-first garble/protected hypothesis to `RT1-S9`; no protected delivery starts in Horizon A |
 | Previous Sprint 17-18 server/control-plane themes | defer outside RT1 Horizon A/B; not active |
-| Previous Sprint 19 release readiness | migrate to `RT1-S10` after local correctness and semantic gates |
+| Previous Sprint 19 release readiness | split the next contract-complete standalone release into `RT1-S2C`/`RT1-R1`; retain broader matrix and public-release expansion in `RT1-S10` |
 | Previous Sprint 20 comparison automation | evidence maintenance remains continuous; build-family product work migrates to `RT1-S8` |
 | Previous Sprint 21 build correlation | migrate to `RT1-S8` |
 | Previous Sprint 22 metadata knowledge network | defer until after `RT1-S10` |
@@ -447,8 +473,9 @@ Do not start during Horizon A:
 After this design is accepted and the plans are reviewed, authority is:
 
 1. `AGENTS.md` for non-negotiable operational and architecture invariants;
-2. this design for RT1 product and contract decisions;
-3. the RT1 program plan for sprint ordering and gates;
+2. this design plus the standalone-release/IDA-bootstrap refinement for RT1
+   product and contract decisions;
+3. the RT1 program plan for sprint ordering and gates after it is rewritten;
 4. the active Horizon implementation plan for exact tasks and commands;
 5. sprint closure/evidence records for measured outcomes;
 6. historical and research-input plans for context only.
@@ -463,7 +490,10 @@ receive explicit status/pointer banners instead of silent rewrites.
 - `RT1-S2B`: single JSON v2 versus manifest plus streaming records, decided by
   the large-artifact memory/size benchmark;
 - `RT1-S2A`: exact supported Go build ID sources per format;
-- `RT1-S3`: measurable delta after forced IDA Golang-plugin baseline;
+- `RT1-S2C`: which, if any, measured kernel earns an optimized implementation
+  and whether experimental `simd/archsimd` remains benchmark-only;
+- `RT1-S3A`: measurable delta for `selective` and `preseed` after the forced
+  IDA Golang-plugin and conventional full-analysis baselines;
 - `RT1-S6`: smallest supported runtime type version matrix;
 - `RT1-S9`: whether external provider orchestration is sufficient for garbled
   strings and function anchors.

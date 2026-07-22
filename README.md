@@ -15,9 +15,11 @@
 GoREveal is a clean-room reverse-engineering platform for Go binaries.
 
 It is being built as:
-- a local autonomous tool for analyst workstations
+- a standalone local tool whose recovery, inspection, storage, diff, and export
+  contracts do not depend on an RE suite
 - a future server platform for multi-tenant artifact analysis, trust-aware recovery, and report delivery
-- a Go-native recovery and transfer layer that plugs into `IDA`, `Ghidra`, and later `JEB` and `Binary Ninja`
+- a Go-native recovery and transfer layer with optional `IDA`, `Ghidra`, and
+  later `JEB` and `Binary Ninja` integrations
 
 ## Quick Start
 
@@ -77,6 +79,7 @@ Core planning and architecture live under [docs/](docs/).
 | Area | Entry Point |
 |---|---|
 | Active product design | [docs/superpowers/specs/2026-07-22-goreveal-rt1-product-design.md](docs/superpowers/specs/2026-07-22-goreveal-rt1-product-design.md) |
+| Standalone release, SIMD, and IDA bootstrap refinement | [docs/superpowers/specs/2026-07-22-goreveal-standalone-release-ida-bootstrap-design.md](docs/superpowers/specs/2026-07-22-goreveal-standalone-release-ida-bootstrap-design.md) |
 | Active Horizon A execution plan | [docs/superpowers/plans/2026-07-22-goreveal-rt1-horizon-a.md](docs/superpowers/plans/2026-07-22-goreveal-rt1-horizon-a.md) |
 | Platform contract | [docs/architecture/2026-03-19-goreveal-platform-contract.md](docs/architecture/2026-03-19-goreveal-platform-contract.md) |
 | Go 1.26 practices | [docs/architecture/2026-03-19-goreveal-go126-best-practices.md](docs/architecture/2026-03-19-goreveal-go126-best-practices.md) |
@@ -148,8 +151,11 @@ Core planning and architecture live under [docs/](docs/).
 | `RT1-S1` | Follows S0: make every verification gate real and reproducible, pin tools, and record the forced IDA baseline. |
 | `RT1-S2A` | Planned first timebox: exact binary/build identity, format-neutral locations, real PIE evidence, and unchanged v1 bytes. |
 | `RT1-S2B` | Blocked on S2A: measure and publish the selected v2 envelope, verifier, and consumers. |
-| `RT1-S3` | Promotion-gated: function-only GoREveal-to-idacli preview/apply after the S2B fixture is frozen and a separate idacli plan is approved. |
-| Execution plan | [RT1 Horizon A implementation plan](docs/superpowers/plans/2026-07-22-goreveal-rt1-horizon-a.md) contains file-level TDD tasks for S0-S2B and the S3 promotion gate. |
+| `RT1-S2C` | Written-spec gate: qualify standalone performance and SIMD support, then close reproducible release evidence. |
+| `RT1-R1` | Required milestone: ship the contract-complete standalone release before any IDA implementation starts. |
+| `RT1-S3A` | After R1: headless IDA database bootstrap with `selective` default and opt-in `preseed`. |
+| `RT1-S3B` | After S3A: thin interactive plugin over the same frozen verifier, preview, action, and coverage contracts. |
+| Execution plan | [RT1 Horizon A implementation plan](docs/superpowers/plans/2026-07-22-goreveal-rt1-horizon-a.md) contains file-level TDD tasks through S2B. Its old S3 tasks are suspended; S2C/R1/S3A/S3B require a replacement plan after written-spec approval. |
 | Historical plans | Earlier numbered and post-IDA sprint documents remain evidence and decision history; they are not the active execution queue. |
 
 ## Verification

@@ -15,6 +15,7 @@ Primary priority order:
 
 Read these before major work:
 - `docs/superpowers/specs/2026-07-22-goreveal-rt1-product-design.md`
+- `docs/superpowers/specs/2026-07-22-goreveal-standalone-release-ida-bootstrap-design.md`
 - `docs/superpowers/plans/2026-07-22-goreveal-rt1-horizon-a.md`
 - `docs/architecture/2026-03-19-goreveal-platform-contract.md`
 - `docs/architecture/2026-03-19-goreveal-go126-best-practices.md`
@@ -49,6 +50,10 @@ These rules are non-negotiable:
 - provenance and confidence must remain first-class result fields
 - SIMD is an optimization layer, not a correctness layer
 - plugins consume exports; they do not implement recovery logic
+- the next contract-complete standalone release must close before headless IDA
+  bootstrap or interactive plugin implementation begins
+- GoREveal does not write native IDA databases; optional IDA consumers use the
+  installed IDA engine, identity-verified exports, and bounded analysis
 
 ## Planning and Delivery Rules
 
