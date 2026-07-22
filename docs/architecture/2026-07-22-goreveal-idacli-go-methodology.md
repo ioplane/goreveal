@@ -41,7 +41,7 @@ map and must not override RT1 promotion gates.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│  PHASE 1: GOREVEAL (Go-native, pclntab ground truth)               │
+│  PHASE 1: GOREVEAL (Go-native, pclntab-derived provider evidence)  │
 │                                                                     │
 │  goreveal analyze <binary>                                         │
 │    ├── core/pclntab → candidate function entries/ends/names         │
@@ -239,7 +239,7 @@ This enables version comparison (18.7.2 vs 18.10.0) without IDA.
 
 | Approach | Pros | Cons | Verdict |
 |---|---|---|---|
-| **goreveal + idacli** (proposed) | Go-native, pclntab truth, integrates with existing tools | Requires new idacli task | ✅ Recommended |
+| **goreveal + idacli** (proposed) | Go-native, pclntab-derived evidence, integrates with existing tools | Requires new idacli task | ✅ Recommended |
 | IDA Go plugin (golang.so) | Built into IDA | Incomplete, may not load in batch mode | Insufficient |
 | AlphaGolang plugin | Better Go support | Third-party, may not work in batch | Supplementary |
 | Ghidra + Go plugin | Free, good Go support | Not Hex-Rays, different workflow | Alternative |
