@@ -1,0 +1,296 @@
+{
+  "contract": "goreveal.export.ida/v1",
+  "input": {
+    "path": "/tmp/rich-sample.bin",
+    "size": 8192,
+    "format": "elf"
+  },
+  "build_info": {
+    "go_version": "go1.26.1",
+    "path": "example.com/rich",
+    "provenance": {
+      "source": "core.buildinfo",
+      "confidence": "high"
+    }
+  },
+  "runtime": {
+    "trust_summary": "symbol_backed",
+    "elf_pclntab_header_magic": "0xfffffff1",
+    "elf_pclntab_header_magic_kind": "go1.20",
+    "elf_pclntab_header_quantum": 1,
+    "elf_pclntab_header_pointer_size": 8,
+    "elf_pclntab_function_count_hint": 21,
+    "elf_pclntab_file_count_hint": 3,
+    "elf_pclntab_funcnametab_offset_hint": 64,
+    "elf_pclntab_cu_offset_hint": 128,
+    "elf_pclntab_filetab_offset_hint": 192,
+    "elf_pclntab_pctab_offset_hint": 256,
+    "elf_pclntab_functab_offset_hint": 320,
+    "elf_functab_first_pc_offset_hint": 16,
+    "elf_functab_last_pc_offset_hint": 4096,
+    "elf_functab_pc_offsets_monotonic": true,
+    "elf_text_section_addr": 4198400,
+    "elf_text_section_end_inclusive": 4206591,
+    "elf_functab_first_pc_addr_hint": 4198416,
+    "elf_functab_last_pc_addr_hint": 4202496,
+    "elf_functab_pc_addr_hints_within_text": true,
+    "elf_functab_pc_addr_sample": [
+      4198416,
+      4198656
+    ],
+    "elf_functab_pc_addr_sample_all_within_text": true,
+    "elf_function_foothold": "address_only",
+    "elf_function_foothold_count_hint": 21,
+    "elf_function_foothold_text_source": "moduledata_text",
+    "elf_function_foothold_start_addr": 4198400,
+    "elf_function_foothold_end_addr": 4206592,
+    "elf_function_recovery_blocker": "fixture_only",
+    "pe_text_section_addr": 5368713216,
+    "pe_text_section_size": 4096,
+    "pe_rdata_section_addr": 5368721408,
+    "pe_rdata_section_size": 2048,
+    "pe_pclntab_magic_section": ".rdata",
+    "pe_pclntab_magic_addr": 5368721472,
+    "pe_pclntab_magic_count": 2,
+    "pe_pclntab_header_section": ".rdata",
+    "pe_pclntab_header_addr": 5368721472,
+    "pe_pclntab_header_magic": "0xfffffff1",
+    "pe_pclntab_header_quantum": 1,
+    "pe_pclntab_header_pointer_size": 8,
+    "firstmoduledata_addr": 5177344,
+    "firstmoduledata_from_go_module_fallback": true,
+    "gopclntab_addr": 4849664,
+    "gopclntab_size": 16384,
+    "typelink_addr": 4980736,
+    "typelink_size": 128,
+    "typelink_count": 32,
+    "itablink_addr": 4984832,
+    "itablink_size": 64,
+    "itablink_count": 8,
+    "typelink_sample": [
+      -16,
+      32
+    ],
+    "typelink_resolved_base_addr": 4915200,
+    "typelink_resolved_sample": [
+      4915184,
+      4915232
+    ],
+    "typelink_resolved_within_rodata_count": 2,
+    "typelink_all_resolved_within_rodata": true,
+    "typelink_min_offset": -16,
+    "typelink_max_offset": 32,
+    "typelink_negative_count": 1,
+    "typelink_non_negative_count": 1,
+    "go_module_addr": 5111808,
+    "go_module_size": 4096,
+    "firstmoduledata_in_go_module": true,
+    "firstmoduledata_go_module_offset": 128,
+    "go_module_word_size": 8,
+    "go_module_word_sample": [
+      1,
+      2,
+      3
+    ],
+    "moduledata_pcheader_addr": 4849664,
+    "moduledata_pcheader_matches_gopclntab": true,
+    "moduledata_funcnametab_slice_word_index": 1,
+    "moduledata_funcnametab_addr": 4849920,
+    "moduledata_funcnametab_len": 100,
+    "moduledata_funcnametab_cap": 120,
+    "moduledata_funcnametab_within_gopclntab": true,
+    "moduledata_cutab_slice_word_index": 4,
+    "moduledata_cutab_addr": 4850176,
+    "moduledata_cutab_len": 200,
+    "moduledata_cutab_cap": 220,
+    "moduledata_cutab_within_gopclntab": true,
+    "moduledata_filetab_slice_word_index": 7,
+    "moduledata_filetab_addr": 4850432,
+    "moduledata_filetab_len": 300,
+    "moduledata_filetab_cap": 320,
+    "moduledata_filetab_within_gopclntab": true,
+    "moduledata_pctab_slice_word_index": 10,
+    "moduledata_pctab_addr": 4850688,
+    "moduledata_pctab_len": 400,
+    "moduledata_pctab_cap": 420,
+    "moduledata_pctab_within_gopclntab": true,
+    "moduledata_pclntable_slice_word_index": 13,
+    "moduledata_pclntable_addr": 4850944,
+    "moduledata_pclntable_len": 500,
+    "moduledata_pclntable_cap": 520,
+    "moduledata_pclntable_within_gopclntab": true,
+    "moduledata_typelink_slice_word_index": 16,
+    "moduledata_typelink_len": 32,
+    "moduledata_typelink_cap": 32,
+    "moduledata_itablink_slice_word_index": 19,
+    "moduledata_itablink_len": 8,
+    "moduledata_itablink_cap": 8,
+    "moduledata_memory_ranges_word_index": 22,
+    "moduledata_noptrdata_addr": 4988928,
+    "moduledata_noptrdata_end": 4989184,
+    "moduledata_data_addr": 4993024,
+    "moduledata_data_end": 4993280,
+    "moduledata_bss_addr": 4997120,
+    "moduledata_bss_end": 4997376,
+    "moduledata_noptrbss_addr": 5001216,
+    "moduledata_noptrbss_end": 5001472,
+    "moduledata_rodata_word_index": 30,
+    "moduledata_rodata_addr": 4915200,
+    "moduledata_rodata_end": 4980736,
+    "moduledata_text_word_index": 32,
+    "moduledata_text_addr": 4198400,
+    "moduledata_text_end_inclusive": 4206591,
+    "moduledata_types_range_word_index": 34,
+    "moduledata_types_addr": 4919296,
+    "moduledata_etypes_addr": 4923392,
+    "typelink_resolved_within_types_count": 2,
+    "typelink_all_resolved_within_types": true,
+    "provenance": {
+      "source": "core.runtime.fixture",
+      "confidence": "medium"
+    }
+  },
+  "peeling": {
+    "functions": [
+      {
+        "name": "main.main",
+        "package": "main",
+        "import_path": "example.com/rich",
+        "source_file": "cmd/rich/main.go",
+        "source_line": 42,
+        "entry": 4198400,
+        "end": 4198656,
+        "module_local": true,
+        "classification": "user",
+        "classification_evidence": "module_local"
+      }
+    ],
+    "packages": [
+      {
+        "name": "main",
+        "import_path": "example.com/rich",
+        "module_local": true,
+        "function_count": 5,
+        "user_function_count": 1,
+        "stdlib_function_count": 1,
+        "runtime_function_count": 1,
+        "third_party_function_count": 2,
+        "primary_classification": "user"
+      }
+    ],
+    "provenance": {
+      "source": "engine.peeling",
+      "confidence": "medium"
+    }
+  },
+  "functions": [
+    {
+      "name": "main.main",
+      "refined_name": "main.refinedMain",
+      "package": "main",
+      "import_path": "example.com/rich",
+      "source_file": "cmd/rich/main.go",
+      "source_line": 42,
+      "autogenerated": true,
+      "entry": 4198400,
+      "end": 4198656,
+      "module_local": true,
+      "provenance": {
+        "source": "core.pclntab",
+        "confidence": "high"
+      }
+    }
+  ],
+  "packages": [
+    {
+      "name": "main",
+      "import_path": "example.com/rich",
+      "source_file_count": 1,
+      "function_count": 1,
+      "has_source_evidence": true,
+      "source_evidence_kind": "dwarf_paths",
+      "module_local": true,
+      "provenance": {
+        "source": "core.packages",
+        "confidence": "high"
+      }
+    }
+  ],
+  "types": [
+    {
+      "name": "main.record",
+      "refined_name": "main.RefinedRecord",
+      "package": "main",
+      "import_path": "example.com/rich",
+      "kind": "struct",
+      "source_file_count": 1,
+      "module_local": true,
+      "user_meaningful": true,
+      "provenance": {
+        "source": "core.types",
+        "confidence": "medium"
+      }
+    }
+  ],
+  "strings": [
+    {
+      "value": "hello, wire",
+      "refined_value": "decoded wire",
+      "region": ".rodata",
+      "address": 4915456,
+      "offset": 256,
+      "provenance": {
+        "source": "core.strings",
+        "confidence": "medium"
+      }
+    }
+  ],
+  "source_tree": {
+    "root": "example.com/rich",
+    "source_evidence_kind": "dwarf_paths",
+    "source_evidence_summary": {
+      "tree_kind": "dwarf_paths",
+      "dwarf_path_package_count": 1,
+      "dwarf_path_file_count": 1,
+      "line_table_package_count": 2,
+      "line_table_file_count": 3,
+      "package_fallback_package_count": 4,
+      "package_fallback_file_count": 5,
+      "mixed_package_evidence_kinds": true
+    },
+    "pathless_file_evidence": true,
+    "files": [
+      "cmd/rich/main.go"
+    ],
+    "packages": [
+      {
+        "name": "main",
+        "import_path": "example.com/rich",
+        "function_count": 1,
+        "has_file_evidence": true,
+        "source_evidence_kind": "dwarf_paths",
+        "files": [
+          "cmd/rich/main.go"
+        ]
+      }
+    ],
+    "external_packages": [
+      {
+        "name": "fmt",
+        "import_path": "fmt",
+        "function_count": 2,
+        "has_file_evidence": true,
+        "source_evidence_kind": "line_table_files",
+        "files": [
+          "src/fmt/print.go"
+        ]
+      }
+    ]
+  },
+  "refined": {
+    "passes": [
+      "names",
+      "strings"
+    ]
+  }
+}

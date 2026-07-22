@@ -1,6 +1,82 @@
 package schema
 
-import "testing"
+import (
+	"reflect"
+	"testing"
+)
+
+func TestV1WireTypesDoNotEmbedCanonicalContracts(t *testing.T) {
+	t.Parallel()
+
+	forbidden := map[reflect.Type]struct{}{
+		reflect.TypeFor[Analysis]():              {},
+		reflect.TypeFor[Input]():                 {},
+		reflect.TypeFor[BuildInfo]():             {},
+		reflect.TypeFor[RuntimeMetadata]():       {},
+		reflect.TypeFor[PeelingAnalysis]():       {},
+		reflect.TypeFor[PeelingFunction]():       {},
+		reflect.TypeFor[PeelingPackage]():        {},
+		reflect.TypeFor[Package]():               {},
+		reflect.TypeFor[SourceTree]():            {},
+		reflect.TypeFor[SourcePackage]():         {},
+		reflect.TypeFor[SourceEvidenceSummary](): {},
+		reflect.TypeFor[Function]():              {},
+		reflect.TypeFor[Type]():                  {},
+		reflect.TypeFor[StringCandidate]():       {},
+		reflect.TypeFor[StringRegion]():          {},
+		reflect.TypeFor[Provenance]():            {},
+		reflect.TypeFor[RefinedAnalysis]():       {},
+		reflect.TypeFor[RefinedFunction]():       {},
+		reflect.TypeFor[RefinedPackage]():        {},
+		reflect.TypeFor[RefinedType]():           {},
+		reflect.TypeFor[RefinedString]():         {},
+		reflect.TypeFor[IDAFunction]():           {},
+		reflect.TypeFor[IDAType]():               {},
+		reflect.TypeFor[IDAString]():             {},
+		reflect.TypeFor[GhidraProgram]():         {},
+		reflect.TypeFor[GhidraSymbol]():          {},
+		reflect.TypeFor[GhidraType]():            {},
+		reflect.TypeFor[GhidraString]():          {},
+		reflect.TypeFor[RefinedSummary]():        {},
+	}
+
+	for name, root := range map[string]reflect.Type{
+		"IDA":    reflect.TypeFor[idaExportV1Wire](),
+		"Ghidra": reflect.TypeFor[ghidraExportV1Wire](),
+	} {
+		assertV1WireTypeIsolated(t, name, root, forbidden)
+	}
+}
+
+func assertV1WireTypeIsolated(t *testing.T, name string, root reflect.Type, forbidden map[reflect.Type]struct{}) {
+	t.Helper()
+
+	seen := make(map[reflect.Type]struct{})
+	var visit func(reflect.Type)
+	visit = func(current reflect.Type) {
+		if _, found := forbidden[current]; found {
+			t.Errorf("%s v1 wire recursively embeds mutable schema type %s", name, current)
+			return
+		}
+		if _, found := seen[current]; found {
+			return
+		}
+		seen[current] = struct{}{}
+		switch current.Kind() {
+		case reflect.Pointer, reflect.Slice, reflect.Array:
+			visit(current.Elem())
+		case reflect.Map:
+			visit(current.Key())
+			visit(current.Elem())
+		case reflect.Struct:
+			for fieldIndex := range current.NumField() {
+				visit(current.Field(fieldIndex).Type)
+			}
+		}
+	}
+
+	visit(root)
+}
 
 func TestNewIDAExport(t *testing.T) {
 	t.Parallel()

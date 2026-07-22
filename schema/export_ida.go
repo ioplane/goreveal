@@ -1,5 +1,7 @@
 package schema
 
+import "encoding/json"
+
 const IDAExportContractV1 = "goreveal.export.ida/v1"
 
 // IDAExport is the stable v1 payload for thin IDA-side consumers.
@@ -58,6 +60,12 @@ type IDAString struct {
 // RefinedSummary keeps the lightweight refined layer visible to export consumers.
 type RefinedSummary struct {
 	Passes []string `json:"passes,omitempty"`
+}
+
+// MarshalJSON freezes IDAExport to the v1 wire graph instead of serializing
+// mutable canonical schema structs directly.
+func (export IDAExport) MarshalJSON() ([]byte, error) {
+	return json.Marshal(newIDAExportV1Wire(export))
 }
 
 // NewIDAExport maps canonical analysis into the stable IDA-oriented payload.
