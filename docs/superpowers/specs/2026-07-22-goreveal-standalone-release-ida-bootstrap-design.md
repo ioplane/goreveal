@@ -250,9 +250,15 @@ facts, schedule only bounded analysis, and save the resulting database.
 This avoids most full autoanalysis; it does not avoid IDA's initial file loader
 or database creation. Documentation and benchmarks must use that exact claim.
 
-The first-time workflow belongs in a headless `idacli`/idalib/IDAPython
-consumer because an ordinary interactive plugin runs only after IDA has
+The first-time workflow belongs in the existing native C++ IDACli/IDA SDK
+consumer, invoked through the installed headless IDA executable. An ordinary
+interactive UI opens too late to be the primary bootstrap path because IDA has
 already opened a database and may already have started global analysis.
+
+`idaclictl` may orchestrate process launch, artifacts, and exit status, but it
+has no IDA SDK and cannot create or save the database by itself. The S3A
+implementation must not introduce IDAPython. idalib remains a separately gated
+future runtime alternative, not the default bootstrap architecture.
 
 ### Shared bootstrap flow
 
@@ -260,8 +266,9 @@ Both modes use the same ordered flow:
 
 1. consume a frozen GoREveal v2 artifact and hash its exact bytes;
 2. verify the input binary digest, size, format, architecture, and build identity;
-3. open the input through the installed IDA loader with automatic analysis
-   disabled;
+3. launch the installed headless IDA executable with global automatic analysis
+   disabled, load the native IDACli task, and let IDA's loader create the
+   initial segments and database state;
 4. read IDA's loaded segments and image base, then validate every location
    mapping before creating an action;
 5. generate a deterministic preview containing the provider digest, IDA/input
@@ -371,11 +378,12 @@ mutations. `preseed` is promoted from experimental only if it provides a
 measured operator benefit without weakening the same safety gates. Raw function
 count is not a success metric.
 
-## Thin Interactive IDA Plugin
+## Thin Interactive IDA Integration
 
-The plugin follows headless bootstrap and uses the same provider verifier,
-preview contract, action classifier, and coverage manifest. Its responsibilities
-are limited to:
+The interactive surface follows headless bootstrap and, by default, extends the
+existing native IDACli plugin rather than creating another recovery plugin. It
+uses the same provider verifier, preview contract, action classifier, and
+coverage manifest. Its responsibilities are limited to:
 
 - display identity and coverage status;
 - request or preview an incremental selective import;
@@ -498,6 +506,12 @@ External API and toolchain facts were checked against official documentation on
 - [IDAPython loader/database API](https://python.docs.hex-rays.com/ida_loader/index.html)
 - [idalib documentation](https://docs.hex-rays.com/user-guide/idalib)
 
+The IDA Domain, IDAPython, and idalib references validate loader,
+autoanalysis, bounded-analysis, and save-lifecycle capabilities across official
+IDA automation surfaces. They are not an implementation choice: the approved
+S3A path follows the current native C++ IDACli/IDA SDK architecture and does
+not add IDAPython.
+
 Repository evidence and governing documents:
 
 - `AGENTS.md`
@@ -506,3 +520,4 @@ Repository evidence and governing documents:
 - `docs/superpowers/plans/2026-07-22-goreveal-rt1-horizon-a.md`
 - `docs/plans/2026-07-22-goreveal-proposal-post-ida-experience.md`
 - `docs/tmp/draft/simd-optimization.md`
+- `ioplane/idacli:docs/planning/2026-07-22-go-function-recovery-task.md`

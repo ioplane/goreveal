@@ -286,6 +286,9 @@ and schedules only bounded IDA analysis. The opt-in `preseed` mode imports all
 exact, mappable function boundaries and safe names without enabling global
 autoanalysis. IDA still owns file loading, segment creation, database format,
 analysis queues, and database saving; GoREveal does not write `.i64` files.
+The first bootstrap implementation follows the existing native C++ IDACli/IDA
+SDK boundary; `idaclictl` may orchestrate it, while IDAPython and a new recovery
+plugin are out of scope.
 
 Strings and types remain separate later gates.
 
