@@ -14,11 +14,18 @@ import (
 	"github.com/dantte-lp/goreveal/deobfuscation"
 	"github.com/dantte-lp/goreveal/deobfuscation/garble"
 	"github.com/dantte-lp/goreveal/deobfuscation/refine"
+	"github.com/dantte-lp/goreveal/engine/peeling"
 	"github.com/dantte-lp/goreveal/engine/projection"
 	"github.com/dantte-lp/goreveal/schema"
 )
 
 const stageFailureCode = "stage_failed"
+
+const (
+	stageCodePackagesNotFound      = "packages_not_found"
+	stageCodePeelingUnavailable    = "peeling_unavailable"
+	stageCodeRefinementUnavailable = "refinement_unavailable"
+)
 
 type stageOps struct {
 	buildInfo  func(string) (schema.BuildInfo, error)
@@ -27,6 +34,7 @@ type stageOps struct {
 	types      func(string) ([]schema.Type, error)
 	strings    func(string) (recoverystrings.Result, error)
 	sourceTree func(string, schema.Analysis) (schema.SourceTree, error)
+	peeling    func(schema.Analysis) *schema.PeelingAnalysis
 	refine     func(context.Context, schema.Analysis) (schema.RefinedAnalysis, error)
 }
 
@@ -38,6 +46,7 @@ func productionStageOps() stageOps {
 		types:      types.Recover,
 		strings:    recoverystrings.Recover,
 		sourceTree: recoverSourceTree,
+		peeling:    peeling.Build,
 		refine: func(ctx context.Context, analysis schema.Analysis) (schema.RefinedAnalysis, error) {
 			return deobfuscation.NewPipeline(refine.Pass{}, garble.Pass{}).Run(ctx, analysis)
 		},
@@ -52,6 +61,7 @@ func executeStage[T any](
 	analysis *schema.Analysis,
 	stage schema.AnalysisStage,
 	op func() (T, error),
+	validate func(T) (code, message string),
 ) (T, bool) {
 	value, err := op()
 	if err != nil {
@@ -59,12 +69,75 @@ func executeStage[T any](
 		var zero T
 		return zero, false
 	}
+	if code, message := validate(value); code != "" {
+		analysis.Diagnostics = append(analysis.Diagnostics, schema.StageDiagnostic{
+			Stage:   stage,
+			Status:  schema.StageStatusUnavailable,
+			Code:    code,
+			Message: message,
+		})
+		return value, false
+	}
 
 	analysis.Diagnostics = append(analysis.Diagnostics, schema.StageDiagnostic{
 		Stage:  stage,
 		Status: schema.StageStatusAvailable,
 	})
 	return value, true
+}
+
+func buildInfoEvidence(info schema.BuildInfo) (string, string) {
+	if info.GoVersion != "" || info.Path != "" {
+		return "", ""
+	}
+	return string(recoveryerr.CodeBuildInfoNotFound), "Go build info evidence is absent"
+}
+
+func runtimeEvidence(metadata schema.RuntimeMetadata) (string, string) {
+	if metadata.TrustSummary != "" && metadata.TrustSummary != schema.RuntimeTrustSummaryAbsent {
+		return "", ""
+	}
+	return string(recoveryerr.CodeRuntimeMetadataNotFound), "runtime metadata evidence is absent"
+}
+
+func functionEvidence(recovered []schema.Function) (string, string) {
+	if len(recovered) != 0 {
+		return "", ""
+	}
+	return string(recoveryerr.CodePclntabNotFound), "function evidence is absent"
+}
+
+func typeEvidence(recovered []schema.Type) (string, string) {
+	if len(recovered) != 0 {
+		return "", ""
+	}
+	return string(recoveryerr.CodeDWARFNotFound), "type evidence is absent"
+}
+
+func stringEvidence(recovered recoverystrings.Result) (string, string) {
+	if len(recovered.Candidates) != 0 {
+		return "", ""
+	}
+	if len(recovered.Regions) == 0 {
+		return string(recoveryerr.CodeStringRegionsNotFound), "string evidence is absent"
+	}
+	return string(recoveryerr.CodeStringCandidatesNotFound), "string candidate evidence is absent"
+}
+
+func sourceTreeEvidence(tree schema.SourceTree) (string, string) {
+	if tree.Root != "" || tree.SourceEvidenceKind != "" || len(tree.Files) != 0 ||
+		len(tree.Packages) != 0 || len(tree.ExternalPackages) != 0 || tree.PathlessFileEvidence ||
+		tree.SourceEvidenceSummary != (schema.SourceEvidenceSummary{}) {
+		return "", ""
+	}
+	return string(recoveryerr.CodeSourceTreeNotFound), "source-tree evidence is absent"
+}
+
+func refinementEvidence(refined schema.RefinedAnalysis) (string, string) {
+	if hasRefinedContent(refined) {
+		return "", ""
+	}
+	return stageCodeRefinementUnavailable, "refinement evidence is absent"
 }
 
 func diagnosticFromError(stage schema.AnalysisStage, err error) schema.StageDiagnostic {

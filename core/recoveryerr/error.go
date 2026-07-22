@@ -27,6 +27,7 @@ const (
 	CodeDWARFNotFound                     Code = "dwarf_not_found"
 	CodeStringRegionsUnsupportedContainer Code = "string_regions_unsupported_container"
 	CodeStringRegionsNotFound             Code = "string_regions_not_found"
+	CodeStringCandidatesNotFound          Code = "string_candidates_not_found"
 	CodeSourceTreeNotFound                Code = "source_tree_not_found"
 )
 

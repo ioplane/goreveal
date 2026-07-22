@@ -248,6 +248,236 @@ func TestAnalyzeFileRecordsDerivedStageAvailability(t *testing.T) {
 	}
 }
 
+func TestAnalyzeFileRejectsEmptyStageEvidence(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		stage   schema.AnalysisStage
+		code    string
+		message string
+		inject  func(*stageOps)
+		assert  func(*testing.T, schema.Analysis)
+	}{
+		{
+			name:    "build info",
+			stage:   schema.AnalysisStageBuildInfo,
+			code:    string(recoveryerr.CodeBuildInfoNotFound),
+			message: "Go build info evidence is absent",
+			inject: func(ops *stageOps) {
+				ops.buildInfo = func(string) (schema.BuildInfo, error) { return schema.BuildInfo{}, nil }
+			},
+			assert: func(t *testing.T, analysis schema.Analysis) {
+				t.Helper()
+				if analysis.BuildInfo != nil {
+					t.Fatalf("BuildInfo = %#v, want nil", analysis.BuildInfo)
+				}
+			},
+		},
+		{
+			name:    "runtime",
+			stage:   schema.AnalysisStageRuntime,
+			code:    string(recoveryerr.CodeRuntimeMetadataNotFound),
+			message: "runtime metadata evidence is absent",
+			inject: func(ops *stageOps) {
+				ops.runtime = func(string) (schema.RuntimeMetadata, error) { return schema.RuntimeMetadata{}, nil }
+			},
+			assert: func(t *testing.T, analysis schema.Analysis) {
+				t.Helper()
+				if analysis.Runtime != nil {
+					t.Fatalf("Runtime = %#v, want nil", analysis.Runtime)
+				}
+			},
+		},
+		{
+			name:    "runtime explicit absent",
+			stage:   schema.AnalysisStageRuntime,
+			code:    string(recoveryerr.CodeRuntimeMetadataNotFound),
+			message: "runtime metadata evidence is absent",
+			inject: func(ops *stageOps) {
+				ops.runtime = func(string) (schema.RuntimeMetadata, error) {
+					return schema.RuntimeMetadata{TrustSummary: schema.RuntimeTrustSummaryAbsent}, nil
+				}
+			},
+			assert: func(t *testing.T, analysis schema.Analysis) {
+				t.Helper()
+				if analysis.Runtime != nil {
+					t.Fatalf("Runtime = %#v, want nil", analysis.Runtime)
+				}
+			},
+		},
+		{
+			name:    "functions",
+			stage:   schema.AnalysisStageFunctions,
+			code:    string(recoveryerr.CodePclntabNotFound),
+			message: "function evidence is absent",
+			inject: func(ops *stageOps) {
+				ops.functions = func(string) ([]schema.Function, error) { return nil, nil }
+			},
+			assert: func(t *testing.T, analysis schema.Analysis) {
+				t.Helper()
+				if len(analysis.Functions) != 0 || analysis.Packages != nil || analysis.Peeling != nil || analysis.Refined != nil {
+					t.Fatalf("empty functions derived payload: %#v", analysis)
+				}
+				for _, stage := range []schema.AnalysisStage{
+					schema.AnalysisStagePackages,
+					schema.AnalysisStagePeeling,
+					schema.AnalysisStageRefinement,
+				} {
+					if _, exists := diagnosticForStage(analysis.Diagnostics, stage); exists {
+						t.Fatalf("diagnostics = %#v, want no derived %q claim", analysis.Diagnostics, stage)
+					}
+				}
+			},
+		},
+		{
+			name:    "packages",
+			stage:   schema.AnalysisStagePackages,
+			code:    "packages_not_found",
+			message: "package evidence is absent",
+			inject: func(ops *stageOps) {
+				ops.functions = func(string) ([]schema.Function, error) {
+					return []schema.Function{{Name: "type:.eq.fixture", Entry: 0x1000, End: 0x1100}}, nil
+				}
+			},
+			assert: func(t *testing.T, analysis schema.Analysis) {
+				t.Helper()
+				if analysis.Packages != nil {
+					t.Fatalf("Packages = %#v, want nil", analysis.Packages)
+				}
+				if _, exists := diagnosticForStage(analysis.Diagnostics, schema.AnalysisStageRefinement); exists {
+					t.Fatalf("diagnostics = %#v, want no refinement claim", analysis.Diagnostics)
+				}
+			},
+		},
+		{
+			name:    "types",
+			stage:   schema.AnalysisStageTypes,
+			code:    string(recoveryerr.CodeDWARFNotFound),
+			message: "type evidence is absent",
+			inject: func(ops *stageOps) {
+				ops.types = func(string) ([]schema.Type, error) { return nil, nil }
+			},
+			assert: func(t *testing.T, analysis schema.Analysis) {
+				t.Helper()
+				if len(analysis.Types) != 0 {
+					t.Fatalf("Types = %#v, want empty", analysis.Types)
+				}
+			},
+		},
+		{
+			name:    "strings",
+			stage:   schema.AnalysisStageStrings,
+			code:    string(recoveryerr.CodeStringRegionsNotFound),
+			message: "string evidence is absent",
+			inject: func(ops *stageOps) {
+				ops.strings = func(string) (recoverystrings.Result, error) { return recoverystrings.Result{}, nil }
+			},
+			assert: func(t *testing.T, analysis schema.Analysis) {
+				t.Helper()
+				if analysis.StringRegions != nil || analysis.Strings != nil {
+					t.Fatalf("empty strings published payload: regions=%#v strings=%#v", analysis.StringRegions, analysis.Strings)
+				}
+			},
+		},
+		{
+			name:    "string regions without candidates",
+			stage:   schema.AnalysisStageStrings,
+			code:    "string_candidates_not_found",
+			message: "string candidate evidence is absent",
+			inject: func(ops *stageOps) {
+				ops.strings = func(string) (recoverystrings.Result, error) {
+					return recoverystrings.Result{
+						Regions: []schema.StringRegion{{Name: ".rodata", Addr: 0x2000, Size: 8}},
+					}, nil
+				}
+			},
+			assert: func(t *testing.T, analysis schema.Analysis) {
+				t.Helper()
+				if len(analysis.StringRegions) != 1 || analysis.Strings != nil {
+					t.Fatalf(
+						"region-only strings payload: regions=%#v strings=%#v",
+						analysis.StringRegions,
+						analysis.Strings,
+					)
+				}
+			},
+		},
+		{
+			name:    "source tree",
+			stage:   schema.AnalysisStageSourceTree,
+			code:    string(recoveryerr.CodeSourceTreeNotFound),
+			message: "source-tree evidence is absent",
+			inject: func(ops *stageOps) {
+				ops.sourceTree = func(string, schema.Analysis) (schema.SourceTree, error) {
+					return schema.SourceTree{}, nil
+				}
+			},
+			assert: func(t *testing.T, analysis schema.Analysis) {
+				t.Helper()
+				if analysis.SourceTree != nil {
+					t.Fatalf("SourceTree = %#v, want nil", analysis.SourceTree)
+				}
+			},
+		},
+		{
+			name:    "peeling",
+			stage:   schema.AnalysisStagePeeling,
+			code:    "peeling_unavailable",
+			message: "peeling evidence is absent",
+			inject: func(ops *stageOps) {
+				ops.peeling = func(schema.Analysis) *schema.PeelingAnalysis { return &schema.PeelingAnalysis{} }
+			},
+			assert: func(t *testing.T, analysis schema.Analysis) {
+				t.Helper()
+				if analysis.Peeling != nil {
+					t.Fatalf("Peeling = %#v, want nil", analysis.Peeling)
+				}
+			},
+		},
+		{
+			name:    "refinement",
+			stage:   schema.AnalysisStageRefinement,
+			code:    "refinement_unavailable",
+			message: "refinement evidence is absent",
+			inject: func(ops *stageOps) {
+				ops.refine = func(context.Context, schema.Analysis) (schema.RefinedAnalysis, error) {
+					return schema.RefinedAnalysis{}, nil
+				}
+			},
+			assert: func(t *testing.T, analysis schema.Analysis) {
+				t.Helper()
+				if analysis.Refined != nil {
+					t.Fatalf("Refined = %#v, want nil", analysis.Refined)
+				}
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			ops := successfulStageOps()
+			tt.inject(&ops)
+			got, err := newAnalyzerForTest(ops).AnalyzeFile(context.Background(), writeIngestibleELF(t))
+			if err != nil {
+				t.Fatalf("AnalyzeFile() error = %v", err)
+			}
+
+			diagnostic, exists := diagnosticForStage(got.Diagnostics, tt.stage)
+			if !exists {
+				t.Fatalf("diagnostics = %#v, want %q", got.Diagnostics, tt.stage)
+			}
+			if diagnostic.Status != schema.StageStatusUnavailable || diagnostic.Code != tt.code || diagnostic.Message != tt.message {
+				t.Fatalf("diagnostic = %#v, want unavailable/%s/%s", diagnostic, tt.code, tt.message)
+			}
+			tt.assert(t, got)
+			assertOrderedUniqueDiagnostics(t, got.Diagnostics)
+		})
+	}
+}
+
 func successfulStageOps() stageOps {
 	return stageOps{
 		buildInfo: func(string) (schema.BuildInfo, error) {
@@ -267,6 +497,14 @@ func successfulStageOps() stageOps {
 				Regions:    []schema.StringRegion{{Name: ".rodata", Addr: 0x2000, Size: 8}},
 				Candidates: []schema.StringCandidate{{Value: "fixture", Region: ".rodata", Addr: 0x2000}},
 			}, nil
+		},
+		peeling: func(analysis schema.Analysis) *schema.PeelingAnalysis {
+			if len(analysis.Functions) == 0 {
+				return nil
+			}
+			return &schema.PeelingAnalysis{
+				Functions: []schema.PeelingFunction{{Name: analysis.Functions[0].Name}},
+			}
 		},
 		sourceTree: func(string, schema.Analysis) (schema.SourceTree, error) {
 			return schema.SourceTree{Root: "example.com/fixture", Files: []string{}, Packages: []schema.SourcePackage{}}, nil

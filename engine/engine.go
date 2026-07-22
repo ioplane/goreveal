@@ -11,7 +11,6 @@ import (
 	recoveryruntime "github.com/dantte-lp/goreveal/core/runtime"
 	recoverystrings "github.com/dantte-lp/goreveal/core/strings"
 	"github.com/dantte-lp/goreveal/core/types"
-	"github.com/dantte-lp/goreveal/engine/peeling"
 	"github.com/dantte-lp/goreveal/schema"
 )
 
@@ -43,7 +42,7 @@ func (a Analyzer) AnalyzeFile(ctx context.Context, path string) (schema.Analysis
 			Format: string(file.Format),
 		},
 		Types:       []schema.Type{},
-		Diagnostics: make([]schema.StageDiagnostic, 0, 9),
+		Diagnostics: make(schema.StageDiagnostics, 0, 9),
 		Provenance: schema.Provenance{
 			Source:     "core.ingest",
 			Confidence: "high",
@@ -57,7 +56,7 @@ func (a Analyzer) AnalyzeFile(ctx context.Context, path string) (schema.Analysis
 	a.recoverStrings(path, &analysis)
 	a.recoverSourceTree(path, &analysis, buildInfoAvailable)
 	annotateELFRecovery(&analysis)
-	derivePeeling(&analysis, functionsAvailable)
+	a.derivePeeling(&analysis, functionsAvailable)
 	a.refine(ctx, &analysis)
 
 	return analysis, nil
@@ -66,7 +65,7 @@ func (a Analyzer) AnalyzeFile(ctx context.Context, path string) (schema.Analysis
 func (a Analyzer) recoverBuildInfo(path string, analysis *schema.Analysis) bool {
 	info, available := executeStage(analysis, schema.AnalysisStageBuildInfo, func() (schema.BuildInfo, error) {
 		return a.ops.buildInfo(path)
-	})
+	}, buildInfoEvidence)
 	if available {
 		analysis.BuildInfo = &info
 	}
@@ -76,7 +75,7 @@ func (a Analyzer) recoverBuildInfo(path string, analysis *schema.Analysis) bool 
 func (a Analyzer) recoverRuntime(path string, analysis *schema.Analysis) {
 	metadata, available := executeStage(analysis, schema.AnalysisStageRuntime, func() (schema.RuntimeMetadata, error) {
 		return a.ops.runtime(path)
-	})
+	}, runtimeEvidence)
 	if available {
 		analysis.Runtime = &metadata
 	}
@@ -85,13 +84,24 @@ func (a Analyzer) recoverRuntime(path string, analysis *schema.Analysis) {
 func (a Analyzer) recoverFunctions(path string, analysis *schema.Analysis) bool {
 	recovered, available := executeStage(analysis, schema.AnalysisStageFunctions, func() ([]schema.Function, error) {
 		return a.ops.functions(path)
-	})
+	}, functionEvidence)
 	if !available {
 		return false
 	}
 
 	analysis.Functions = functions.EnrichBuildInfoMetadata(recovered, analysis.BuildInfo)
-	analysis.Packages = packages.EnrichBuildInfoMetadata(packages.Recover(recovered), analysis.BuildInfo)
+	recoveredPackages := packages.EnrichBuildInfoMetadata(packages.Recover(recovered), analysis.BuildInfo)
+	if len(recoveredPackages) == 0 {
+		appendDerivedDiagnostic(
+			analysis,
+			schema.AnalysisStagePackages,
+			schema.StageStatusUnavailable,
+			stageCodePackagesNotFound,
+			"package evidence is absent",
+		)
+		return true
+	}
+	analysis.Packages = recoveredPackages
 	appendDerivedDiagnostic(analysis, schema.AnalysisStagePackages, schema.StageStatusAvailable, "", "")
 	return true
 }
@@ -99,7 +109,7 @@ func (a Analyzer) recoverFunctions(path string, analysis *schema.Analysis) bool 
 func (a Analyzer) recoverTypes(path string, analysis *schema.Analysis) {
 	recovered, available := executeStage(analysis, schema.AnalysisStageTypes, func() ([]schema.Type, error) {
 		return a.ops.types(path)
-	})
+	}, typeEvidence)
 	if available {
 		analysis.Types = types.EnrichBuildInfoMetadata(recovered, analysis.BuildInfo)
 	}
@@ -108,9 +118,11 @@ func (a Analyzer) recoverTypes(path string, analysis *schema.Analysis) {
 func (a Analyzer) recoverStrings(path string, analysis *schema.Analysis) {
 	recovered, available := executeStage(analysis, schema.AnalysisStageStrings, func() (recoverystrings.Result, error) {
 		return a.ops.strings(path)
-	})
-	if available {
+	}, stringEvidence)
+	if len(recovered.Regions) != 0 {
 		analysis.StringRegions = recovered.Regions
+	}
+	if available {
 		analysis.Strings = recovered.Candidates
 	}
 }
@@ -122,7 +134,7 @@ func (a Analyzer) recoverSourceTree(path string, analysis *schema.Analysis, buil
 
 	tree, sourceTreeAvailable := executeStage(analysis, schema.AnalysisStageSourceTree, func() (schema.SourceTree, error) {
 		return a.ops.sourceTree(path, *analysis)
-	})
+	}, sourceTreeEvidence)
 	if !sourceTreeAvailable {
 		return
 	}
@@ -140,22 +152,23 @@ func annotateELFRecovery(analysis *schema.Analysis) {
 	annotateELFFunctionFoothold(analysis)
 }
 
-func derivePeeling(analysis *schema.Analysis, functionsAvailable bool) {
+func (a Analyzer) derivePeeling(analysis *schema.Analysis, functionsAvailable bool) {
 	if !functionsAvailable {
 		return
 	}
 
-	analysis.Peeling = peeling.Build(*analysis)
-	if analysis.Peeling == nil {
+	recovered := a.ops.peeling(*analysis)
+	if recovered == nil || len(recovered.Functions) == 0 && len(recovered.Packages) == 0 {
 		appendDerivedDiagnostic(
 			analysis,
 			schema.AnalysisStagePeeling,
 			schema.StageStatusUnavailable,
-			"peeling_unavailable",
-			"no function evidence is available for peeling",
+			stageCodePeelingUnavailable,
+			"peeling evidence is absent",
 		)
 		return
 	}
+	analysis.Peeling = recovered
 	appendDerivedDiagnostic(analysis, schema.AnalysisStagePeeling, schema.StageStatusAvailable, "", "")
 }
 
@@ -166,8 +179,8 @@ func (a Analyzer) refine(ctx context.Context, analysis *schema.Analysis) {
 
 	refined, available := executeStage(analysis, schema.AnalysisStageRefinement, func() (schema.RefinedAnalysis, error) {
 		return a.ops.refine(ctx, *analysis)
-	})
-	if available && hasRefinedContent(refined) {
+	}, refinementEvidence)
+	if available {
 		analysis.Refined = &refined
 	}
 }
