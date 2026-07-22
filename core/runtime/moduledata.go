@@ -72,7 +72,9 @@ func readELFMetadata(path string) (schema.RuntimeMetadata, error) {
 	}
 
 	populateFirstModuleData(ef, &meta)
-	populatePclnTab(ef, &meta)
+	if err := populatePclnTab(ef, &meta); err != nil {
+		return schema.RuntimeMetadata{}, err
+	}
 	populateELFTextSection(ef, &meta)
 	populateTypelinks(ef, &meta)
 	populateItablinks(ef, &meta)
@@ -104,8 +106,12 @@ func readPEMetadata(path string) (schema.RuntimeMetadata, error) {
 
 	populatePESectionRange(pf, ".text", &meta.PETextSectionAddr, &meta.PETextSectionSize)
 	populatePESectionRange(pf, ".rdata", &meta.PERdataSectionAddr, &meta.PERdataSectionSize)
-	populatePEPclntabMagic(pf, &meta)
-	populatePEPclntabHeader(pf, &meta)
+	if err := populatePEPclntabMagic(pf, &meta); err != nil {
+		return schema.RuntimeMetadata{}, err
+	}
+	if err := populatePEPclntabHeader(pf, &meta); err != nil {
+		return schema.RuntimeMetadata{}, err
+	}
 	meta.TrustSummary = summarizeTrust(meta)
 
 	return meta, nil
@@ -163,7 +169,7 @@ func populatePESectionRange(pf *stdpe.File, name string, outAddr, outSize *uint6
 	*outSize = peSectionSize(section)
 }
 
-func populatePEPclntabMagic(pf *stdpe.File, meta *schema.RuntimeMetadata) {
+func populatePEPclntabMagic(pf *stdpe.File, meta *schema.RuntimeMetadata) error {
 	for _, sectionName := range []string{".rdata", ".text"} {
 		section := peSection(pf, sectionName)
 		if section == nil {
@@ -172,7 +178,7 @@ func populatePEPclntabMagic(pf *stdpe.File, meta *schema.RuntimeMetadata) {
 
 		data, err := section.Data()
 		if err != nil {
-			continue
+			return fmt.Errorf("read PE section %q for pclntab magic: %w", sectionName, err)
 		}
 
 		for _, magic := range pclntabMagics() {
@@ -184,12 +190,14 @@ func populatePEPclntabMagic(pf *stdpe.File, meta *schema.RuntimeMetadata) {
 			meta.PEPclntabMagicSection = sectionName
 			meta.PEPclntabMagicAddr = peImageBase(pf) + uint64(section.VirtualAddress) + uint64(firstOffset)
 			meta.PEPclntabMagicCount = uint64(count)
-			return
+			return nil
 		}
 	}
+
+	return nil
 }
 
-func populatePEPclntabHeader(pf *stdpe.File, meta *schema.RuntimeMetadata) {
+func populatePEPclntabHeader(pf *stdpe.File, meta *schema.RuntimeMetadata) error {
 	for _, sectionName := range []string{".rdata", ".text"} {
 		section := peSection(pf, sectionName)
 		if section == nil {
@@ -198,7 +206,7 @@ func populatePEPclntabHeader(pf *stdpe.File, meta *schema.RuntimeMetadata) {
 
 		data, err := section.Data()
 		if err != nil {
-			continue
+			return fmt.Errorf("read PE section %q for pclntab header: %w", sectionName, err)
 		}
 
 		offset, magic, quantum, pointerSize, ok := findPEPclntabHeaderCandidate(data)
@@ -211,26 +219,28 @@ func populatePEPclntabHeader(pf *stdpe.File, meta *schema.RuntimeMetadata) {
 		meta.PEPclntabHeaderMagic = magic
 		meta.PEPclntabHeaderQuantum = uint64(quantum)
 		meta.PEPclntabHeaderPointerSize = uint64(pointerSize)
-		return
+		return nil
 	}
+
+	return nil
 }
 
-func populatePclnTab(ef *elf.File, meta *schema.RuntimeMetadata) {
+func populatePclnTab(ef *elf.File, meta *schema.RuntimeMetadata) error {
 	section := ef.Section(".gopclntab")
 	if section == nil {
-		return
+		return nil
 	}
 	meta.GopclntabAddr = section.Addr
 	meta.GopclntabSize = section.Size
 
 	data, err := section.Data()
 	if err != nil {
-		return
+		return fmt.Errorf("read ELF section %q: %w", section.Name, err)
 	}
 
 	magic, kind, quantum, pointerSize, ok := parseELFPclntabHeader(data)
 	if !ok {
-		return
+		return nil
 	}
 
 	meta.ELFPclntabHeaderMagic = magic
@@ -240,7 +250,7 @@ func populatePclnTab(ef *elf.File, meta *schema.RuntimeMetadata) {
 
 	headerHints, ok := parseELFPclntabHeaderHints(ef.ByteOrder, data)
 	if !ok {
-		return
+		return nil
 	}
 
 	meta.ELFPclntabFunctionCountHint = headerHints.functionCount
@@ -258,7 +268,7 @@ func populatePclnTab(ef *elf.File, meta *schema.RuntimeMetadata) {
 		headerHints.functionCount,
 	)
 	if !ok {
-		return
+		return nil
 	}
 
 	meta.ELFFunctabFirstPCOffsetHint = firstPC
@@ -273,10 +283,11 @@ func populatePclnTab(ef *elf.File, meta *schema.RuntimeMetadata) {
 		8,
 	)
 	if !ok {
-		return
+		return nil
 	}
 
 	meta.ELFFunctabPCAddrSample = pcOffsetSample
+	return nil
 }
 
 func populateELFTextSection(ef *elf.File, meta *schema.RuntimeMetadata) {

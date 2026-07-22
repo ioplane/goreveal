@@ -1,13 +1,148 @@
 package runtime
 
 import (
+	"bytes"
+	"debug/elf"
 	"encoding/binary"
 	"errors"
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/dantte-lp/goreveal/core/recoveryerr"
 	"github.com/dantte-lp/goreveal/schema"
 )
+
+func TestReadMetadataPropagatesSectionReadFailures(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name        string
+		fixturePath string
+		sectionName string
+		corrupt     func(*testing.T, string, string) string
+	}{
+		{
+			name:        "ELF gopclntab",
+			fixturePath: "../../corpus/fixtures/go-elf-buildinfo-linux-amd64/fixture.bin",
+			sectionName: ".gopclntab",
+			corrupt:     corruptELFSectionOffset,
+		},
+		{
+			name:        "PE rdata",
+			fixturePath: "../../corpus/fixtures/go-pe-buildinfo-windows-amd64/fixture.exe",
+			sectionName: ".rdata",
+			corrupt:     corruptPESectionOffset,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			path := tt.corrupt(t, tt.fixturePath, tt.sectionName)
+			got, err := ReadMetadata(path)
+			if err == nil {
+				t.Fatalf("ReadMetadata() = %#v, nil error; want section read failure", got)
+			}
+			if errors.Is(err, recoveryerr.ErrUnavailable) || errors.Is(err, recoveryerr.ErrUnsupported) {
+				t.Fatalf("ReadMetadata() error = %v, want untyped failure", err)
+			}
+			if !strings.Contains(err.Error(), tt.sectionName) {
+				t.Fatalf("ReadMetadata() error = %v, want section name %q", err, tt.sectionName)
+			}
+		})
+	}
+}
+
+func corruptELFSectionOffset(t *testing.T, fixturePath, sectionName string) string {
+	t.Helper()
+
+	data, err := os.ReadFile(fixturePath)
+	if err != nil {
+		t.Fatalf("read fixture: %v", err)
+	}
+
+	ef, err := elf.NewFile(bytes.NewReader(data))
+	if err != nil {
+		t.Fatalf("open ELF fixture: %v", err)
+	}
+	defer ef.Close()
+
+	if ef.Class != elf.ELFCLASS64 || ef.Data != elf.ELFDATA2LSB {
+		t.Fatalf("ELF fixture class/data = %v/%v, want ELF64 little-endian", ef.Class, ef.Data)
+	}
+
+	sectionIndex := -1
+	for index, section := range ef.Sections {
+		if section.Name == sectionName {
+			sectionIndex = index
+			break
+		}
+	}
+	if sectionIndex < 0 {
+		t.Fatalf("ELF fixture missing section %q", sectionName)
+	}
+
+	sectionHeaderOffset := binary.LittleEndian.Uint64(data[0x28:0x30])
+	sectionHeaderSize := binary.LittleEndian.Uint16(data[0x3a:0x3c])
+	sectionOffsetField := int(sectionHeaderOffset) + sectionIndex*int(sectionHeaderSize) + 24
+	if sectionOffsetField < 0 || sectionOffsetField+8 > len(data) {
+		t.Fatalf("ELF section offset field outside fixture: %#x", sectionOffsetField)
+	}
+	binary.LittleEndian.PutUint64(data[sectionOffsetField:sectionOffsetField+8], uint64(len(data)+4096))
+
+	path := filepath.Join(t.TempDir(), "corrupt-section.elf")
+	if err := os.WriteFile(path, data, 0o600); err != nil {
+		t.Fatalf("write corrupt ELF fixture: %v", err)
+	}
+	return path
+}
+
+func corruptPESectionOffset(t *testing.T, fixturePath, sectionName string) string {
+	t.Helper()
+
+	data, err := os.ReadFile(fixturePath)
+	if err != nil {
+		t.Fatalf("read fixture: %v", err)
+	}
+	if len(data) < 0x40 || string(data[:2]) != "MZ" {
+		t.Fatal("PE fixture missing DOS header")
+	}
+
+	peHeaderOffset := int(binary.LittleEndian.Uint32(data[0x3c:0x40]))
+	coffHeaderOffset := peHeaderOffset + 4
+	if coffHeaderOffset < 0 || coffHeaderOffset+20 > len(data) || string(data[peHeaderOffset:coffHeaderOffset]) != "PE\x00\x00" {
+		t.Fatal("PE fixture missing COFF header")
+	}
+
+	sectionCount := int(binary.LittleEndian.Uint16(data[coffHeaderOffset+2 : coffHeaderOffset+4]))
+	optionalHeaderSize := int(binary.LittleEndian.Uint16(data[coffHeaderOffset+16 : coffHeaderOffset+18]))
+	sectionTableOffset := coffHeaderOffset + 20 + optionalHeaderSize
+	sectionOffsetField := -1
+	for index := range sectionCount {
+		headerOffset := sectionTableOffset + index*40
+		if headerOffset < 0 || headerOffset+40 > len(data) {
+			t.Fatalf("PE section header %d outside fixture", index)
+		}
+		name := strings.TrimRight(string(data[headerOffset:headerOffset+8]), "\x00")
+		if name == sectionName {
+			sectionOffsetField = headerOffset + 20
+			break
+		}
+	}
+	if sectionOffsetField < 0 {
+		t.Fatalf("PE fixture missing section %q", sectionName)
+	}
+	binary.LittleEndian.PutUint32(data[sectionOffsetField:sectionOffsetField+4], uint32(len(data)+4096))
+
+	path := filepath.Join(t.TempDir(), "corrupt-section.exe")
+	if err := os.WriteFile(path, data, 0o600); err != nil {
+		t.Fatalf("write corrupt PE fixture: %v", err)
+	}
+	return path
+}
 
 func TestReadMetadataFixture(t *testing.T) {
 	t.Parallel()
