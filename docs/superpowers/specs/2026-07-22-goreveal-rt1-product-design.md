@@ -177,6 +177,17 @@ Identifiers must not depend on array position. Refined evidence references the
 raw entity identifier and may additionally carry a raw byte span or provider
 observation identifier.
 
+Diff matching is cardinality-safe:
+
+- every match key resolves to a candidate group on both sides;
+- only a unique `1:1` candidate may enter an automatic match tier;
+- `1:N`, `N:1`, and `N:M` groups are emitted as explicit ambiguity groups;
+- an ambiguity group records all members and the key/reason that produced it;
+- ambiguous candidates are excluded from `accepted_transfers` and every other
+  auto-apply or auto-accept projection;
+- later match rules may disambiguate a group only by adding independent
+  evidence and recording the complete reason chain.
+
 ### Artifact identity
 
 The next export contract separates:
@@ -194,6 +205,26 @@ the exact bytes it receives. A preview digest binds:
 - loaded workspace/binary identity;
 - normalized address mapping;
 - the deterministic ordered action plan.
+
+All digest values use the wire representation:
+
+```text
+sha256:<64 lowercase hexadecimal characters>
+```
+
+Binary digests cover the exact input-file bytes. Provider artifact digests
+cover the exact serialized artifact bytes. There is no JSON reserialization or
+implicit canonicalization during verification.
+
+The preview output is a separate immutable artifact with contract
+`idacli.go-preview/v1`. It embeds the provider artifact digest, workspace
+identity, normalized mapping, and ordered actions, but does not embed a digest
+of itself. The operator approval value is the SHA-256 digest of the exact
+preview artifact bytes. `go-apply` receives both the preview artifact and the
+expected approval digest, hashes the exact bytes, validates the embedded
+identities again, and applies that embedded plan. It must not reconstruct a
+plan from the provider artifact and then compare an implementation-dependent
+composite hash.
 
 ### Address semantics
 
@@ -288,6 +319,51 @@ stored as external evidence bound to binary and provider identity.
 
 Detailed outcomes, tasks, dependencies, and gates live in the RT1 program plan.
 Only Horizon A receives immediate file-level implementation plans.
+
+## Sprint Exit Gates
+
+| Sprint | Auditable exit gate |
+| --- | --- |
+| `RT1-S0` | injected failures for each attempted analysis stage appear as `failed`, `unsupported`, or `unavailable`; zero refined/raw misassociations in reorder/addition fixtures; zero automatic matches or accepted transfers from non-`1:1` keys; the exclusive `.text` endpoint is rejected |
+| `RT1-S1` | pinned-container `lint`, `test`, differential, plugin, snapshot, script-lint, fuzz-smoke, and benchmark-smoke commands exit `0`; fuzz and benchmark discovery each find at least one real target; rich and stripped ELF canonical snapshots exist; the forced IDA Golang-plugin experiment records binary/tool identities, commands, and raw results |
+| `RT1-S2` | wrong binary, changed artifact byte, wrong image base, and unmappable address fixtures are rejected in every case; v1 consumer fixtures remain green; v2 ELF, PIE ELF, PE, and Mach-O location round trips match fixture manifests exactly; dependency/build-setting output matches the known-source manifest |
+| `RT1-S3` | all identity-mismatch cases are rejected; unsafe mutations and automatic boundary replacements remain `0`; second apply performs `0` mutations; fixture action classification is exact; real-binary before/after results are recorded, and rollout beyond the experiment requires at least one predeclared target to improve from missing/conflicting to usable without regressing any previously usable target |
+| `RT1-S4` | known-source entity decomposition is exact for the supported fixture matrix; auto-labelled function-role/prologue claims meet at least `99%` precision, with unsupported cases left `unknown`; full source identity does not collapse distinct paths to one key |
+| `RT1-S5` | exact raw address/length matches the fixture manifest for every exported string extent; zero zero-length, overflow, unmapped, or cross-segment actions enter preview; refined values cannot change the raw extent; string-to-function-to-caller queries reproduce the fixed host-observation fixture |
+| `RT1-S6` | selected metadata candidates match fixture ground truth on the declared supported matrix; negative/malformed fixtures produce zero false selected candidates and zero panics; runtime type address/name/kind/size matches the fixture manifest exactly |
+| `RT1-S7` | field offsets and method/interface edges match manifests exactly on at least two supported Go versions including one stripped fixture; otherwise the sprint takes the documented `reduce` exit and publishes only type identity and proven relations; type apply remains preview-only |
+| `RT1-S8` | auto-accept precision is `100%` on known-source neighboring and unrelated negative build pairs; collision-derived false accepts are `0`; output is deterministic; lower-confidence or host-fingerprint-only matches remain review candidates |
+| `RT1-S9` | Definition of Ready fixes the anchor set and false-positive budget before implementation; default minimum is twenty independently verified anchors across a neighboring clean/protected build pair with zero false accepted anchors; otherwise publish the negative result and freeze the lane |
+| `RT1-S10` | every supported-target and release claim links to an evidence record; compatibility fixtures pass; release images and SBOM are pinned; small/medium p95 runtime and RSS do not regress more than `20%` from the S1 baseline unless the release record documents and accepts the tradeoff; the large-binary envelope is recorded |
+
+Coverage below a precision gate is not repaired by guessing. It remains an
+explicit unknown-rate metric.
+
+## Roadmap Migration Crosswalk
+
+| Previous lane or item | RT1 disposition |
+| --- | --- |
+| Sprint 12 bounded runtime checkpoint | preserve as evidence baseline; no blind extension; next semantic promotion occurs in `RT1-S6` |
+| Sprint 13 workstation handoff contract | preserve landed handoff surfaces; close historical sprint; function-only provider/consumer binding continues in `RT1-S3` |
+| Sprint 14 review workflow actionability | preserve and keep frozen; reuse review/next projections in `RT1-S8` rather than adding queue fields in Horizon A |
+| Sprint 15 source-evidence confidence | preserve and keep frozen; stable full-path entity identity and source semantics continue in `RT1-S4` |
+| Sprint 16 protected commercial workflow | migrate the evidence-first garble/protected hypothesis to `RT1-S9`; no protected delivery starts in Horizon A |
+| Previous Sprint 17-18 server/control-plane themes | defer outside RT1 Horizon A/B; not active |
+| Previous Sprint 19 release readiness | migrate to `RT1-S10` after local correctness and semantic gates |
+| Previous Sprint 20 comparison automation | evidence maintenance remains continuous; build-family product work migrates to `RT1-S8` |
+| Previous Sprint 21 build correlation | migrate to `RT1-S8` |
+| Previous Sprint 22 metadata knowledge network | defer until after `RT1-S10` |
+| Previous Sprint 23 workspace automation/replay | retain host-side replay as an `idacli` concern; broader automation deferred |
+| Previous Sprint 24 comparative knowledge packs | defer until after `RT1-S10` |
+| July Sprint A identity/VA/v2/digest | replace with corrected identity, exact-byte digest, compatibility, and location design in `RT1-S2` |
+| July Sprint B prologue classification | split raw evidence from role/ABI/prologue semantics and move to `RT1-S4` |
+| July Sprint C string length | replace display-value length with exact raw extent and host-reference work in `RT1-S5` |
+| July Sprint D type layout | split into runtime type identity `RT1-S6` and gated layouts/methods/interfaces `RT1-S7` |
+| July Sprint E new diff | cancel duplicate implementation; fix collision safety in `RT1-S0` and extend existing semantic diff in `RT1-S8` |
+
+Already-landed CLI, storage, handoff, source-confidence, peeling, runtime, and
+thin-export capabilities remain supported unless an RT1 migration task changes
+their documented contract explicitly.
 
 ## Capability Transfer Policy
 
