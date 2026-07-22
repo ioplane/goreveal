@@ -38,6 +38,21 @@ type stageOps struct {
 	refine     func(context.Context, schema.Analysis) (schema.RefinedAnalysis, error)
 }
 
+type sourceTreeRecoveryOps struct {
+	readSourceFiles   func(string) ([]string, error)
+	buildDWARFTree    func(schema.Analysis, []string) (schema.SourceTree, error)
+	buildFunctionTree func(schema.Analysis) (schema.SourceTree, error)
+	buildFallbackTree func(schema.Analysis) (schema.SourceTree, error)
+}
+
+type sourceTreeCandidateKind uint8
+
+const (
+	sourceTreeCandidateEmpty sourceTreeCandidateKind = iota
+	sourceTreeCandidateExternalOnly
+	sourceTreeCandidateModuleFiles
+)
+
 func (ops stageOps) isZero() bool {
 	return ops.buildInfo == nil &&
 		ops.runtime == nil &&
@@ -233,6 +248,19 @@ func stageAvailable(analysis schema.Analysis, stage schema.AnalysisStage) bool {
 }
 
 func recoverSourceTree(path string, analysis schema.Analysis) (schema.SourceTree, error) {
+	return recoverSourceTreeWithOps(path, analysis, sourceTreeRecoveryOps{
+		readSourceFiles:   projection.ReadSourceFiles,
+		buildDWARFTree:    projection.BuildSourceTree,
+		buildFunctionTree: projection.BuildFunctionSourceTree,
+		buildFallbackTree: projection.BuildFallbackSourceTree,
+	})
+}
+
+func recoverSourceTreeWithOps(
+	path string,
+	analysis schema.Analysis,
+	ops sourceTreeRecoveryOps,
+) (schema.SourceTree, error) {
 	if analysis.BuildInfo == nil || analysis.BuildInfo.Path == "" {
 		return schema.SourceTree{}, recoveryerr.NewUnavailable(
 			recoveryerr.CodeSourceTreeNotFound,
@@ -242,41 +270,62 @@ func recoverSourceTree(path string, analysis schema.Analysis) (schema.SourceTree
 	}
 
 	attemptErrors := make([]error, 0, 3)
+	unexpectedErrors := make([]error, 0, 3)
+	var candidate *schema.SourceTree
 	if analysis.Input.Format == "elf" {
-		files, err := projection.ReadSourceFiles(path)
-		if err == nil {
-			tree, buildErr := projection.BuildSourceTree(analysis, files)
-			if buildErr == nil && sourceTreeHasEvidence(tree) {
-				return tree, nil
-			}
-			if buildErr != nil {
-				attemptErrors = append(attemptErrors, fmt.Errorf("build DWARF source tree: %w", buildErr))
-			} else {
-				attemptErrors = append(attemptErrors, errors.New("DWARF source tree contains no nodes"))
-			}
+		tree, err := recoverDWARFSourceTreeWithOps(path, analysis, ops)
+		if err != nil {
+			recordSourceTreeFailure(&attemptErrors, &unexpectedErrors, "recover DWARF source tree", err)
 		} else {
-			attemptErrors = append(attemptErrors, fmt.Errorf("read DWARF source files: %w", err))
+			switch sourceTreeCandidate(tree) {
+			case sourceTreeCandidateModuleFiles:
+				return tree, nil
+			case sourceTreeCandidateExternalOnly:
+				candidate = &tree
+			case sourceTreeCandidateEmpty:
+				recordSourceTreeAbsence(&attemptErrors, "DWARF source tree contains no nodes")
+			}
 		}
 	}
 
-	functionTree, functionErr := projection.BuildFunctionSourceTree(analysis)
-	if functionErr == nil && sourceTreeHasEvidence(functionTree) {
-		return functionTree, nil
-	}
+	functionTree, functionErr := ops.buildFunctionTree(analysis)
 	if functionErr != nil {
-		attemptErrors = append(attemptErrors, fmt.Errorf("build function source tree: %w", functionErr))
+		recordSourceTreeFailure(&attemptErrors, &unexpectedErrors, "build function source tree", functionErr)
 	} else {
-		attemptErrors = append(attemptErrors, errors.New("function source tree contains no nodes"))
+		switch sourceTreeCandidate(functionTree) {
+		case sourceTreeCandidateModuleFiles:
+			return functionTree, nil
+		case sourceTreeCandidateExternalOnly:
+			if candidate == nil {
+				candidate = &functionTree
+			}
+		case sourceTreeCandidateEmpty:
+			recordSourceTreeAbsence(&attemptErrors, "function source tree contains no nodes")
+		}
 	}
+	if candidate != nil {
+		return *candidate, nil
+	}
+	return recoverPackageSourceTreeWithOps(analysis, ops, attemptErrors, unexpectedErrors)
+}
 
-	fallbackTree, fallbackErr := projection.BuildFallbackSourceTree(analysis)
+func recoverPackageSourceTreeWithOps(
+	analysis schema.Analysis,
+	ops sourceTreeRecoveryOps,
+	attemptErrors, unexpectedErrors []error,
+) (schema.SourceTree, error) {
+	fallbackTree, fallbackErr := ops.buildFallbackTree(analysis)
 	if fallbackErr == nil && sourceTreeHasEvidence(fallbackTree) {
 		return fallbackTree, nil
 	}
 	if fallbackErr != nil {
-		attemptErrors = append(attemptErrors, fmt.Errorf("build package fallback source tree: %w", fallbackErr))
+		recordSourceTreeFailure(&attemptErrors, &unexpectedErrors, "build package fallback source tree", fallbackErr)
 	} else {
-		attemptErrors = append(attemptErrors, errors.New("package fallback source tree contains no nodes"))
+		recordSourceTreeAbsence(&attemptErrors, "package fallback source tree contains no nodes")
+	}
+
+	if len(unexpectedErrors) != 0 {
+		return schema.SourceTree{}, fmt.Errorf("recover source tree: %w", errors.Join(unexpectedErrors...))
 	}
 
 	return schema.SourceTree{}, recoveryerr.NewUnavailable(
@@ -284,6 +333,44 @@ func recoverSourceTree(path string, analysis schema.Analysis) (schema.SourceTree
 		"source-tree evidence is absent",
 		errors.Join(attemptErrors...),
 	)
+}
+
+func recoverDWARFSourceTreeWithOps(
+	path string,
+	analysis schema.Analysis,
+	ops sourceTreeRecoveryOps,
+) (schema.SourceTree, error) {
+	files, err := ops.readSourceFiles(path)
+	if err != nil {
+		return schema.SourceTree{}, fmt.Errorf("read DWARF source files: %w", err)
+	}
+	return ops.buildDWARFTree(analysis, files)
+}
+
+func sourceTreeCandidate(tree schema.SourceTree) sourceTreeCandidateKind {
+	if len(tree.Files) != 0 {
+		return sourceTreeCandidateModuleFiles
+	}
+	if sourceTreeHasEvidence(tree) {
+		return sourceTreeCandidateExternalOnly
+	}
+	return sourceTreeCandidateEmpty
+}
+
+func recordSourceTreeFailure(attempts, unexpected *[]error, operation string, err error) {
+	wrapped := fmt.Errorf("%s: %w", operation, err)
+	*attempts = append(*attempts, wrapped)
+	if !errors.Is(err, recoveryerr.ErrUnavailable) {
+		*unexpected = append(*unexpected, wrapped)
+	}
+}
+
+func recordSourceTreeAbsence(attempts *[]error, message string) {
+	*attempts = append(*attempts, recoveryerr.NewUnavailable(
+		recoveryerr.CodeSourceTreeNotFound,
+		message,
+		nil,
+	))
 }
 
 func sourceTreeHasEvidence(tree schema.SourceTree) bool {

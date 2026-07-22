@@ -667,6 +667,167 @@ func TestAnalyzeFileAcceptsSourceTreeNodeEvidence(t *testing.T) {
 	}
 }
 
+func TestRecoverSourceTreePreservesExternalDWARFCandidate(t *testing.T) {
+	t.Parallel()
+
+	analysis := schema.Analysis{
+		Input:     schema.Input{Format: "elf"},
+		BuildInfo: &schema.BuildInfo{Path: "example.com/fixture"},
+	}
+	dwarfTree := schema.SourceTree{
+		Root: "example.com/fixture",
+		ExternalPackages: []schema.SourcePackage{{
+			Name:       "fmt",
+			ImportPath: "fmt",
+		}},
+	}
+	functionTree := schema.SourceTree{
+		Root:  "example.com/fixture",
+		Files: []string{"main.go"},
+	}
+
+	tests := []struct {
+		name          string
+		buildFunction func(schema.Analysis) (schema.SourceTree, error)
+		want          schema.SourceTree
+	}{
+		{
+			name: "stronger module-local function tree wins",
+			buildFunction: func(schema.Analysis) (schema.SourceTree, error) {
+				return functionTree, nil
+			},
+			want: functionTree,
+		},
+		{
+			name: "external DWARF survives unavailable function tree",
+			buildFunction: func(schema.Analysis) (schema.SourceTree, error) {
+				return schema.SourceTree{}, recoveryerr.NewUnavailable(
+					recoveryerr.CodeSourceTreeNotFound,
+					"function source evidence is absent",
+					nil,
+				)
+			},
+			want: dwarfTree,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			fallbackCalled := false
+			got, err := recoverSourceTreeWithOps("fixture.bin", analysis, sourceTreeRecoveryOps{
+				readSourceFiles: func(string) ([]string, error) { return []string{"/usr/local/go/src/fmt/print.go"}, nil },
+				buildDWARFTree: func(schema.Analysis, []string) (schema.SourceTree, error) {
+					return dwarfTree, nil
+				},
+				buildFunctionTree: tt.buildFunction,
+				buildFallbackTree: func(schema.Analysis) (schema.SourceTree, error) {
+					fallbackCalled = true
+					return schema.SourceTree{Files: []string{"fallback.go"}}, nil
+				},
+			})
+			if err != nil {
+				t.Fatalf("recoverSourceTreeWithOps() error = %v", err)
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Fatalf("recoverSourceTreeWithOps() = %#v, want %#v", got, tt.want)
+			}
+			if fallbackCalled {
+				t.Fatal("recoverSourceTreeWithOps() called package fallback despite a truthful candidate")
+			}
+		})
+	}
+}
+
+func TestAnalyzeFileSourceTreeFallbackTaxonomy(t *testing.T) {
+	t.Parallel()
+
+	unexpectedRead := errors.New("fixture DWARF reader corruption")
+	absent := func(message string) error {
+		return recoveryerr.NewUnavailable(recoveryerr.CodeSourceTreeNotFound, message, nil)
+	}
+	tests := []struct {
+		name          string
+		readErr       error
+		functionTree  schema.SourceTree
+		functionErr   error
+		fallbackTree  schema.SourceTree
+		fallbackErr   error
+		wantStatus    schema.StageStatus
+		wantCode      string
+		wantCauseText string
+	}{
+		{
+			name:         "all proven absent is unavailable",
+			readErr:      absent("DWARF source evidence is absent"),
+			functionErr:  absent("function source evidence is absent"),
+			wantStatus:   schema.StageStatusUnavailable,
+			wantCode:     string(recoveryerr.CodeSourceTreeNotFound),
+			fallbackTree: schema.SourceTree{},
+		},
+		{
+			name:          "unexpected reader failure remains failed",
+			readErr:       unexpectedRead,
+			functionErr:   absent("function source evidence is absent"),
+			wantStatus:    schema.StageStatusFailed,
+			wantCode:      stageFailureCode,
+			wantCauseText: unexpectedRead.Error(),
+		},
+		{
+			name:         "truthful function fallback masks richer reader failure",
+			readErr:      unexpectedRead,
+			functionTree: schema.SourceTree{Files: []string{"main.go"}},
+			wantStatus:   schema.StageStatusAvailable,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			recoveryOps := sourceTreeRecoveryOps{
+				readSourceFiles: func(string) ([]string, error) { return nil, tt.readErr },
+				buildDWARFTree: func(schema.Analysis, []string) (schema.SourceTree, error) {
+					return schema.SourceTree{}, errors.New("unexpected DWARF builder call")
+				},
+				buildFunctionTree: func(schema.Analysis) (schema.SourceTree, error) {
+					return tt.functionTree, tt.functionErr
+				},
+				buildFallbackTree: func(schema.Analysis) (schema.SourceTree, error) {
+					return tt.fallbackTree, tt.fallbackErr
+				},
+			}
+			if tt.wantCauseText != "" {
+				_, directErr := recoverSourceTreeWithOps("fixture.bin", schema.Analysis{
+					Input:     schema.Input{Format: "elf"},
+					BuildInfo: &schema.BuildInfo{Path: "example.com/fixture"},
+				}, recoveryOps)
+				if !errors.Is(directErr, tt.readErr) {
+					t.Fatalf("recoverSourceTreeWithOps() error = %v, want retained cause %v", directErr, tt.readErr)
+				}
+			}
+
+			ops := successfulStageOps()
+			ops.sourceTree = func(path string, analysis schema.Analysis) (schema.SourceTree, error) {
+				return recoverSourceTreeWithOps(path, analysis, recoveryOps)
+			}
+
+			got, err := newAnalyzerForTest(ops).AnalyzeFile(context.Background(), writeIngestibleELF(t))
+			if err != nil {
+				t.Fatalf("AnalyzeFile() error = %v", err)
+			}
+			diagnostic, exists := diagnosticForStage(got.Diagnostics, schema.AnalysisStageSourceTree)
+			if !exists || diagnostic.Status != tt.wantStatus || diagnostic.Code != tt.wantCode {
+				t.Fatalf("source-tree diagnostic = %#v, exists=%v, want %q/%q", diagnostic, exists, tt.wantStatus, tt.wantCode)
+			}
+			if tt.wantCauseText != "" && !strings.Contains(diagnostic.Message, tt.wantCauseText) {
+				t.Fatalf("source-tree diagnostic = %#v, want retained cause %q", diagnostic, tt.wantCauseText)
+			}
+		})
+	}
+}
+
 func successfulStageOps() stageOps {
 	return stageOps{
 		buildInfo: func(string) (schema.BuildInfo, error) {

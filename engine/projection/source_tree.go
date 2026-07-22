@@ -11,6 +11,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/dantte-lp/goreveal/core/recoveryerr"
 	"github.com/dantte-lp/goreveal/schema"
 )
 
@@ -21,7 +22,11 @@ func BuildSourceTree(analysis schema.Analysis, sourceFiles []string) (schema.Sou
 		root = analysis.BuildInfo.Path
 	}
 	if root == "" {
-		return schema.SourceTree{}, errors.New("missing build info path for source tree projection")
+		return schema.SourceTree{}, recoveryerr.NewUnavailable(
+			recoveryerr.CodeSourceTreeNotFound,
+			"missing build info path for source tree projection",
+			nil,
+		)
 	}
 
 	seenModuleFiles := make(map[string]struct{})
@@ -77,7 +82,11 @@ func BuildFallbackSourceTree(analysis schema.Analysis) (schema.SourceTree, error
 		root = analysis.BuildInfo.Path
 	}
 	if root == "" {
-		return schema.SourceTree{}, errors.New("missing build info path for source tree projection")
+		return schema.SourceTree{}, recoveryerr.NewUnavailable(
+			recoveryerr.CodeSourceTreeNotFound,
+			"missing build info path for source tree projection",
+			nil,
+		)
 	}
 
 	packages, externalPackages := buildFallbackPackages(root, analysis.Packages)
@@ -103,10 +112,18 @@ func BuildFunctionSourceTree(analysis schema.Analysis) (schema.SourceTree, error
 		root = analysis.BuildInfo.Path
 	}
 	if root == "" {
-		return schema.SourceTree{}, errors.New("missing build info path for source tree projection")
+		return schema.SourceTree{}, recoveryerr.NewUnavailable(
+			recoveryerr.CodeSourceTreeNotFound,
+			"missing build info path for source tree projection",
+			nil,
+		)
 	}
 	if len(analysis.Functions) == 0 {
-		return schema.SourceTree{}, errors.New("missing functions for source tree projection")
+		return schema.SourceTree{}, recoveryerr.NewUnavailable(
+			recoveryerr.CodeSourceTreeNotFound,
+			"missing functions for source tree projection",
+			nil,
+		)
 	}
 
 	moduleByImportPath := map[string]*schema.SourcePackage{}
@@ -163,7 +180,11 @@ func BuildFunctionSourceTree(analysis schema.Analysis) (schema.SourceTree, error
 	}
 
 	if len(moduleByImportPath) == 0 && len(externalByImportPath) == 0 {
-		return schema.SourceTree{}, errors.New("missing line-table-backed source file evidence")
+		return schema.SourceTree{}, recoveryerr.NewUnavailable(
+			recoveryerr.CodeSourceTreeNotFound,
+			"missing line-table-backed source file evidence",
+			nil,
+		)
 	}
 
 	modulePackages := sourcePackagesFromMap(moduleByImportPath)
@@ -187,20 +208,9 @@ func BuildFunctionSourceTree(analysis schema.Analysis) (schema.SourceTree, error
 
 // ReadSourceFiles extracts unique DWARF file paths from an ELF binary.
 func ReadSourceFiles(pathname string) ([]string, error) {
-	fh, err := os.Open(pathname)
+	data, err := readELFDWARF(pathname)
 	if err != nil {
-		return nil, fmt.Errorf("open file: %w", err)
-	}
-	defer fh.Close()
-
-	ef, err := elf.NewFile(fh)
-	if err != nil {
-		return nil, fmt.Errorf("open ELF: %w", err)
-	}
-
-	data, err := ef.DWARF()
-	if err != nil {
-		return nil, fmt.Errorf("load DWARF: %w", err)
+		return nil, err
 	}
 
 	reader := data.Reader()
@@ -219,7 +229,10 @@ func ReadSourceFiles(pathname string) ([]string, error) {
 		}
 
 		lineReader, err := data.LineReader(entry)
-		if err != nil || lineReader == nil {
+		if err != nil {
+			return nil, fmt.Errorf("open DWARF line table: %w", err)
+		}
+		if lineReader == nil {
 			continue
 		}
 
@@ -245,6 +258,32 @@ func ReadSourceFiles(pathname string) ([]string, error) {
 
 	slices.Sort(files)
 	return files, nil
+}
+
+func readELFDWARF(pathname string) (*dwarf.Data, error) {
+	fh, err := os.Open(pathname)
+	if err != nil {
+		return nil, fmt.Errorf("open file: %w", err)
+	}
+	defer fh.Close()
+
+	ef, err := elf.NewFile(fh)
+	if err != nil {
+		return nil, fmt.Errorf("open ELF: %w", err)
+	}
+	if ef.Section(".debug_info") == nil && ef.Section(".zdebug_info") == nil {
+		return nil, recoveryerr.NewUnavailable(
+			recoveryerr.CodeSourceTreeNotFound,
+			"ELF DWARF source file evidence is absent",
+			nil,
+		)
+	}
+
+	data, err := ef.DWARF()
+	if err != nil {
+		return nil, fmt.Errorf("load DWARF: %w", err)
+	}
+	return data, nil
 }
 
 func buildPackages(root string, files []string, recovered []schema.Package) []schema.SourcePackage {

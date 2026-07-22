@@ -1,8 +1,11 @@
 package projection
 
 import (
+	"errors"
+	"path/filepath"
 	"testing"
 
+	"github.com/dantte-lp/goreveal/core/recoveryerr"
 	"github.com/dantte-lp/goreveal/schema"
 )
 
@@ -344,4 +347,29 @@ func TestBuildFunctionSourceTree(t *testing.T) {
 	if runtimePkg.SourceEvidenceKind != schema.SourceEvidenceKindLineTableFiles {
 		t.Fatalf("BuildFunctionSourceTree() runtime package source evidence kind = %#v", runtimePkg)
 	}
+}
+
+func TestSourceTreeProjectionReportsProvenAbsence(t *testing.T) {
+	t.Parallel()
+
+	t.Run("missing function evidence", func(t *testing.T) {
+		t.Parallel()
+
+		_, err := BuildFunctionSourceTree(schema.Analysis{
+			BuildInfo: &schema.BuildInfo{Path: "example.com/gorevealfixture"},
+		})
+		if !errors.Is(err, recoveryerr.ErrUnavailable) {
+			t.Fatalf("BuildFunctionSourceTree() error = %v, want unavailable", err)
+		}
+	})
+
+	t.Run("missing DWARF section", func(t *testing.T) {
+		t.Parallel()
+
+		path := filepath.Join("..", "..", "corpus", "fixtures", "go-elf-stripped-linux-amd64", "fixture.bin")
+		_, err := ReadSourceFiles(path)
+		if !errors.Is(err, recoveryerr.ErrUnavailable) {
+			t.Fatalf("ReadSourceFiles() error = %v, want unavailable", err)
+		}
+	})
 }
