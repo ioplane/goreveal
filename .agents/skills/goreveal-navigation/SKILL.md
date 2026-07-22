@@ -18,7 +18,9 @@ description: Navigate GoREveal module ownership, the active RT1 train, and prese
 - `docs/architecture/2026-03-19-goreveal-module-map.md`
 - `docs/architecture/2026-03-20-goreveal-semantic-claim-boundaries.md`
 - `docs/superpowers/specs/2026-07-22-goreveal-rt1-product-design.md`
+- `docs/superpowers/specs/2026-07-22-goreveal-standalone-release-ida-bootstrap-design.md`
 - `docs/superpowers/plans/2026-07-22-goreveal-rt1-horizon-a.md`
+- `docs/superpowers/plans/2026-07-22-goreveal-standalone-release.md`
 
 The March/April Scrum and strategic plans are historical evidence, not active
 execution authority.
@@ -28,7 +30,9 @@ execution authority.
 1. Identify the owning module.
 2. State whether the work changes recovery truth, schema surface, enrichment logic, export behavior, or docs only.
 3. Check whether the task is inside the active RT1 sequence
-   `S0 -> S1 -> S2A -> S2B -> S3` and satisfies its promotion gate.
+   `S0 -> S1 -> S2A -> S2B -> S2C -> R1 -> S3A -> S3B` and satisfies its
+   promotion gate. S3A source work requires an actually published R1; S3B
+   requires closed S3A and a separately reviewed plan.
 4. Check whether the task touches repo automation, agent files, skills, or verification entrypoints.
 5. Check whether the task requires corpus, snapshot, differential, benchmark, or script-lint evidence.
 6. Refuse to put plugin, storage, or analyst UX logic into `core`.

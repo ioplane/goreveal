@@ -13,7 +13,9 @@ Use them to keep work aligned with:
 - `docs/architecture/2026-03-19-goreveal-platform-contract.md`
 - `docs/architecture/2026-03-19-goreveal-go126-best-practices.md`
 - `docs/superpowers/specs/2026-07-22-goreveal-rt1-product-design.md`
+- `docs/superpowers/specs/2026-07-22-goreveal-standalone-release-ida-bootstrap-design.md`
 - `docs/superpowers/plans/2026-07-22-goreveal-rt1-horizon-a.md`
+- `docs/superpowers/plans/2026-07-22-goreveal-standalone-release.md`
 
 The March/April Scrum and strategic plans remain historical evidence only.
 

@@ -4,9 +4,10 @@
 >
 > **Standalone-first amendment (2026-07-22):** tasks through `RT1-S2B`
 > remain active. The old `RT1-S3` promotion tasks are suspended planning input,
-> not executable work. `RT1-S2C`, `RT1-R1`, `RT1-S3A`, and `RT1-S3B` require a
-> new implementation plan after written approval of
-> `../specs/2026-07-22-goreveal-standalone-release-ida-bootstrap-design.md`.
+> not executable work. `RT1-S2C` and `RT1-R1` continue in
+> `2026-07-22-goreveal-standalone-release.md`. The canonical native `RT1-S3A`
+> implementation plan lives in IDACli and remains blocked until R1 is actually
+> published; the `RT1-S3B` plan is written only after S3A closes.
 
 **Goal:** Restore trustworthy GoREveal analysis and verification and publish an identity- and location-safe v2 provider contract through `RT1-S2B`.
 
@@ -64,10 +65,10 @@ container. Keep runs sequential.
 | `RT1-S1` | ready after S0 | every green gate performs real reproducible work | S0 | pinned tools; lint/test/differential/plugins/snapshots/script lint/fuzz/bench green; IDA baseline recorded |
 | `RT1-S2A` | planned | exact binary/build identity, format-neutral locations, and real PIE evidence | S0, S1 gate truth | identity/provenance parity, v1 freeze, four-format location round trips |
 | `RT1-S2B` | blocked on S2A | measured explicit v2 envelope, reference verifier, and consumers | closed S2A | mismatch rejection, selected-envelope performance, four-format v2 fixtures |
-| `RT1-S2C` | needs replacement plan | standalone performance/SIMD qualification and release closure | closed S2B | scalar-first decisions, safe dispatch, reproducible release evidence |
+| `RT1-S2C` | planned; blocked on S2B | standalone performance/SIMD qualification and release closure | closed S2B | scalar-first decisions, safe dispatch, reproducible release evidence |
 | `RT1-R1` | release milestone | contract-complete standalone release | closed S2C, legal/compliance gate | no standalone claim depends on an RE-tool integration |
-| `RT1-S3A` | needs replacement plan | safe headless GoREveal-to-IDA database bootstrap | closed R1; idacli plan | selective speed gate, zero unsafe mutations, idempotency, preseed decision |
-| `RT1-S3B` | needs replacement plan | thin interactive IDA plugin | closed S3A | shared action classification, no duplicated recovery/mapping logic |
+| `RT1-S3A` | planned in IDACli; hard-blocked on published R1 | safe headless GoREveal-to-IDA database bootstrap | closed and published R1; approved idacli plan | selective speed gate, zero unsafe mutations, idempotency, preseed decision |
+| `RT1-S3B` | plan deferred until S3A closure | thin interactive IDA plugin | closed S3A; separately reviewed plan | shared action classification, no duplicated recovery/mapping logic |
 | `RT1-S4` | non-executable; replacement plan required | Go entity and source semantics | closed S3B, rewritten program plan, S0 stable IDs | exact entity decomposition; role/prologue precision >=99%; distinct full paths retained |
 | `RT1-S5` | non-executable; replacement plan required | safe string extents and host-reference navigation | closed S3B, rewritten program plan, S2A locations, S3A host contract | exact extents; zero unsafe string actions; fixed xref/caller query parity |
 | `RT1-S6` | non-executable; replacement plan required | resilient metadata candidates and runtime type identity | closed S3B, rewritten program plan, S1 corpus gate, S2A locations | zero false selected candidates on negatives; exact supported type identity |

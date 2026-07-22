@@ -1,11 +1,15 @@
 # GoREveal Standalone Release, SIMD Qualification, and IDA Bootstrap Design
 
-> Status: approved direction; written-spec review pending
+> Status: approved; written-spec review passed
 > Date: 2026-07-22
 > Decision owner: maintainers
 > Refines: `2026-07-22-goreveal-rt1-product-design.md`
-> Planning gate: no `RT1-S2C`, `RT1-S3A`, or `RT1-S3B` implementation plan is
-> active until this written specification is reviewed and approved.
+> Planning gate: `RT1-S2C` and `RT1-R1` follow
+> `../plans/2026-07-22-goreveal-standalone-release.md`. The canonical native
+> `RT1-S3A` plan lives in the IDACli repository at
+> `docs/planning/active/2026-07-22-goreveal-headless-bootstrap.md` and remains
+> non-executable until `RT1-R1` is actually published. The `RT1-S3B` plan is
+> written only after S3A closes.
 
 ## Decision Summary
 
