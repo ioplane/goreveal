@@ -2,8 +2,10 @@ package runtime
 
 import (
 	"encoding/binary"
+	"errors"
 	"testing"
 
+	"github.com/dantte-lp/goreveal/core/recoveryerr"
 	"github.com/dantte-lp/goreveal/schema"
 )
 
@@ -226,6 +228,24 @@ func TestReadMetadataPEFixtureSectionHeuristic(t *testing.T) {
 	}
 	if got.Provenance.Source != "core.runtime.pe" || got.Provenance.Confidence != "low" {
 		t.Fatalf("ReadMetadata() provenance = %#v", got.Provenance)
+	}
+}
+
+func TestReadMetadataMachOIsUnsupported(t *testing.T) {
+	t.Parallel()
+
+	_, err := ReadMetadata("../../corpus/fixtures/go-macho-buildinfo-darwin-amd64/fixture.bin")
+	if !errors.Is(err, recoveryerr.ErrUnsupported) {
+		t.Fatalf("ReadMetadata(Mach-O) error = %v, want unsupported", err)
+	}
+}
+
+func TestReadMetadataNonGoELFIsUnavailable(t *testing.T) {
+	t.Parallel()
+
+	_, err := ReadMetadata("/bin/sh")
+	if !errors.Is(err, recoveryerr.ErrUnavailable) {
+		t.Fatalf("ReadMetadata(/bin/sh) error = %v, want unavailable", err)
 	}
 }
 

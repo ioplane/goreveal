@@ -1,6 +1,11 @@
 package recoverystrings
 
-import "testing"
+import (
+	"errors"
+	"testing"
+
+	"github.com/dantte-lp/goreveal/core/recoveryerr"
+)
 
 func TestRecoverFixtureStrings(t *testing.T) {
 	t.Parallel()
@@ -33,6 +38,15 @@ func TestRecoverFixtureStrings(t *testing.T) {
 	}
 	if candidate.Addr != region.Addr+candidate.Offset {
 		t.Fatalf("candidate addr = %#x, want %#x", candidate.Addr, region.Addr+candidate.Offset)
+	}
+}
+
+func TestRecoverPEIsUnsupported(t *testing.T) {
+	t.Parallel()
+
+	_, err := Recover("../../corpus/fixtures/go-pe-buildinfo-windows-amd64/fixture.exe")
+	if !errors.Is(err, recoveryerr.ErrUnsupported) {
+		t.Fatalf("Recover(PE) error = %v, want unsupported", err)
 	}
 }
 

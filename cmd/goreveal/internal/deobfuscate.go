@@ -14,6 +14,9 @@ func RunDeobfuscate(ctx context.Context, stdout io.Writer, path string) error {
 	if err != nil {
 		return fmt.Errorf("deobfuscate %q: %w", path, err)
 	}
+	if err := enforceAnalysisPolicy(analysisCommandDeobfuscate, analysis); err != nil {
+		return fmt.Errorf("deobfuscate %q: %w", path, err)
+	}
 	if analysis.Refined == nil {
 		return fmt.Errorf("deobfuscate %q: no refined layer available", path)
 	}

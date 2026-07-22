@@ -8,6 +8,50 @@
     "source": "core.ingest",
     "confidence": "high"
   },
+  "diagnostics": [
+    {
+      "stage": "build_info",
+      "status": "available"
+    },
+    {
+      "stage": "runtime",
+      "status": "unsupported",
+      "code": "runtime_unsupported_container",
+      "message": "runtime metadata recovery does not support Mach-O"
+    },
+    {
+      "stage": "functions",
+      "status": "available"
+    },
+    {
+      "stage": "packages",
+      "status": "available"
+    },
+    {
+      "stage": "types",
+      "status": "unsupported",
+      "code": "dwarf_unsupported_container",
+      "message": "DWARF type recovery does not support macho"
+    },
+    {
+      "stage": "strings",
+      "status": "unsupported",
+      "code": "string_regions_unsupported_container",
+      "message": "string region recovery does not support macho"
+    },
+    {
+      "stage": "source_tree",
+      "status": "available"
+    },
+    {
+      "stage": "peeling",
+      "status": "available"
+    },
+    {
+      "stage": "refinement",
+      "status": "available"
+    }
+  ],
   "build_info": {
     "go_version": "go1.26.1",
     "path": "example.com/gorevealfixture",

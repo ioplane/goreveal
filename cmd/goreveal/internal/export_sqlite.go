@@ -24,6 +24,9 @@ func RunExportSQLite(ctx context.Context, dbPath, binaryPath string) (err error)
 	if err != nil {
 		return fmt.Errorf("analyze %q: %w", binaryPath, err)
 	}
+	if err := enforceAnalysisPolicy(analysisCommandExportSQLite, analysis); err != nil {
+		return fmt.Errorf("export sqlite %q: %w", binaryPath, err)
+	}
 
 	if _, err := store.SaveAnalysis(ctx, analysis); err != nil {
 		return fmt.Errorf("save analysis to %q: %w", dbPath, err)

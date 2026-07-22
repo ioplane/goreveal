@@ -2,9 +2,12 @@ package recoverystrings
 
 import (
 	"debug/elf"
+	"errors"
 	"fmt"
 	"os"
 
+	binaryformat "github.com/dantte-lp/goreveal/core/format"
+	"github.com/dantte-lp/goreveal/core/recoveryerr"
 	"github.com/dantte-lp/goreveal/schema"
 )
 
@@ -12,6 +15,22 @@ import (
 type Region = schema.StringRegion
 
 func readRegions(path string) ([]Region, map[string][]byte, error) {
+	kind, err := binaryformat.DetectFile(path)
+	if err != nil {
+		return nil, nil, fmt.Errorf("detect string-region container: %w", err)
+	}
+	switch kind {
+	case binaryformat.PE, binaryformat.MachO:
+		return nil, nil, recoveryerr.NewUnsupported(
+			recoveryerr.CodeStringRegionsUnsupportedContainer,
+			fmt.Sprintf("string region recovery does not support %s", kind),
+			nil,
+		)
+	case binaryformat.Unknown:
+		return nil, nil, errors.New("detect string-region container: unknown binary format")
+	case binaryformat.ELF:
+	}
+
 	fh, err := os.Open(path)
 	if err != nil {
 		return nil, nil, fmt.Errorf("open file: %w", err)
@@ -45,6 +64,13 @@ func readRegions(path string) ([]Region, map[string][]byte, error) {
 			Source: "elf.section",
 		})
 		dataBySection[section.Name] = data
+	}
+	if len(regions) == 0 {
+		return nil, nil, recoveryerr.NewUnavailable(
+			recoveryerr.CodeStringRegionsNotFound,
+			"ELF string scan regions are absent",
+			nil,
+		)
 	}
 
 	return regions, dataBySection, nil

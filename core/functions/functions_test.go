@@ -1,6 +1,11 @@
 package functions
 
-import "testing"
+import (
+	"errors"
+	"testing"
+
+	"github.com/dantte-lp/goreveal/core/recoveryerr"
+)
 
 func TestRecoverFixture(t *testing.T) {
 	t.Parallel()
@@ -129,6 +134,15 @@ func TestRecoverPEFixture(t *testing.T) {
 	}
 	if mainFn.SourceLine == 0 {
 		t.Fatalf("main.main source line = %d, want non-zero", mainFn.SourceLine)
+	}
+}
+
+func TestRecoverNonGoELFIsUnavailable(t *testing.T) {
+	t.Parallel()
+
+	_, err := Recover("/bin/sh")
+	if !errors.Is(err, recoveryerr.ErrUnavailable) {
+		t.Fatalf("Recover(/bin/sh) error = %v, want unavailable", err)
 	}
 }
 

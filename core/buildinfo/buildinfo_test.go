@@ -1,8 +1,13 @@
 package buildinfo
 
 import (
+	"errors"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/dantte-lp/goreveal/core/recoveryerr"
 )
 
 func TestReadFixture(t *testing.T) {
@@ -68,5 +73,31 @@ func TestReadMachOFixture(t *testing.T) {
 	}
 	if info.Provenance.Confidence != "high" {
 		t.Fatalf("Read() provenance confidence = %q", info.Provenance.Confidence)
+	}
+}
+
+func TestReadNonGoELFIsUnavailable(t *testing.T) {
+	t.Parallel()
+
+	_, err := Read("/bin/sh")
+	if !errors.Is(err, recoveryerr.ErrUnavailable) {
+		t.Fatalf("Read(/bin/sh) error = %v, want unavailable", err)
+	}
+}
+
+func TestReadMalformedContainerRemainsFailure(t *testing.T) {
+	t.Parallel()
+
+	path := filepath.Join(t.TempDir(), "malformed.bin")
+	if err := os.WriteFile(path, []byte{0x7f, 'E', 'L', 'F', 0x02}, 0o600); err != nil {
+		t.Fatalf("os.WriteFile() error = %v", err)
+	}
+
+	_, err := Read(path)
+	if err == nil {
+		t.Fatal("Read() error = nil, want failure")
+	}
+	if errors.Is(err, recoveryerr.ErrUnavailable) || errors.Is(err, recoveryerr.ErrUnsupported) {
+		t.Fatalf("Read() error = %v, want ordinary failure", err)
 	}
 }

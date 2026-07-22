@@ -15,6 +15,9 @@ func RunExportGhidra(ctx context.Context, stdout io.Writer, path string) error {
 	if err != nil {
 		return fmt.Errorf("export ghidra %q: %w", path, err)
 	}
+	if err := enforceAnalysisPolicy(analysisCommandExportGhidraV1, analysis); err != nil {
+		return fmt.Errorf("export ghidra %q: %w", path, err)
+	}
 
 	return writeJSON(stdout, schema.NewGhidraExport(analysis))
 }

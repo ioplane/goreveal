@@ -5,25 +5,51 @@ import (
 	"debug/elf"
 	stdpe "debug/pe"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"os"
 
+	binaryformat "github.com/dantte-lp/goreveal/core/format"
+	"github.com/dantte-lp/goreveal/core/recoveryerr"
 	"github.com/dantte-lp/goreveal/schema"
 )
 
 // ReadMetadata recovers bounded runtime layout evidence from supported binaries.
 func ReadMetadata(path string) (schema.RuntimeMetadata, error) {
-	meta, err := readELFMetadata(path)
-	if err == nil {
-		return meta, nil
+	kind, err := binaryformat.DetectFile(path)
+	if err != nil {
+		return schema.RuntimeMetadata{}, fmt.Errorf("detect runtime container: %w", err)
 	}
 
-	peMeta, peErr := readPEMetadata(path)
-	if peErr == nil {
-		return peMeta, nil
+	var meta schema.RuntimeMetadata
+	switch kind {
+	case binaryformat.ELF:
+		meta, err = readELFMetadata(path)
+	case binaryformat.PE:
+		meta, err = readPEMetadata(path)
+	case binaryformat.MachO:
+		return schema.RuntimeMetadata{}, recoveryerr.NewUnsupported(
+			recoveryerr.CodeRuntimeUnsupportedContainer,
+			"runtime metadata recovery does not support Mach-O",
+			nil,
+		)
+	case binaryformat.Unknown:
+		return schema.RuntimeMetadata{}, errors.New("detect runtime container: unknown binary format")
+	default:
+		return schema.RuntimeMetadata{}, fmt.Errorf("detect runtime container: unhandled format %q", kind)
+	}
+	if err != nil {
+		return schema.RuntimeMetadata{}, err
+	}
+	if meta.TrustSummary == schema.RuntimeTrustSummaryAbsent {
+		return schema.RuntimeMetadata{}, recoveryerr.NewUnavailable(
+			recoveryerr.CodeRuntimeMetadataNotFound,
+			"runtime metadata evidence is absent",
+			nil,
+		)
 	}
 
-	return schema.RuntimeMetadata{}, peErr
+	return meta, nil
 }
 
 func readELFMetadata(path string) (schema.RuntimeMetadata, error) {

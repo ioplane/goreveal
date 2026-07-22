@@ -2,12 +2,332 @@ package engine
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
 
+	"github.com/dantte-lp/goreveal/core/recoveryerr"
+	recoverystrings "github.com/dantte-lp/goreveal/core/strings"
 	"github.com/dantte-lp/goreveal/schema"
 )
+
+func TestAnalyzeFileRecordsStageFailure(t *testing.T) {
+	t.Parallel()
+
+	path := writeIngestibleELF(t)
+	ops := successfulStageOps()
+	ops.functions = func(string) ([]schema.Function, error) {
+		return nil, errors.New("fixture failure")
+	}
+
+	got, err := newAnalyzerForTest(ops).AnalyzeFile(context.Background(), path)
+	if err != nil {
+		t.Fatalf("AnalyzeFile() error = %v", err)
+	}
+
+	diagnostic, ok := diagnosticForStage(got.Diagnostics, schema.AnalysisStageFunctions)
+	if !ok {
+		t.Fatalf("AnalyzeFile() diagnostics = %#v, want functions diagnostic", got.Diagnostics)
+	}
+	if diagnostic.Status != schema.StageStatusFailed || diagnostic.Code != "stage_failed" {
+		t.Fatalf("functions diagnostic = %#v, want failed/stage_failed", diagnostic)
+	}
+	if len(got.Functions) != 0 {
+		t.Fatalf("AnalyzeFile() functions = %#v, want no failed-stage result", got.Functions)
+	}
+	if _, ok := diagnosticForStage(got.Diagnostics, schema.AnalysisStagePackages); ok {
+		t.Fatalf("AnalyzeFile() diagnostics = %#v, want no derived packages claim", got.Diagnostics)
+	}
+	if _, ok := diagnosticForStage(got.Diagnostics, schema.AnalysisStagePeeling); ok {
+		t.Fatalf("AnalyzeFile() diagnostics = %#v, want no derived peeling claim", got.Diagnostics)
+	}
+	if got.Packages != nil || got.Peeling != nil {
+		t.Fatalf("AnalyzeFile() derived values = packages:%#v peeling:%#v", got.Packages, got.Peeling)
+	}
+}
+
+func TestAnalyzeFileDoesNotRefineUnavailablePrerequisite(t *testing.T) {
+	t.Parallel()
+
+	ops := successfulStageOps()
+	ops.functions = func(string) ([]schema.Function, error) {
+		return nil, recoveryerr.NewUnavailable(
+			recoveryerr.CodePclntabNotFound,
+			"function evidence is absent",
+			nil,
+		)
+	}
+
+	got, err := newAnalyzerForTest(ops).AnalyzeFile(context.Background(), writeIngestibleELF(t))
+	if err != nil {
+		t.Fatalf("AnalyzeFile() error = %v", err)
+	}
+	if got.Refined != nil {
+		t.Fatalf("AnalyzeFile() refined = %#v, want no derivation from unavailable functions", got.Refined)
+	}
+	if _, ok := diagnosticForStage(got.Diagnostics, schema.AnalysisStageRefinement); ok {
+		t.Fatalf("AnalyzeFile() diagnostics = %#v, want refinement not attempted", got.Diagnostics)
+	}
+}
+
+func TestAnalyzeFileStageStatusMatrix(t *testing.T) {
+	t.Parallel()
+
+	type stageCase struct {
+		name   string
+		stage  schema.AnalysisStage
+		inject func(*stageOps, error)
+	}
+
+	stages := []stageCase{
+		{
+			name:  "build_info",
+			stage: schema.AnalysisStageBuildInfo,
+			inject: func(ops *stageOps, err error) {
+				if err != nil {
+					ops.buildInfo = func(string) (schema.BuildInfo, error) { return schema.BuildInfo{}, err }
+				}
+			},
+		},
+		{
+			name:  "runtime",
+			stage: schema.AnalysisStageRuntime,
+			inject: func(ops *stageOps, err error) {
+				if err != nil {
+					ops.runtime = func(string) (schema.RuntimeMetadata, error) { return schema.RuntimeMetadata{}, err }
+				}
+			},
+		},
+		{
+			name:  "functions",
+			stage: schema.AnalysisStageFunctions,
+			inject: func(ops *stageOps, err error) {
+				if err != nil {
+					ops.functions = func(string) ([]schema.Function, error) { return nil, err }
+				}
+			},
+		},
+		{
+			name:  "types",
+			stage: schema.AnalysisStageTypes,
+			inject: func(ops *stageOps, err error) {
+				if err != nil {
+					ops.types = func(string) ([]schema.Type, error) { return nil, err }
+				}
+			},
+		},
+		{
+			name:  "strings",
+			stage: schema.AnalysisStageStrings,
+			inject: func(ops *stageOps, err error) {
+				if err != nil {
+					ops.strings = func(string) (recoverystrings.Result, error) { return recoverystrings.Result{}, err }
+				}
+			},
+		},
+		{
+			name:  "source_tree",
+			stage: schema.AnalysisStageSourceTree,
+			inject: func(ops *stageOps, err error) {
+				if err != nil {
+					ops.sourceTree = func(string, schema.Analysis) (schema.SourceTree, error) {
+						return schema.SourceTree{}, err
+					}
+				}
+			},
+		},
+		{
+			name:  "refinement",
+			stage: schema.AnalysisStageRefinement,
+			inject: func(ops *stageOps, err error) {
+				if err != nil {
+					ops.refine = func(context.Context, schema.Analysis) (schema.RefinedAnalysis, error) {
+						return schema.RefinedAnalysis{}, err
+					}
+				}
+			},
+		},
+	}
+
+	outcomes := []struct {
+		name    string
+		err     error
+		status  schema.StageStatus
+		code    string
+		message string
+	}{
+		{name: "available", status: schema.StageStatusAvailable},
+		{
+			name:    "unavailable",
+			err:     recoveryerr.NewUnavailable(recoveryerr.Code("fixture_unavailable"), "fixture unavailable", nil),
+			status:  schema.StageStatusUnavailable,
+			code:    "fixture_unavailable",
+			message: "fixture unavailable",
+		},
+		{
+			name:    "unsupported",
+			err:     recoveryerr.NewUnsupported(recoveryerr.Code("fixture_unsupported"), "fixture unsupported", nil),
+			status:  schema.StageStatusUnsupported,
+			code:    "fixture_unsupported",
+			message: "fixture unsupported",
+		},
+		{
+			name:    "failed",
+			err:     errors.New("fixture failure"),
+			status:  schema.StageStatusFailed,
+			code:    "stage_failed",
+			message: "fixture failure",
+		},
+	}
+
+	for _, stage := range stages {
+		for _, outcome := range outcomes {
+			t.Run(stage.name+"/"+outcome.name, func(t *testing.T) {
+				t.Parallel()
+
+				ops := successfulStageOps()
+				stage.inject(&ops, outcome.err)
+
+				got, err := newAnalyzerForTest(ops).AnalyzeFile(context.Background(), writeIngestibleELF(t))
+				if err != nil {
+					t.Fatalf("AnalyzeFile() error = %v", err)
+				}
+
+				diagnostic, ok := diagnosticForStage(got.Diagnostics, stage.stage)
+				if !ok {
+					t.Fatalf("diagnostics = %#v, want %q", got.Diagnostics, stage.stage)
+				}
+				if diagnostic.Status != outcome.status || diagnostic.Code != outcome.code || diagnostic.Message != outcome.message {
+					t.Fatalf(
+						"diagnostic = %#v, want status=%q code=%q message=%q",
+						diagnostic,
+						outcome.status,
+						outcome.code,
+						outcome.message,
+					)
+				}
+				if outcome.err != nil && stage.stage == schema.AnalysisStageSourceTree && got.SourceTree != nil {
+					t.Fatalf("source-tree error published payload %#v", got.SourceTree)
+				}
+				if outcome.err != nil && stage.stage == schema.AnalysisStageRefinement && got.Refined != nil {
+					t.Fatalf("refinement error published payload %#v", got.Refined)
+				}
+				assertOrderedUniqueDiagnostics(t, got.Diagnostics)
+			})
+		}
+	}
+}
+
+func TestAnalyzeFileRecordsDerivedStageAvailability(t *testing.T) {
+	t.Parallel()
+
+	got, err := newAnalyzerForTest(successfulStageOps()).AnalyzeFile(context.Background(), writeIngestibleELF(t))
+	if err != nil {
+		t.Fatalf("AnalyzeFile() error = %v", err)
+	}
+
+	want := []schema.AnalysisStage{
+		schema.AnalysisStageBuildInfo,
+		schema.AnalysisStageRuntime,
+		schema.AnalysisStageFunctions,
+		schema.AnalysisStagePackages,
+		schema.AnalysisStageTypes,
+		schema.AnalysisStageStrings,
+		schema.AnalysisStageSourceTree,
+		schema.AnalysisStagePeeling,
+		schema.AnalysisStageRefinement,
+	}
+	if len(got.Diagnostics) != len(want) {
+		t.Fatalf("diagnostics = %#v, want stages %#v", got.Diagnostics, want)
+	}
+	for i, stage := range want {
+		if got.Diagnostics[i].Stage != stage || got.Diagnostics[i].Status != schema.StageStatusAvailable {
+			t.Fatalf("diagnostics[%d] = %#v, want %q/available", i, got.Diagnostics[i], stage)
+		}
+	}
+}
+
+func successfulStageOps() stageOps {
+	return stageOps{
+		buildInfo: func(string) (schema.BuildInfo, error) {
+			return schema.BuildInfo{Path: "example.com/fixture"}, nil
+		},
+		runtime: func(string) (schema.RuntimeMetadata, error) {
+			return schema.RuntimeMetadata{TrustSummary: schema.RuntimeTrustSummarySectionHeuristic}, nil
+		},
+		functions: func(string) ([]schema.Function, error) {
+			return []schema.Function{{Name: "main.main", Package: "main", Entry: 0x1000, End: 0x1100}}, nil
+		},
+		types: func(string) ([]schema.Type, error) {
+			return []schema.Type{{Name: "main.fixture", Kind: "struct"}}, nil
+		},
+		strings: func(string) (recoverystrings.Result, error) {
+			return recoverystrings.Result{
+				Regions:    []schema.StringRegion{{Name: ".rodata", Addr: 0x2000, Size: 8}},
+				Candidates: []schema.StringCandidate{{Value: "fixture", Region: ".rodata", Addr: 0x2000}},
+			}, nil
+		},
+		sourceTree: func(string, schema.Analysis) (schema.SourceTree, error) {
+			return schema.SourceTree{Root: "example.com/fixture", Files: []string{}, Packages: []schema.SourcePackage{}}, nil
+		},
+		refine: func(context.Context, schema.Analysis) (schema.RefinedAnalysis, error) {
+			return schema.RefinedAnalysis{Functions: []schema.RefinedFunction{{Name: "main.main"}}}, nil
+		},
+	}
+}
+
+func writeIngestibleELF(t *testing.T) string {
+	t.Helper()
+
+	path := filepath.Join(t.TempDir(), "fixture.bin")
+	data := []byte{0x7f, 'E', 'L', 'F', 0x02, 0x01, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	if err := os.WriteFile(path, data, 0o600); err != nil {
+		t.Fatalf("os.WriteFile() error = %v", err)
+	}
+	return path
+}
+
+func diagnosticForStage(diagnostics []schema.StageDiagnostic, stage schema.AnalysisStage) (schema.StageDiagnostic, bool) {
+	for _, diagnostic := range diagnostics {
+		if diagnostic.Stage == stage {
+			return diagnostic, true
+		}
+	}
+	return schema.StageDiagnostic{}, false
+}
+
+func assertOrderedUniqueDiagnostics(t *testing.T, diagnostics []schema.StageDiagnostic) {
+	t.Helper()
+
+	order := map[schema.AnalysisStage]int{
+		schema.AnalysisStageBuildInfo:  0,
+		schema.AnalysisStageRuntime:    1,
+		schema.AnalysisStageFunctions:  2,
+		schema.AnalysisStagePackages:   3,
+		schema.AnalysisStageTypes:      4,
+		schema.AnalysisStageStrings:    5,
+		schema.AnalysisStageSourceTree: 6,
+		schema.AnalysisStagePeeling:    7,
+		schema.AnalysisStageRefinement: 8,
+	}
+	seen := make(map[schema.AnalysisStage]struct{}, len(diagnostics))
+	previous := -1
+	for _, diagnostic := range diagnostics {
+		if _, ok := seen[diagnostic.Stage]; ok {
+			t.Fatalf("duplicate diagnostic for stage %q in %#v", diagnostic.Stage, diagnostics)
+		}
+		seen[diagnostic.Stage] = struct{}{}
+		current, ok := order[diagnostic.Stage]
+		if !ok {
+			t.Fatalf("unknown diagnostic stage %q", diagnostic.Stage)
+		}
+		if current <= previous {
+			t.Fatalf("diagnostics out of order: %#v", diagnostics)
+		}
+		previous = current
+	}
+}
 
 func TestAnalyzeFile(t *testing.T) {
 	t.Parallel()

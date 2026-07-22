@@ -2,6 +2,7 @@ package internalcmd
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -10,6 +11,206 @@ import (
 	"github.com/dantte-lp/goreveal/schema"
 	storesqlite "github.com/dantte-lp/goreveal/storage/sqlite"
 )
+
+func TestAnalysisPolicyCoversEveryCurrentAnalysisCommand(t *testing.T) {
+	t.Parallel()
+
+	commands := []analysisCommand{
+		analysisCommandAnalyze,
+		analysisCommandInspectFunctions,
+		analysisCommandInspectPackages,
+		analysisCommandInspectTypes,
+		analysisCommandInspectStrings,
+		analysisCommandInspectRuntime,
+		analysisCommandInspectPeeling,
+		analysisCommandPeel,
+		analysisCommandSourceTree,
+		analysisCommandDeobfuscate,
+		analysisCommandExportSQLite,
+		analysisCommandExportIDAV1,
+		analysisCommandExportGhidraV1,
+	}
+
+	if len(commandPolicies) != len(commands) {
+		t.Fatalf("commandPolicies has %d entries, want %d: %#v", len(commandPolicies), len(commands), commandPolicies)
+	}
+	for _, command := range commands {
+		if _, ok := commandPolicies[command]; !ok {
+			t.Fatalf("commandPolicies missing %q", command)
+		}
+	}
+}
+
+func TestEnforceAnalysisPolicy(t *testing.T) {
+	t.Parallel()
+
+	available := func(stages ...schema.AnalysisStage) schema.Analysis {
+		diagnostics := make([]schema.StageDiagnostic, 0, len(stages))
+		for _, stage := range stages {
+			diagnostics = append(diagnostics, schema.StageDiagnostic{Stage: stage, Status: schema.StageStatusAvailable})
+		}
+		return schema.Analysis{Diagnostics: diagnostics}
+	}
+
+	tests := []struct {
+		name     string
+		command  analysisCommand
+		analysis schema.Analysis
+		wantCode string
+	}{
+		{
+			name:    "analyze permits failed partial result",
+			command: analysisCommandAnalyze,
+			analysis: schema.Analysis{Diagnostics: []schema.StageDiagnostic{
+				{Stage: schema.AnalysisStageFunctions, Status: schema.StageStatusFailed, Code: "stage_failed"},
+			}},
+		},
+		{
+			name:     "inspect functions rejects missing stage",
+			command:  analysisCommandInspectFunctions,
+			analysis: schema.Analysis{Diagnostics: []schema.StageDiagnostic{}},
+			wantCode: "stage_not_attempted",
+		},
+		{
+			name:     "inspect functions accepts available",
+			command:  analysisCommandInspectFunctions,
+			analysis: available(schema.AnalysisStageFunctions),
+		},
+		{
+			name:    "inspect functions rejects failed",
+			command: analysisCommandInspectFunctions,
+			analysis: schema.Analysis{Diagnostics: []schema.StageDiagnostic{
+				{Stage: schema.AnalysisStageFunctions, Status: schema.StageStatusFailed, Code: "fixture_failed"},
+			}},
+			wantCode: "fixture_failed",
+		},
+		{
+			name:    "inspect types accepts unavailable as empty",
+			command: analysisCommandInspectTypes,
+			analysis: schema.Analysis{Diagnostics: []schema.StageDiagnostic{
+				{Stage: schema.AnalysisStageTypes, Status: schema.StageStatusUnavailable, Code: "dwarf_not_found"},
+			}},
+		},
+		{
+			name:    "inspect types rejects unsupported",
+			command: analysisCommandInspectTypes,
+			analysis: schema.Analysis{Diagnostics: []schema.StageDiagnostic{
+				{Stage: schema.AnalysisStageTypes, Status: schema.StageStatusUnsupported, Code: "dwarf_unsupported_container"},
+			}},
+			wantCode: "dwarf_unsupported_container",
+		},
+		{
+			name:    "inspect runtime reports unavailable",
+			command: analysisCommandInspectRuntime,
+			analysis: schema.Analysis{Diagnostics: []schema.StageDiagnostic{
+				{Stage: schema.AnalysisStageRuntime, Status: schema.StageStatusUnavailable, Code: "runtime_metadata_not_found"},
+			}},
+			wantCode: "runtime_metadata_not_found",
+		},
+		{
+			name:     "inspect packages requires derived stage",
+			command:  analysisCommandInspectPackages,
+			analysis: available(schema.AnalysisStageFunctions),
+			wantCode: "stage_not_attempted",
+		},
+		{
+			name:    "inspect peeling accepts both available stages",
+			command: analysisCommandInspectPeeling,
+			analysis: available(
+				schema.AnalysisStageFunctions,
+				schema.AnalysisStagePeeling,
+			),
+		},
+		{
+			name:    "deobfuscate requires all raw and refinement stages",
+			command: analysisCommandDeobfuscate,
+			analysis: available(
+				schema.AnalysisStageFunctions,
+				schema.AnalysisStagePackages,
+				schema.AnalysisStageTypes,
+				schema.AnalysisStageStrings,
+			),
+			wantCode: "stage_not_attempted",
+		},
+		{
+			name:    "sqlite accepts optional unavailable stage",
+			command: analysisCommandExportSQLite,
+			analysis: schema.Analysis{Diagnostics: []schema.StageDiagnostic{
+				{Stage: schema.AnalysisStageFunctions, Status: schema.StageStatusAvailable},
+				{Stage: schema.AnalysisStageTypes, Status: schema.StageStatusUnavailable, Code: "dwarf_not_found"},
+			}},
+		},
+		{
+			name:    "sqlite rejects any failed attempted stage",
+			command: analysisCommandExportSQLite,
+			analysis: schema.Analysis{Diagnostics: []schema.StageDiagnostic{
+				{Stage: schema.AnalysisStageFunctions, Status: schema.StageStatusAvailable},
+				{Stage: schema.AnalysisStageRuntime, Status: schema.StageStatusFailed, Code: "stage_failed"},
+			}},
+			wantCode: "stage_failed",
+		},
+		{
+			name:    "IDA v1 accepts optional unsupported stage",
+			command: analysisCommandExportIDAV1,
+			analysis: schema.Analysis{Diagnostics: []schema.StageDiagnostic{
+				{Stage: schema.AnalysisStageFunctions, Status: schema.StageStatusAvailable},
+				{Stage: schema.AnalysisStageTypes, Status: schema.StageStatusUnsupported, Code: "dwarf_unsupported_container"},
+			}},
+		},
+		{
+			name:    "IDA v1 rejects failed projected stage",
+			command: analysisCommandExportIDAV1,
+			analysis: schema.Analysis{Diagnostics: []schema.StageDiagnostic{
+				{Stage: schema.AnalysisStageFunctions, Status: schema.StageStatusAvailable},
+				{Stage: schema.AnalysisStageStrings, Status: schema.StageStatusFailed, Code: "stage_failed"},
+			}},
+			wantCode: "stage_failed",
+		},
+		{
+			name:    "Ghidra v1 rejects unavailable functions",
+			command: analysisCommandExportGhidraV1,
+			analysis: schema.Analysis{Diagnostics: []schema.StageDiagnostic{
+				{Stage: schema.AnalysisStageFunctions, Status: schema.StageStatusUnavailable, Code: "pclntab_not_found"},
+			}},
+			wantCode: "pclntab_not_found",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			err := enforceAnalysisPolicy(tt.command, tt.analysis)
+			if tt.wantCode == "" {
+				if err != nil {
+					t.Fatalf("enforceAnalysisPolicy() error = %v", err)
+				}
+				return
+			}
+
+			var policyError *analysisPolicyError
+			if !errors.As(err, &policyError) {
+				t.Fatalf("enforceAnalysisPolicy() error = %v, want *analysisPolicyError", err)
+			}
+			if policyError.Code != tt.wantCode {
+				t.Fatalf("analysisPolicyError.Code = %q, want %q", policyError.Code, tt.wantCode)
+			}
+		})
+	}
+}
+
+func TestEnforceAnalysisPolicyRejectsUnknownCommand(t *testing.T) {
+	t.Parallel()
+
+	err := enforceAnalysisPolicy(analysisCommand("future-command"), schema.Analysis{Diagnostics: []schema.StageDiagnostic{}})
+	var policyError *analysisPolicyError
+	if !errors.As(err, &policyError) {
+		t.Fatalf("enforceAnalysisPolicy() error = %v, want *analysisPolicyError", err)
+	}
+	if policyError.Code != "unknown_analysis_policy" {
+		t.Fatalf("analysisPolicyError.Code = %q, want unknown_analysis_policy", policyError.Code)
+	}
+}
 
 func TestRunAnalyze(t *testing.T) {
 	t.Parallel()
@@ -405,7 +606,7 @@ func TestRunPeelReturnsOnlyUserOwnedProjection(t *testing.T) {
 	}
 }
 
-func TestRunInspectRuntimePEUnavailable(t *testing.T) {
+func TestRunInspectRuntimeMalformedPEFailsExplicitly(t *testing.T) {
 	t.Parallel()
 
 	dir := t.TempDir()
@@ -417,10 +618,10 @@ func TestRunInspectRuntimePEUnavailable(t *testing.T) {
 	var out strings.Builder
 	err := RunInspectRuntime(context.Background(), &out, path)
 	if err == nil {
-		t.Fatal("RunInspectRuntime() error = nil, want unavailable error")
+		t.Fatal("RunInspectRuntime() error = nil, want explicit failed stage")
 	}
-	if !strings.Contains(err.Error(), "unavailable") {
-		t.Fatalf("RunInspectRuntime() error = %q, want unavailable", err)
+	if !strings.Contains(err.Error(), `status="failed"`) || !strings.Contains(err.Error(), `code="stage_failed"`) {
+		t.Fatalf("RunInspectRuntime() error = %q, want explicit failed stage", err)
 	}
 }
 

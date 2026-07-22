@@ -1,5 +1,12 @@
 package format
 
+import (
+	"errors"
+	"fmt"
+	"io"
+	"os"
+)
+
 // Kind is the detected binary container format.
 type Kind string
 
@@ -37,4 +44,21 @@ func DetectHeader(header []byte) Kind {
 	}
 
 	return Unknown
+}
+
+// DetectFile classifies a binary from its leading bytes without parsing its container body.
+func DetectFile(path string) (Kind, error) {
+	fh, err := os.Open(path)
+	if err != nil {
+		return Unknown, fmt.Errorf("open %q: %w", path, err)
+	}
+	defer fh.Close()
+
+	header := make([]byte, 16)
+	n, err := io.ReadFull(fh, header)
+	if err != nil && !errors.Is(err, io.ErrUnexpectedEOF) && !errors.Is(err, io.EOF) {
+		return Unknown, fmt.Errorf("read %q header: %w", path, err)
+	}
+
+	return DetectHeader(header[:n]), nil
 }

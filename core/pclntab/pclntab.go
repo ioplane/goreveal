@@ -5,9 +5,12 @@ import (
 	"debug/elf"
 	"debug/macho"
 	stdpe "debug/pe"
+	"errors"
 	"fmt"
 	"os"
 
+	binaryformat "github.com/dantte-lp/goreveal/core/format"
+	"github.com/dantte-lp/goreveal/core/recoveryerr"
 	"github.com/dantte-lp/goreveal/schema"
 )
 
@@ -21,42 +24,58 @@ type Data struct {
 
 // Read extracts pclntab-related sections from a supported Go binary container.
 func Read(path string) (Data, error) {
+	kind, err := binaryformat.DetectFile(path)
+	if err != nil {
+		return Data{}, fmt.Errorf("detect pclntab container: %w", err)
+	}
+	if kind == binaryformat.Unknown {
+		return Data{}, errors.New("detect pclntab container: unknown binary format")
+	}
+
 	fh, err := os.Open(path)
 	if err != nil {
 		return Data{}, fmt.Errorf("open file: %w", err)
 	}
 	defer fh.Close()
 
-	ef, err := elf.NewFile(fh)
-	if err == nil {
+	switch kind {
+	case binaryformat.ELF:
+		ef, openErr := elf.NewFile(fh)
+		if openErr != nil {
+			return Data{}, fmt.Errorf("open ELF: %w", openErr)
+		}
 		return readELF(ef)
-	}
-
-	if _, seekErr := fh.Seek(0, 0); seekErr != nil {
-		return Data{}, fmt.Errorf("rewind file: %w", seekErr)
-	}
-
-	pf, err := stdpe.NewFile(fh)
-	if err == nil {
+	case binaryformat.PE:
+		pf, openErr := stdpe.NewFile(fh)
+		if openErr != nil {
+			return Data{}, fmt.Errorf("open PE: %w", openErr)
+		}
 		return readPE(pf)
-	}
-
-	if _, seekErr := fh.Seek(0, 0); seekErr != nil {
-		return Data{}, fmt.Errorf("rewind file: %w", seekErr)
-	}
-
-	mf, err := macho.NewFile(fh)
-	if err == nil {
+	case binaryformat.MachO:
+		mf, openErr := macho.NewFile(fh)
+		if openErr != nil {
+			return Data{}, fmt.Errorf("open Mach-O: %w", openErr)
+		}
 		return readMachO(mf)
+	case binaryformat.Unknown:
+		return Data{}, recoveryerr.NewUnsupported(
+			recoveryerr.CodePclntabUnsupportedContainer,
+			"pclntab container is unsupported",
+			nil,
+		)
+	default:
+		return Data{}, fmt.Errorf("detect pclntab container: unhandled format %q", kind)
 	}
-
-	return Data{}, fmt.Errorf("open binary: unsupported pclntab container")
 }
 
 func readELF(ef *elf.File) (Data, error) {
 	pclnSection := ef.Section(".gopclntab")
 	if pclnSection == nil {
-		return Data{}, fmt.Errorf("section %q not found", ".gopclntab")
+		return Data{}, recoveryerr.NewUnavailable(
+			recoveryerr.CodePclntabNotFound,
+			"ELF pclntab section is absent",
+			nil,
+		)
 	}
 	pcln, err := pclnSection.Data()
 	if err != nil {
@@ -90,7 +109,11 @@ func readELF(ef *elf.File) (Data, error) {
 func readMachO(mf *macho.File) (Data, error) {
 	pclnSection := mf.Section("__gopclntab")
 	if pclnSection == nil {
-		return Data{}, fmt.Errorf("section %q not found", "__gopclntab")
+		return Data{}, recoveryerr.NewUnavailable(
+			recoveryerr.CodePclntabNotFound,
+			"Mach-O pclntab section is absent",
+			nil,
+		)
 	}
 	pcln, err := pclnSection.Data()
 	if err != nil {
@@ -149,7 +172,11 @@ func readPE(pf *stdpe.File) (Data, error) {
 	}
 
 	if len(pcln) == 0 {
-		return Data{}, fmt.Errorf("PE pclntab header candidate not found")
+		return Data{}, recoveryerr.NewUnavailable(
+			recoveryerr.CodePclntabNotFound,
+			"PE pclntab header candidate is absent",
+			nil,
+		)
 	}
 
 	return Data{

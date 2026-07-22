@@ -248,6 +248,7 @@ type SourceTree struct {
 type Analysis struct {
 	Input         Input             `json:"input"`
 	Provenance    Provenance        `json:"provenance"`
+	Diagnostics   []StageDiagnostic `json:"diagnostics"`
 	BuildInfo     *BuildInfo        `json:"build_info,omitempty"`
 	Runtime       *RuntimeMetadata  `json:"runtime,omitempty"`
 	Functions     []Function        `json:"functions,omitempty"`

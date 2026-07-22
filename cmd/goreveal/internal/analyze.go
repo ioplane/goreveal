@@ -17,6 +17,9 @@ func RunAnalyze(ctx context.Context, stdout io.Writer, path string) error {
 	if err != nil {
 		return fmt.Errorf("analyze %q: %w", path, err)
 	}
+	if err := enforceAnalysisPolicy(analysisCommandAnalyze, analysis); err != nil {
+		return fmt.Errorf("analyze %q: %w", path, err)
+	}
 
 	return writeJSON(stdout, analysis)
 }
@@ -25,6 +28,9 @@ func RunAnalyze(ctx context.Context, stdout io.Writer, path string) error {
 func RunInspectFunctions(ctx context.Context, stdout io.Writer, path string) error {
 	analysis, err := engine.New().AnalyzeFile(ctx, path)
 	if err != nil {
+		return fmt.Errorf("inspect functions %q: %w", path, err)
+	}
+	if err := enforceAnalysisPolicy(analysisCommandInspectFunctions, analysis); err != nil {
 		return fmt.Errorf("inspect functions %q: %w", path, err)
 	}
 
@@ -37,6 +43,9 @@ func RunInspectPackages(ctx context.Context, stdout io.Writer, path string) erro
 	if err != nil {
 		return fmt.Errorf("inspect packages %q: %w", path, err)
 	}
+	if err := enforceAnalysisPolicy(analysisCommandInspectPackages, analysis); err != nil {
+		return fmt.Errorf("inspect packages %q: %w", path, err)
+	}
 
 	return writeJSON(stdout, analysis.Packages)
 }
@@ -45,6 +54,9 @@ func RunInspectPackages(ctx context.Context, stdout io.Writer, path string) erro
 func RunInspectTypes(ctx context.Context, stdout io.Writer, path string) error {
 	analysis, err := engine.New().AnalyzeFile(ctx, path)
 	if err != nil {
+		return fmt.Errorf("inspect types %q: %w", path, err)
+	}
+	if err := enforceAnalysisPolicy(analysisCommandInspectTypes, analysis); err != nil {
 		return fmt.Errorf("inspect types %q: %w", path, err)
 	}
 	if analysis.Types == nil {
@@ -60,6 +72,9 @@ func RunInspectStrings(ctx context.Context, stdout io.Writer, path string) error
 	if err != nil {
 		return fmt.Errorf("inspect strings %q: %w", path, err)
 	}
+	if err := enforceAnalysisPolicy(analysisCommandInspectStrings, analysis); err != nil {
+		return fmt.Errorf("inspect strings %q: %w", path, err)
+	}
 
 	return writeJSON(stdout, analysis.Strings)
 }
@@ -68,6 +83,9 @@ func RunInspectStrings(ctx context.Context, stdout io.Writer, path string) error
 func RunInspectRuntime(ctx context.Context, stdout io.Writer, path string) error {
 	analysis, err := engine.New().AnalyzeFile(ctx, path)
 	if err != nil {
+		return fmt.Errorf("inspect runtime %q: %w", path, err)
+	}
+	if err := enforceAnalysisPolicy(analysisCommandInspectRuntime, analysis); err != nil {
 		return fmt.Errorf("inspect runtime %q: %w", path, err)
 	}
 	if analysis.Runtime == nil {
@@ -83,6 +101,9 @@ func RunInspectPeeling(ctx context.Context, stdout io.Writer, path string) error
 	if err != nil {
 		return fmt.Errorf("inspect peeling %q: %w", path, err)
 	}
+	if err := enforceAnalysisPolicy(analysisCommandInspectPeeling, analysis); err != nil {
+		return fmt.Errorf("inspect peeling %q: %w", path, err)
+	}
 	if analysis.Peeling == nil {
 		return fmt.Errorf("inspect peeling %q: unavailable", path)
 	}
@@ -94,6 +115,9 @@ func RunInspectPeeling(ctx context.Context, stdout io.Writer, path string) error
 func RunPeel(ctx context.Context, stdout io.Writer, path string) error {
 	analysis, err := engine.New().AnalyzeFile(ctx, path)
 	if err != nil {
+		return fmt.Errorf("peel %q: %w", path, err)
+	}
+	if err := enforceAnalysisPolicy(analysisCommandPeel, analysis); err != nil {
 		return fmt.Errorf("peel %q: %w", path, err)
 	}
 	projected := peeling.UserOnlyView(analysis.Peeling)
@@ -108,6 +132,9 @@ func RunPeel(ctx context.Context, stdout io.Writer, path string) error {
 func RunSourceTree(ctx context.Context, stdout io.Writer, path string) error {
 	analysis, err := engine.New().AnalyzeFile(ctx, path)
 	if err != nil {
+		return fmt.Errorf("source tree %q: %w", path, err)
+	}
+	if err := enforceAnalysisPolicy(analysisCommandSourceTree, analysis); err != nil {
 		return fmt.Errorf("source tree %q: %w", path, err)
 	}
 	if analysis.SourceTree == nil {

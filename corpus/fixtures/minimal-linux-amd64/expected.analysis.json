@@ -8,5 +8,37 @@
     "source": "core.ingest",
     "confidence": "high"
   },
+  "diagnostics": [
+    {
+      "stage": "build_info",
+      "status": "failed",
+      "code": "stage_failed",
+      "message": "read build info: could not read Go build info from ../../corpus/fixtures/minimal-linux-amd64/fixture.bin: unrecognized file format"
+    },
+    {
+      "stage": "runtime",
+      "status": "failed",
+      "code": "stage_failed",
+      "message": "open ELF: EOF"
+    },
+    {
+      "stage": "functions",
+      "status": "failed",
+      "code": "stage_failed",
+      "message": "read pclntab: open ELF: EOF"
+    },
+    {
+      "stage": "types",
+      "status": "failed",
+      "code": "stage_failed",
+      "message": "open DWARF: open ELF: EOF"
+    },
+    {
+      "stage": "strings",
+      "status": "failed",
+      "code": "stage_failed",
+      "message": "read string regions: open ELF: EOF"
+    }
+  ],
   "types": []
 }
