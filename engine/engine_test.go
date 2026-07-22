@@ -421,6 +421,47 @@ func TestAnalyzeFileRejectsEmptyStageEvidence(t *testing.T) {
 			},
 		},
 		{
+			name:    "source tree root only",
+			stage:   schema.AnalysisStageSourceTree,
+			code:    string(recoveryerr.CodeSourceTreeNotFound),
+			message: "source-tree evidence is absent",
+			inject: func(ops *stageOps) {
+				ops.sourceTree = func(string, schema.Analysis) (schema.SourceTree, error) {
+					return schema.SourceTree{Root: "example.com/fixture"}, nil
+				}
+			},
+			assert: func(t *testing.T, analysis schema.Analysis) {
+				t.Helper()
+				if analysis.SourceTree != nil {
+					t.Fatalf("SourceTree = %#v, want nil", analysis.SourceTree)
+				}
+			},
+		},
+		{
+			name:    "source tree metadata only",
+			stage:   schema.AnalysisStageSourceTree,
+			code:    string(recoveryerr.CodeSourceTreeNotFound),
+			message: "source-tree evidence is absent",
+			inject: func(ops *stageOps) {
+				ops.sourceTree = func(string, schema.Analysis) (schema.SourceTree, error) {
+					return schema.SourceTree{
+						Root:               "example.com/fixture",
+						SourceEvidenceKind: schema.SourceEvidenceKindPackageFallback,
+						SourceEvidenceSummary: schema.SourceEvidenceSummary{
+							TreeKind: schema.SourceEvidenceKindPackageFallback,
+						},
+						PathlessFileEvidence: true,
+					}, nil
+				}
+			},
+			assert: func(t *testing.T, analysis schema.Analysis) {
+				t.Helper()
+				if analysis.SourceTree != nil {
+					t.Fatalf("SourceTree = %#v, want nil", analysis.SourceTree)
+				}
+			},
+		},
+		{
 			name:    "peeling",
 			stage:   schema.AnalysisStagePeeling,
 			code:    "peeling_unavailable",
@@ -478,6 +519,58 @@ func TestAnalyzeFileRejectsEmptyStageEvidence(t *testing.T) {
 	}
 }
 
+func TestAnalyzeFileAcceptsSourceTreeNodeEvidence(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		tree schema.SourceTree
+	}{
+		{
+			name: "module root with fileless package node",
+			tree: schema.SourceTree{
+				Root:               "example.com/fixture",
+				SourceEvidenceKind: schema.SourceEvidenceKindPackageFallback,
+				Packages: []schema.SourcePackage{{
+					Name:            "main",
+					ImportPath:      "example.com/fixture",
+					HasFileEvidence: false,
+					Files:           []string{},
+				}},
+			},
+		},
+		{
+			name: "file-backed tree",
+			tree: schema.SourceTree{
+				Root:  "example.com/fixture",
+				Files: []string{"main.go"},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			ops := successfulStageOps()
+			ops.sourceTree = func(string, schema.Analysis) (schema.SourceTree, error) { return tt.tree, nil }
+			got, err := newAnalyzerForTest(ops).AnalyzeFile(context.Background(), writeIngestibleELF(t))
+			if err != nil {
+				t.Fatalf("AnalyzeFile() error = %v", err)
+			}
+
+			diagnostic, exists := diagnosticForStage(got.Diagnostics, schema.AnalysisStageSourceTree)
+			if !exists || diagnostic.Status != schema.StageStatusAvailable {
+				t.Fatalf("source-tree diagnostic = %#v, exists=%v, want available", diagnostic, exists)
+			}
+			if got.SourceTree == nil {
+				t.Fatal("SourceTree = nil, want node-backed evidence")
+			}
+			assertOrderedUniqueDiagnostics(t, got.Diagnostics)
+		})
+	}
+}
+
 func successfulStageOps() stageOps {
 	return stageOps{
 		buildInfo: func(string) (schema.BuildInfo, error) {
@@ -507,7 +600,17 @@ func successfulStageOps() stageOps {
 			}
 		},
 		sourceTree: func(string, schema.Analysis) (schema.SourceTree, error) {
-			return schema.SourceTree{Root: "example.com/fixture", Files: []string{}, Packages: []schema.SourcePackage{}}, nil
+			return schema.SourceTree{
+				Root:               "example.com/fixture",
+				SourceEvidenceKind: schema.SourceEvidenceKindPackageFallback,
+				Files:              []string{},
+				Packages: []schema.SourcePackage{{
+					Name:            "main",
+					ImportPath:      "example.com/fixture",
+					HasFileEvidence: false,
+					Files:           []string{},
+				}},
+			}, nil
 		},
 		refine: func(context.Context, schema.Analysis) (schema.RefinedAnalysis, error) {
 			return schema.RefinedAnalysis{Functions: []schema.RefinedFunction{{Name: "main.main"}}}, nil

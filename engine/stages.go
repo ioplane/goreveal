@@ -125,9 +125,7 @@ func stringEvidence(recovered recoverystrings.Result) (string, string) {
 }
 
 func sourceTreeEvidence(tree schema.SourceTree) (string, string) {
-	if tree.Root != "" || tree.SourceEvidenceKind != "" || len(tree.Files) != 0 ||
-		len(tree.Packages) != 0 || len(tree.ExternalPackages) != 0 || tree.PathlessFileEvidence ||
-		tree.SourceEvidenceSummary != (schema.SourceEvidenceSummary{}) {
+	if len(tree.Files) != 0 || len(tree.Packages) != 0 || len(tree.ExternalPackages) != 0 {
 		return "", ""
 	}
 	return string(recoveryerr.CodeSourceTreeNotFound), "source-tree evidence is absent"
