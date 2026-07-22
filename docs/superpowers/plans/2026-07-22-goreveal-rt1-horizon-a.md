@@ -325,12 +325,18 @@ stage dependencies. At minimum:
 | `inspect runtime` | runtime | `available` returns data; `unavailable` returns explicit unavailable; `unsupported`/`failed` error |
 | `inspect strings` | strings | only `available` succeeds |
 | `inspect packages` | functions plus derived package stage | unavailable/unsupported/failed prerequisite cannot look successful |
-| `inspect source-tree` | source tree | only `available` succeeds after its internal truthful fallback |
 | `inspect peeling` | functions plus peeling | unavailable/unsupported/failed prerequisite cannot look successful |
+| `source-tree` | source tree | only `available` succeeds after its internal truthful fallback |
+| `peel` | functions plus peeling | only available prerequisites succeed |
+| `deobfuscate` | refinement plus every raw stage used by a finding | failed/unsupported prerequisite or failed refinement rejects |
+| `export sqlite` | functions, valid entity IDs, and persistence | functions must be available; optional unavailable stages remain explicit in stored diagnostics; any failed stage rejects |
+| `export ida` / `export ghidra` v1 | functions plus every projected stage | functions must be available; any failed projected stage rejects because v1 cannot carry stage diagnostics |
 
-Extend the table when the current CLI exposes another inspect surface; no
-subcommand may fall through to an implicit default. Full `analyze` remains
-partial-result capable with diagnostics.
+Extend the table when the current CLI exposes another top-level or inspect
+surface; no command may fall through to an implicit default. Stored diff/review/
+handoff/next commands do not rerun recovery, but must reject the invalid-analysis
+error defined in Task 2. Full `analyze` is the only current user command allowed
+to emit a partial result with failed stage diagnostics.
 
 - [ ] **Step 10: Run focused and broad tests**
 
@@ -408,15 +414,17 @@ Keep this a local artifact identity. Cross-build identity remains RT1-S8 work.
 
 - [ ] **Step 4: Define and test the pre-RT1 zero-ID migration**
 
-Add an idempotent schema helper that assigns only missing IDs from raw fields.
-Call it after native recovery, before refinement, before persistence, after
+Expose `NormalizeEntityIDs(Analysis) (Analysis, error)` and call it after native
+recovery, before refinement, before persistence, after
 decoding stored `schema.Analysis`, and at the defensive entry to
 `storage/diff.Compare` for direct callers. Validate every existing nonzero ID
 against the current raw fields; a stale/mismatched ID is invalid rather than
 silently trusted. Never insert the zero value into an ID-keyed map. Duplicate
 IDs within an entity kind and still-unidentifiable entities fail analysis
-validation; persistence rejects them and diff emits an invalid-analysis result
-with zero candidates/transfers.
+validation. Persistence rejects them. Change the diff entrypoint to
+`Compare(left, right schema.Analysis) (Summary, error)` and return a typed
+`ErrInvalidAnalysis` before allocating match/candidate maps; CLI diff/review/
+handoff/next return nonzero and emit no partial summary.
 
 Add a frozen pre-RT1 SQLite/JSON fixture with all IDs absent plus duplicate
 display names. Assert load/diff backfills deterministic nonzero IDs, preserves
@@ -1178,7 +1186,6 @@ git commit -m "feat(identity): bind analysis to exact binary bytes"
 - Create: `corpus/fixtures/go-elf-pie-linux-amd64/fixture.bin`
 - Create: `corpus/fixtures/go-elf-pie-linux-amd64/fixture.json`
 - Create: `corpus/fixtures/go-elf-pie-linux-amd64/expected.analysis.json`
-- Create: `corpus/fixtures/go-elf-pie-linux-amd64/expected.ida-v2.json`
 
 - [ ] **Step 1: Write table tests before implementation**
 
@@ -1223,8 +1230,9 @@ evidence fields until a separate compatibility migration removes them.
 
 Add an integration test that reads the real PIE binary, round-trips every
 manifest tuple, applies a nonzero loaded-base delta, and rejects a wrong base,
-unmapped gap, and changed binary. Generate/review its canonical analysis and v2
-export snapshots explicitly.
+unmapped gap, and changed binary. Generate/review its canonical analysis
+snapshot explicitly. Task 16 creates the v2 export fixture after the v2 model
+and selected envelope exist.
 
 - [ ] **Step 5: Verify and commit**
 
@@ -1253,6 +1261,8 @@ git commit -m "feat(core): add explicit address location mapping"
 - Create: `cmd/goreveal/internal/verify_ida_export.go`
 - Create: `cmd/goreveal/internal/verify_ida_export_test.go`
 - Modify: `cmd/goreveal/main.go`
+- Create: `internal/testutil/large_export.go`
+- Create: `internal/evidence/envelopeprobe/main.go`
 - Create: `scripts/evidence/measure_artifact_envelope.py`
 - Create: `scripts/evidence/test_measure_artifact_envelope.py`
 
@@ -1322,15 +1332,26 @@ The verifier hashes exact envelope bytes, derives binary identity with
 
 - [ ] **Step 5: Add an executable provider-and-consumer measurement protocol**
 
-The containerized evidence script builds the actual `goreveal` CLI once, then
-runs both the export provider and reference verifier as subprocesses under the
-pinned GNU `time -v`. For each envelope and input, record five isolated runs:
+`internal/testutil.LargeExportAnalysis(458600)` deterministically constructs
+valid ordered v2 records, stable identity/locations, and a matching synthetic
+target context without generating or committing a giant Go source tree. The
+evidence-only `internal/evidence/envelopeprobe` binary invokes the same public
+writer and pure verifier used by the CLI; it is not installed in release
+images.
+
+The containerized evidence script builds the actual `goreveal` CLI and the
+probe once, then runs provider and reference-consumer subprocesses under the
+pinned GNU `time -v`. It measures the probe on the deterministic 458,600-record
+analysis, and the real CLI export/verifier on every corpus format plus the
+identified 410 MB-class binary. For each envelope and input, record five
+isolated runs:
 command, binary/tool identities, exit status, wall time, output/component
 bytes, record counts, maximum RSS, and verifier result. Measure a deterministic
-458,600-function generated fixture plus the permitted real large binary; if the
-real binary cannot be retained, record its identity and keep raw measurements
-outside git. The consumer must parse/validate every record, not merely hash the
-files.
+458,600-function analysis plus the permitted real large binary. The large
+binary itself need not be retained, but its identity, commands, and bounded
+measurements are mandatory; Task 16 remains blocked if it cannot be measured.
+The consumer must parse/validate every record, not merely hash the files. Also
+measure the unchanged v1 provider path as the full-analysis time baseline.
 
 Unit-test parsing of `time -v`, failed subprocesses, incomplete bundles, and
 metric JSON. All script tests run through the Podman runner.
@@ -1340,7 +1361,7 @@ metric JSON. All script tests run through the Podman runner.
 ```bash
 python3 -m scripts.dev.podman_runner exec -- /usr/local/go/bin/go test ./schema ./cmd/goreveal/... -v
 python3 -m scripts.dev.podman_runner exec -- python3 -m unittest scripts.evidence.test_measure_artifact_envelope -v
-git add schema cmd/goreveal scripts/evidence
+git add schema cmd/goreveal internal/testutil internal/evidence scripts/evidence
 git commit -m "feat(export): add measurable v2 envelope candidates"
 ```
 
@@ -1362,14 +1383,15 @@ Do not update IDA/Ghidra consumers or call v2 published in this task.
 
 Run the Task 15 provider and reference consumer sequentially in the pinned
 container. Attach the machine-readable measurements and commands to the
-evidence record. A missing real-binary permission is explicit; the synthetic
-large case remains mandatory.
+evidence record. If the identified real large binary cannot be measured, record
+the external blocker and keep Task 16 blocked; the synthetic large case does
+not waive the real-binary gate.
 
 - [ ] **Step 2: Apply the decision rule once**
 
 - select single JSON only if both provider and reference-consumer peak RSS are
   at most `2x` total artifact bytes on the large case and remain within the
-  declared time envelope;
+  time envelope below;
 - otherwise select manifest plus NDJSON;
 - record go/reduce/kill, trade-offs, and the exact evidence SHA;
 - do not change the transport later without a new contract version.
@@ -1378,6 +1400,20 @@ For a bundle, the externally approved digest is always the exact manifest
 digest and every ordered component must pass its manifest length/digest/count
 check. For single JSON, the approved digest is exact JSON bytes. `idacli` and
 all other consumers use the same envelope rule.
+
+Pre-registered time envelope on the pinned S1 reference machine:
+
+- the 458,600-record probe provider and verifier each have median wall time at
+  most `120s`, no individual run above `180s`, and no failed validation;
+- the real large v2 provider median is at most `125%` of the measured unchanged
+  v1 full-analysis/export median;
+- the real large reference verifier median is at most `300s`;
+- single JSON is selected only if it passes those limits and its median is no
+  more than `120%` of the bundle median for both provider and verifier.
+
+If neither candidate meets the hard envelope, take `reduce` and keep v2
+unpublished while optimizing the measured bottleneck; do not relax thresholds
+after seeing results.
 
 - [ ] **Step 3: Remove experimental ambiguity and freeze CLI behavior**
 
