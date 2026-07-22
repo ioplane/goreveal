@@ -35,9 +35,10 @@ superseded by the approved standalone-first sequence and authorizes no idacli
 or plugin work. A replacement plan must first close `RT1-S2C` and `RT1-R1`,
 then split headless bootstrap (`RT1-S3A`) from the thin plugin (`RT1-S3B`).
 
-Later sprints are defined by outcomes, dependencies, and gates in the sprint
-registry below. Create their file-level plans only when their Definition of
-Ready is satisfied.
+Later sprints are preserved only as non-executable outcome inventory. Do not
+create or execute an S4-S10 file-level plan from this document. They require a
+rewritten program plan after the standalone-first written specification is
+approved and, for S4-S10, after `RT1-S3B` closes.
 
 ## Required Skills During Execution
 
@@ -67,13 +68,13 @@ container. Keep runs sequential.
 | `RT1-R1` | release milestone | contract-complete standalone release | closed S2C, legal/compliance gate | no standalone claim depends on an RE-tool integration |
 | `RT1-S3A` | needs replacement plan | safe headless GoREveal-to-IDA database bootstrap | closed R1; idacli plan | selective speed gate, zero unsafe mutations, idempotency, preseed decision |
 | `RT1-S3B` | needs replacement plan | thin interactive IDA plugin | closed S3A | shared action classification, no duplicated recovery/mapping logic |
-| `RT1-S4` | conditional | Go entity and source semantics | S0 stable IDs | exact entity decomposition; role/prologue precision >=99%; distinct full paths retained |
-| `RT1-S5` | conditional | safe string extents and host-reference navigation | S2A locations, S3A host contract | exact extents; zero unsafe string actions; fixed xref/caller query parity |
-| `RT1-S6` | research-gated | resilient metadata candidates and runtime type identity | S1 corpus gate, S2A locations | zero false selected candidates on negatives; exact supported type identity |
-| `RT1-S7` | research-gated | layouts, methods, interfaces, preview-only type apply | S6 | exact two-version layout/edge manifests or documented reduced scope |
-| `RT1-S8` | deferred | collision-safe build lineage and semantic diff | S0, S4, optional host fingerprints | 100% auto-accept precision; zero false collision accepts; deterministic output |
-| `RT1-S9` | deferred | bounded protected/garbled anchor workflow | S8 lineage | twenty verified anchors with zero false accepts or a published negative result |
-| `RT1-S10` | deferred | expanded supported-matrix and public-release baseline | R1, semantic and supported-matrix decisions | widened linked claims, compatibility, pinned image/SBOM, performance envelope |
+| `RT1-S4` | non-executable; replacement plan required | Go entity and source semantics | closed S3B, rewritten program plan, S0 stable IDs | exact entity decomposition; role/prologue precision >=99%; distinct full paths retained |
+| `RT1-S5` | non-executable; replacement plan required | safe string extents and host-reference navigation | closed S3B, rewritten program plan, S2A locations, S3A host contract | exact extents; zero unsafe string actions; fixed xref/caller query parity |
+| `RT1-S6` | non-executable; replacement plan required | resilient metadata candidates and runtime type identity | closed S3B, rewritten program plan, S1 corpus gate, S2A locations | zero false selected candidates on negatives; exact supported type identity |
+| `RT1-S7` | non-executable; replacement plan required | layouts, methods, interfaces, preview-only type apply | closed S3B, rewritten program plan, promoted S6 | exact two-version layout/edge manifests or documented reduced scope |
+| `RT1-S8` | non-executable; replacement plan required | collision-safe build lineage and semantic diff | closed S3B, rewritten program plan, promoted S4, optional host fingerprints | 100% auto-accept precision; zero false collision accepts; deterministic output |
+| `RT1-S9` | non-executable; replacement plan required | bounded protected/garbled anchor workflow | closed S3B, rewritten program plan, promoted S8 lineage | twenty verified anchors with zero false accepts or a published negative result |
+| `RT1-S10` | non-executable; replacement plan required | expanded supported-matrix and public-release baseline | closed R1 and S3B, rewritten program plan, promoted semantic and supported-matrix decisions | widened linked claims, compatibility, pinned image/SBOM, performance envelope |
 
 ## File Responsibility Map
 
@@ -1691,6 +1692,10 @@ cross-repository atomic-history claim.
 
 ## Later Sprint Backlog — Promote Only After Definition of Ready
 
+> Non-executable planning inventory. This file cannot promote these items.
+> Promotion requires a rewritten program plan after `RT1-S3B` closes and a new
+> reviewed file-level plan for the selected sprint.
+
 ### RT1-S4: Go entity and source semantics
 
 Tasks:
@@ -1760,11 +1765,11 @@ Tasks:
 - verify twenty anchors with zero false accepts or publish/freeze a negative
   result.
 
-### RT1-S10: Release baseline
+### RT1-S10: Expanded supported-matrix and public-release baseline
 
 Tasks:
 
-- finalize license/compliance posture;
+- revalidate license/compliance posture for the widened matrix;
 - generate pinned release image and SBOM;
 - publish compatibility and supported-target policy;
 - record small/medium/large performance envelope;

@@ -155,7 +155,7 @@ paths because those may already use architecture-specific assembly.
 ### Supported CPU policy
 
 The release binary keeps the broadest supported scalar baseline. In particular,
-the default `linux/amd64` artifact must not raise its global requirement to
+no default AMD64 release artifact may raise its global requirement to
 `GOAMD64=v3` merely to obtain AVX2. Optional kernels use runtime dispatch.
 
 The qualification matrix is:
@@ -172,12 +172,14 @@ thermal, virtual-machine, and workload effects require a same-host AVX2 versus
 AVX-512 comparison.
 
 Go 1.26's `simd/archsimd` is experimental, enabled with
-`GOEXPERIMENT=simd`, and does not carry the Go 1 compatibility promise. It may
-be evaluated in an experimental benchmark/build lane, but the default release
-must not require it. Promotion into a normal release requires a later explicit
-toolchain-compatibility decision. Stable alternatives may include existing
-standard-library paths or small architecture-specific assembly behind the same
-internal scalar contract.
+`GOEXPERIMENT=simd`, and does not carry the Go 1 compatibility promise. It
+currently supports AMD64 only and may be evaluated in an experimental
+benchmark/build lane, but the default release must not require it. Promotion
+into a normal release requires a later explicit toolchain-compatibility
+decision. ARM64 cannot reuse this implementation: an ASIMD/NEON path needs its
+own approved implementation and evidence, or ARM64 remains on the scalar
+fallback. Stable alternatives may include existing standard-library paths or
+small architecture-specific assembly behind the same internal scalar contract.
 
 ### Runtime capability report
 
@@ -233,9 +235,9 @@ The current KVM development host exposes an Intel Xeon Gold 6348 model with
 AVX2 and broad AVX-512 flags. It is suitable for dispatch and correctness
 tests, but virtualization means it cannot by itself support a public
 performance claim. `RT1-S2C` therefore needs at least one bare-metal x86-64
-host and one ARM64/NEON host for representative performance evidence. An
-AVX2-only x86-64 host is required before the project claims that fallback from
-AVX-512 was tested on real hardware.
+host and one bare-metal ARM64/NEON host for representative performance
+evidence. An AVX2-only x86-64 host is required before the project claims that
+fallback from AVX-512 was tested on real hardware.
 
 ## IDA Database Bootstrap
 
@@ -277,8 +279,13 @@ Both modes use the same ordered flow:
 7. create only non-conflicting functions and reviewed names;
 8. schedule and wait for analysis only for the bounded ranges allowed by the
    selected mode;
-9. validate outcomes, save the database through IDA, and write a machine-readable
-   coverage/evidence manifest beside it.
+9. audit observed analysis and mutation addresses against the approved range
+   union, require all intended bounded work to finish and every residual
+   analysis queue to be empty, and reject the run on any out-of-range work;
+10. validate outcomes, save the database through IDA, reopen it once with
+    global autoanalysis still disabled, and prove that no unauthorized analysis
+    resumes;
+11. write a machine-readable coverage/evidence manifest beside the database.
 
 No mode may use `del_func`, silently replace a function boundary, overwrite a
 user name, ignore an unmappable address, or reconstruct an approved action plan
@@ -354,11 +361,25 @@ autoanalysis time of 1 hour 34 minutes, and 458,600 GoREveal-recovered
 functions. The experiment must preserve the original binary and tool identity
 records; counts alone are not evidence of correctness.
 
-Compare three runs on the same host and IDA version:
+Compare three workflows on the same host and IDA version:
 
 1. conventional full automatic analysis;
 2. `selective` bootstrap over a pre-registered analyst target set;
 3. `preseed` bootstrap followed by the same target requests.
+
+Before the first run, freeze the measurement protocol with:
+
+- the target set and the expected-safe usable outcome for every target;
+- binary, provider, IDA, loader/processor, host, CPU, power/governor, and
+  bootstrap identities;
+- an identical declared cold- or warm-cache start policy for all compared
+  modes;
+- at least three independent measured repetitions per mode after any declared
+  warm-up;
+- median time to first usable target as the primary `4x` statistic, with every
+  raw repetition retained;
+- identical selectors and declared supporting ranges for selective and preseed
+  target requests.
 
 Record:
 
@@ -371,12 +392,15 @@ Record:
   rerun mutations;
 - reopen time for the saved database.
 
-`selective` is promoted only if it is at least `4x` faster than conventional
-full analysis to the first usable registered target, all registered targets are
-classified, unsafe mutations remain `0`, and the second apply performs `0`
-mutations. `preseed` is promoted from experimental only if it provides a
-measured operator benefit without weakening the same safety gates. Raw function
-count is not a success metric.
+`selective` is promoted only if its median time to the first usable registered
+target is at least `4x` faster than the conventional full-analysis median,
+every pre-registered expected-safe target remains usable without regression,
+unsafe mutations and out-of-range analysis remain `0`, all intended bounded
+work finishes, residual queue entries remain `0`, reopening performs no
+unauthorized analysis, and the second apply performs `0` mutations. `preseed`
+is promoted from experimental only if it
+provides a measured operator benefit without weakening the same safety gates.
+Raw function count is not a success metric.
 
 ## Thin Interactive IDA Integration
 
@@ -448,6 +472,10 @@ classification for the same provider artifact, mapping, and selectors.
   acceptance gate;
 - `preseed` has a measured promote-or-remain-experimental decision;
 - boundary replacement, user-name overwrite, and deletion counts are `0`;
+- observed analysis and mutations stay inside the approved range union,
+  all intended work finishes and residual queues are empty before save, and
+  reopen with global autoanalysis disabled performs no unauthorized
+  continuation;
 - second apply performs `0` mutations;
 - interrupted or partial output cannot masquerade as complete;
 - saved-database reuse rejects every cache-key mismatch.
