@@ -69,6 +69,8 @@ container. Keep runs sequential.
 
 | File | Responsibility |
 | --- | --- |
+| `schema/export_v1_wire.go` | recursively frozen IDA/Ghidra v1 JSON DTOs, independent from evolving canonical schema |
+| `schema/testdata/export-v1/*.json` | pre-RT1 byte-level compatibility fixtures |
 | `schema/diagnostic.go` | typed analysis-stage status and diagnostic contract |
 | `schema/entity_id.go` | deterministic local entity ID construction |
 | `schema/analysis.go` | canonical IDs and diagnostics on raw analysis entities |
@@ -113,6 +115,7 @@ container. Keep runs sequential.
 | `schema/location.go` | preferred base, VA/RVA/file-offset/section and `[start,end)` contract |
 | `schema/export_ida_v2.go` | separate v2 payload and constructor |
 | `schema/export_ghidra_v2.go` | format-neutral v2 host payload if promoted by the ADR |
+| `schema/verify_ida_v2.go` | pure reference validation against exact artifact, binary, and loaded-base inputs |
 | `core/identity/identity.go` | streaming SHA-256, format/architecture dispatch |
 | `core/identity/buildid.go` | clean-room Go build ID extraction with explicit unavailable state |
 | `core/identity/identity_test.go` | known digest, architecture, and build-ID fixtures |
@@ -121,6 +124,7 @@ container. Keep runs sequential.
 | `core/location/location_test.go` | round-trip and unmappable-address fixtures |
 | `cmd/goreveal/main.go` | explicit v1/v2 export selection and `inspect dependencies` |
 | `cmd/goreveal/internal/export_ida.go` | versioned export dispatch |
+| `cmd/goreveal/internal/verify_ida_export.go` | executable detached-digest and target-context reference verifier |
 | `cmd/goreveal/internal/inspect_dependencies.go` | dependency inventory command |
 | `plugins/ida/goreveal_ida.py` | explicit contract negotiation or unsupported error |
 | `plugins/ghidra/goreveal_ghidra.py` | explicit contract negotiation or unsupported error |
@@ -128,17 +132,82 @@ container. Keep runs sequential.
 
 ## RT1-S0 Detailed Tasks
 
+### Task 0: Freeze v1 wire bytes before canonical schema changes
+
+**Files:**
+- Create: `schema/export_v1_wire.go`
+- Create: `schema/testdata/export-v1/ida.json`
+- Create: `schema/testdata/export-v1/ghidra.json`
+- Modify: `schema/export_ida.go`
+- Modify: `schema/export_ghidra.go`
+- Modify: `schema/export_test.go`
+- Test: `schema/export_fixture_test.go`
+
+- [ ] **Step 1: Capture pre-RT1 bytes from the current constructors**
+
+Generate IDA and Ghidra v1 fixtures from the current rich test analysis before
+adding diagnostics, entity IDs, build provenance, or locations. Review and
+commit the exact JSON bytes; do not regenerate them from the future schema.
+
+- [ ] **Step 2: Add byte-equality tests and observe the safe baseline**
+
+```bash
+python3 -m scripts.dev.podman_runner exec -- /usr/local/go/bin/go test ./schema -run 'Test(IDA|Ghidra)ExportV1FrozenBytes' -v
+```
+
+Expected: PASS against current behavior. This is a characterization test, so
+the red proof comes from Step 3 rather than inventing an incorrect fixture.
+
+- [ ] **Step 3: Write the structural isolation test and verify RED**
+
+Add `TestV1WireTypesDoNotEmbedCanonicalContracts`, recursively inspecting the
+private v1 wire DTO field types and rejecting `Input`, `BuildInfo`,
+`RuntimeMetadata`, `PeelingAnalysis`, `Package`, `SourceTree`, `Function`,
+`Type`, `StringCandidate`, or aliases/slices/pointers to them.
+
+Expected: compile FAIL because the private v1 wire DTOs do not exist yet.
+
+- [ ] **Step 4: Isolate v1 recursively from mutable canonical structs**
+
+Add private v1 wire DTOs and explicit projection/custom marshaling for every
+nested v1 surface: input, build info, runtime, peeling, packages, source tree,
+functions, types, strings, provenance, and refined summary. A v1 wire DTO must
+not embed or alias a canonical struct that later RT1 tasks modify. Keep the
+public constructors and contract IDs unchanged.
+
+- [ ] **Step 5: Prove structure and bytes are frozen**
+
+Run the recursive no-canonical-embedding guard and exact byte fixtures together.
+Tasks 12 and 14 must add future-field leakage cases when dependency and location
+fields actually exist.
+
+- [ ] **Step 6: Run plugin compatibility and commit**
+
+```bash
+python3 -m scripts.dev.podman_runner exec -- /usr/local/go/bin/go test ./schema -v
+make test-plugins
+git add schema
+git commit -m "test(export): freeze v1 wire contracts"
+```
+
+No later task may update these fixtures merely because canonical schema gained
+fields. An intentional v1 change requires a separate compatibility decision.
+
 ### Task 1: Add explicit analysis-stage diagnostics
 
 **Files:**
 - Create: `schema/diagnostic.go`
+- Create: `core/recoveryerr/error.go`
+- Create: `core/recoveryerr/error_test.go`
 - Create: `engine/stages.go`
+- Modify: recovery readers under `core/buildinfo`, `core/runtime`, `core/functions`, `core/types`, and `core/strings`
 - Modify: `schema/analysis.go:34-46`
 - Modify: `engine/engine.go:23-115`
 - Modify: `cmd/goreveal/internal/analyze.go:14-118`
 - Test: `engine/engine_test.go`
 - Test: `cmd/goreveal/internal/analyze_test.go`
 - Test: `schema/export_test.go`
+- Update: existing `corpus/fixtures/*/expected.analysis.json` snapshots
 
 - [ ] **Step 1: Write schema tests for typed status and JSON stability**
 
@@ -180,25 +249,38 @@ Create the status/stage types in `schema/diagnostic.go`. Add
 `Diagnostics []StageDiagnostic` to `schema.Analysis` and initialize it in
 `engine.AnalyzeFile`.
 
-- [ ] **Step 4: Introduce injectable stage readers**
+- [ ] **Step 4: Add the core-owned recovery error taxonomy**
 
-Refactor `Analyzer` to carry an unexported reader set:
+Create `core/recoveryerr` with typed `unavailable` and `unsupported` kinds,
+stable machine codes, wrapped causes, and `errors.Is`/`errors.As` support.
+Recovery packages use `unavailable` only when the artifact truthfully lacks
+evidence and `unsupported` only for an identified format/version/architecture
+outside the implemented matrix. Bounds, I/O, corrupt data, and unknown errors
+remain failures. `engine` maps this taxonomy into schema diagnostics; core does
+not import engine or CLI policy.
+
+- [ ] **Step 5: Introduce injectable stage readers**
+
+Refactor `Analyzer` to carry unexported stage operations:
 
 ```go
-type stageReaders struct {
-    buildInfo  func(string) (schema.BuildInfo, error)
-    runtime    func(string) (schema.RuntimeMetadata, error)
-    functions  func(string) ([]schema.Function, error)
-    types      func(string) ([]schema.Type, error)
-    strings    func(string) (recoverystrings.Result, error)
-    sourceFiles func(string) ([]string, error)
+type stageOps struct {
+    buildInfo func(string) (schema.BuildInfo, error)
+    runtime   func(string) (schema.RuntimeMetadata, error)
+    functions func(string) ([]schema.Function, error)
+    types     func(string) ([]schema.Type, error)
+    strings   func(string) (recoverystrings.Result, error)
+    sourceTree func(string, schema.Analysis) (schema.SourceTree, error)
+    refine    func(context.Context, schema.Analysis) (schema.RefinedAnalysis, error)
 }
 ```
 
-`New()` supplies production readers. Tests use `newAnalyzerForTest` in the
+`New()` supplies production operations. The production source-tree operation
+owns the current DWARF/function/fallback sequence so intermediate errors cannot
+disappear between helpers. Tests use `newAnalyzerForTest` in the
 `engine` package. Keep `core` independent from engine diagnostics.
 
-- [ ] **Step 5: Write the injected-failure regression test**
+- [ ] **Step 6: Write the complete status-matrix regression test**
 
 Inject a functions reader returning `errors.New("fixture failure")`. Assert:
 
@@ -207,7 +289,14 @@ Inject a functions reader returning `errors.New("fixture failure")`. Assert:
 - no packages or peeling claims are derived from the failed function stage;
 - no empty result is presented as `available`.
 
-- [ ] **Step 6: Run the engine test and verify RED**
+For every attempted operation—build info, runtime, functions, types, strings,
+source tree, and refinement—table-test success, typed unavailable, typed
+unsupported, and unknown failure. Add source-tree and deobfuscation cases so
+the two current nested `err == nil` chains cannot remain silent. Assert exactly
+one ordered diagnostic per attempted stage and no derived claim from a
+non-available prerequisite.
+
+- [ ] **Step 7: Run the engine test and verify RED**
 
 Run:
 
@@ -217,36 +306,51 @@ python3 -m scripts.dev.podman_runner exec -- /usr/local/go/bin/go test ./engine 
 
 Expected: FAIL because errors are still silently discarded.
 
-- [ ] **Step 7: Record every attempted stage**
+- [ ] **Step 8: Record every attempted stage**
 
 Replace `if recovered, err := ...; err == nil` branches with stage helpers.
 Use explicit `unsupported`/`unavailable` only for recognized sentinel errors;
 unknown errors are `failed`. Do not turn a failure into `unavailable` merely to
 keep output green.
 
-- [ ] **Step 8: Add command-specific availability checks**
+- [ ] **Step 9: Freeze and implement command-specific status policy**
 
-Add a helper in `cmd/goreveal/internal/analyze.go` that rejects a requested
-surface whose stage is `failed` or `unsupported`. Preserve the existing
-stripped-fixture rule that `inspect types` emits `[]` when no truthful type
-surface exists. `inspect runtime` continues to return `unavailable` rather
-than invented metadata.
+Add a table-driven policy covering every `inspect` subcommand and its required
+stage dependencies. At minimum:
 
-- [ ] **Step 9: Run focused and broad tests**
+| Command | Required stage | Status policy |
+| --- | --- | --- |
+| `inspect functions` | functions | only `available` succeeds |
+| `inspect types` | types | `available` returns data; `unavailable` returns `[]`; `unsupported`/`failed` error |
+| `inspect runtime` | runtime | `available` returns data; `unavailable` returns explicit unavailable; `unsupported`/`failed` error |
+| `inspect strings` | strings | only `available` succeeds |
+| `inspect packages` | functions plus derived package stage | unavailable/unsupported/failed prerequisite cannot look successful |
+| `inspect source-tree` | source tree | only `available` succeeds after its internal truthful fallback |
+| `inspect peeling` | functions plus peeling | unavailable/unsupported/failed prerequisite cannot look successful |
+
+Extend the table when the current CLI exposes another inspect surface; no
+subcommand may fall through to an implicit default. Full `analyze` remains
+partial-result capable with diagnostics.
+
+- [ ] **Step 10: Run focused and broad tests**
 
 Run:
 
 ```bash
 python3 -m scripts.dev.podman_runner exec -- /usr/local/go/bin/go test ./engine ./cmd/goreveal/internal ./schema -v
+make snapshot-update
+git diff -- corpus/fixtures
 make test
 ```
 
-Expected: PASS; snapshot updates are deferred to RT1-S1.
+Expected: PASS; every already-declared snapshot explicitly records stage
+diagnostics. Task 9 still adds coverage for fixtures that had no snapshot at
+plan publication. Review semantic changes before staging.
 
-- [ ] **Step 10: Commit**
+- [ ] **Step 11: Commit**
 
 ```bash
-git add schema/diagnostic.go schema/analysis.go engine/stages.go engine/engine.go engine/engine_test.go cmd/goreveal/internal/analyze.go cmd/goreveal/internal/analyze_test.go schema/export_test.go
+git add schema core/recoveryerr core/buildinfo core/runtime core/functions core/types core/strings engine cmd/goreveal/internal corpus/fixtures
 git commit -m "fix(engine): expose analysis stage diagnostics"
 ```
 
@@ -261,10 +365,15 @@ git commit -m "fix(engine): expose analysis stage diagnostics"
 - Modify: `deobfuscation/garble/strings.go`
 - Modify: `schema/export_ida.go:78-100`
 - Modify: `schema/export_ghidra.go:80-102`
+- Modify: `storage/sqlite/store.go`
+- Modify: `storage/diff/diff.go`
 - Test: `deobfuscation/pipeline_test.go`
 - Test: `deobfuscation/garble/strings_test.go`
 - Test: `schema/export_test.go`
 - Test: `schema/export_fixture_test.go`
+- Test: `storage/sqlite/store_test.go`
+- Test: `storage/diff/diff_test.go`
+- Update: existing `corpus/fixtures/*/expected.analysis.json` snapshots
 
 - [ ] **Step 1: Freeze the entity ID wire shape in tests**
 
@@ -297,13 +406,32 @@ Assign IDs from raw canonical fields before refinement:
 
 Keep this a local artifact identity. Cross-build identity remains RT1-S8 work.
 
-- [ ] **Step 4: Write a reorder-and-segment regression test**
+- [ ] **Step 4: Define and test the pre-RT1 zero-ID migration**
+
+Add an idempotent schema helper that assigns only missing IDs from raw fields.
+Call it after native recovery, before refinement, before persistence, after
+decoding stored `schema.Analysis`, and at the defensive entry to
+`storage/diff.Compare` for direct callers. Validate every existing nonzero ID
+against the current raw fields; a stale/mismatched ID is invalid rather than
+silently trusted. Never insert the zero value into an ID-keyed map. Duplicate
+IDs within an entity kind and still-unidentifiable entities fail analysis
+validation; persistence rejects them and diff emits an invalid-analysis result
+with zero candidates/transfers.
+
+Add a frozen pre-RT1 SQLite/JSON fixture with all IDs absent plus duplicate
+display names. Assert load/diff backfills deterministic nonzero IDs, preserves
+distinct function entries, and produces no zero-ID candidate or accepted
+transfer. Add duplicate-derived-ID and mismatched-prepopulated-ID fixtures and
+assert fail-closed behavior. Do not rewrite old database rows merely by reading
+them.
+
+- [ ] **Step 5: Write a reorder-and-segment regression test**
 
 Construct two raw strings with different addresses. Run the garble pass so it
 adds segments and reorders findings. Assert every refined string references the
 correct raw ID and byte span.
 
-- [ ] **Step 5: Run the regression and verify RED**
+- [ ] **Step 6: Run the regression and verify RED**
 
 ```bash
 python3 -m scripts.dev.podman_runner exec -- /usr/local/go/bin/go test ./deobfuscation/... -run 'TestPipelinePreservesRawIDs|TestGarbleSegmentsReferenceRawString' -v
@@ -311,7 +439,7 @@ python3 -m scripts.dev.podman_runner exec -- /usr/local/go/bin/go test ./deobfus
 
 Expected: FAIL because refined strings have only `Value`.
 
-- [ ] **Step 6: Add keyed refinement fields**
+- [ ] **Step 7: Add keyed refinement fields**
 
 Use:
 
@@ -327,36 +455,50 @@ type RefinedString struct {
     ID       EntityID       `json:"id"`
     RawID    EntityID       `json:"raw_id"`
     Kind     RefinementKind `json:"kind"`
+    MatchedValue string      `json:"matched_value"`
     Value    string         `json:"value"`
     RawStart uint64         `json:"raw_start,omitempty"`
     RawEnd   uint64         `json:"raw_end,omitempty"`
+    Provenance Provenance   `json:"provenance"`
 }
 ```
 
-Give functions/packages/types equivalent `ID` and `RawID` fields. Use
-`FindAllStringIndex` in the garble pass. A segment is a separate finding, not
-the primary display value.
+Give functions/packages/types equivalent `ID`, `RawID`, and `Provenance`
+fields and an evidence-derived ID that includes raw ID, finding kind, exact
+span, matched bytes, and pass/provider identity. `MatchedValue` preserves the
+exact raw substring while `Value` is only normalized display text. Provenance
+includes source and confidence for each finding. Use
+`FindAllStringIndex` in the garble pass. Adjust byte spans directly for trimmed
+prefix/suffix bytes; never rediscover a normalized value with a second search.
+Deduplicate only by `(RawID, Kind, RawStart, RawEnd, Provenance.Source,
+MatchedValue, Value)`, never globally by display value, and sort by those keys
+deterministically. Test equal display/matched values at distinct addresses and
+normalization that trims leading/trailing bytes. A segment is a separate
+finding, not the primary display value.
 
-- [ ] **Step 7: Replace export index lookup with raw-ID lookup**
+- [ ] **Step 8: Replace export index lookup with raw-ID lookup**
 
 Build maps from `RawID` to the single `display` refinement. Ignore `segment`
 findings for the singular `RefinedValue` field. If multiple display findings
 exist for one raw ID, leave the singular field empty and surface a diagnostic;
 do not choose by order.
 
-- [ ] **Step 8: Run focused tests and snapshots**
+- [ ] **Step 9: Run focused tests, migration tests, and snapshots**
 
 ```bash
-python3 -m scripts.dev.podman_runner exec -- /usr/local/go/bin/go test ./schema ./deobfuscation/... -v
+python3 -m scripts.dev.podman_runner exec -- /usr/local/go/bin/go test ./schema ./deobfuscation/... ./storage/diff ./storage/sqlite -v
+make snapshot-update
+git diff -- corpus/fixtures
 make test
 ```
 
-Expected: PASS with no address/value cross-binding.
+Expected: PASS with no address/value cross-binding; existing canonical
+snapshots contain deterministic raw entity IDs and Task 0 v1 bytes do not move.
 
-- [ ] **Step 9: Commit**
+- [ ] **Step 10: Commit**
 
 ```bash
-git add schema/entity_id.go schema/analysis.go schema/refined.go deobfuscation schema/export_ida.go schema/export_ghidra.go schema/*_test.go
+git add schema deobfuscation storage/diff storage/sqlite corpus/fixtures
 git commit -m "fix(schema): key refined evidence to raw entities"
 ```
 
@@ -406,13 +548,24 @@ Use `map[key][]schema.Function` on both sides. Promote only groups where both
 lengths are one. Track consumed functions by `EntityID`, not by name. Apply the
 same rule to normalized-name and source-file tiers.
 
-- [ ] **Step 5: Prove ambiguity cannot reach auto-accept**
+- [ ] **Step 5: Carry entity IDs through every downstream transfer type**
+
+Add left/right entity IDs to `FunctionMatch`, `TransferCandidate`, review
+actions, and `AcceptedTransfer`. Replace all name-keyed lookup, consumed-state,
+candidate construction, package grouping, persistence reconstruction, and
+accepted-transfer derivation with ID-keyed joins. Names remain display fields
+only. Remove helpers such as `findFunctionByName` from correctness paths.
+
+- [ ] **Step 6: Prove ambiguity and duplicate names cannot reach auto-accept**
 
 Add a table test that passes ambiguity-containing matches through
 `buildTransferCandidates` and `buildAcceptedTransfers`. Assert zero accepted
-members from every ambiguity group.
+members from every ambiguity group. Add a separate case with two left and two
+right functions sharing the same display name but having two unique source
+`1:1` pairs; assert each candidate and accepted transfer retains the exact
+entry/entity pair and can never cross-bind by name.
 
-- [ ] **Step 6: Run focused and broad tests**
+- [ ] **Step 7: Run focused and broad tests**
 
 ```bash
 python3 -m scripts.dev.podman_runner exec -- /usr/local/go/bin/go test ./storage/diff ./storage/sqlite -v
@@ -421,7 +574,7 @@ make test
 
 Expected: PASS; existing unambiguous matches remain deterministic.
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 8: Commit**
 
 ```bash
 git add storage/diff/diff.go storage/diff/diff_test.go storage/sqlite/store_test.go
@@ -577,6 +730,10 @@ git commit -m "chore: restore staged Go lint gate"
 **Files:**
 - Modify: `deployments/docker/Containerfile.dev:28-42`
 - Modify: `deployments/docker/README.md`
+- Create: `deployments/docker/requirements-dev.lock`
+- Create: `deployments/docker/requirements-host.lock`
+- Create: `deployments/docker/toolchain.lock.json`
+- Modify: `pyproject.toml`
 - Test: `scripts/dev/test_podman_runner.py`
 
 Pin the audited starting set:
@@ -594,10 +751,14 @@ Pin the audited starting set:
 - ty `0.0.62`;
 - yq `4.1.2`;
 - yamllint `1.38.0`.
+- shellcheck `0.10.0`.
+- GNU time at the exact Debian-snapshot version selected during the lock update.
 
 - [ ] **Step 1: Add a failing image-policy test**
 
-Read `Containerfile.dev` and fail on `@latest` or an unversioned pip package.
+Read `Containerfile.dev` and fail on `@latest`, an unversioned Python package,
+a base image without an OCI digest, a live rolling Debian mirror, or an apt
+package without an exact version. Require a machine-readable lock record.
 
 - [ ] **Step 2: Run and verify RED**
 
@@ -607,10 +768,19 @@ python3 -m scripts.dev.podman_runner exec -- python3 -m unittest scripts.dev.tes
 
 Expected: FAIL on the current `@latest` and unpinned pip installs.
 
-- [ ] **Step 3: Pin versions and document the update procedure**
+- [ ] **Step 3: Pin the whole build input and document the update procedure**
 
-Use exact `package==version` and `module@version` declarations. Document how to
-inspect installed module versions and require full gates for upgrades.
+Pin `golang:1.26-trixie` by OCI digest, use a dated Debian snapshot, install apt
+packages at exact versions, use a hash-checked Python requirements lock, and
+use exact `module@version` declarations. Record architecture, source URL,
+version, and digest where applicable in `toolchain.lock.json`. Document how to
+refresh the lock deliberately and require full gates for upgrades.
+
+The host-side Podman launcher is the single bootstrap exception to in-container
+execution. Pin `podman==5.8.0` and all transitive wheels with hashes in
+`requirements-host.lock`, pin the same exact dependency in `pyproject.toml`,
+and make CI install that lock before invoking `scripts.dev.podman_runner`.
+No Go build, test, lint, benchmark, or evidence script runs on the host.
 
 - [ ] **Step 4: Rebuild and verify versions**
 
@@ -624,10 +794,14 @@ make test
 
 Expected: declared versions and green gates.
 
+Build the image twice from the same locks and compare the installed tool
+manifest. OCI layer metadata may differ, but every declared executable version
+and package-lock identity must match.
+
 - [ ] **Step 5: Commit**
 
 ```bash
-git add deployments/docker scripts/dev/test_podman_runner.py
+git add deployments/docker pyproject.toml scripts/dev/test_podman_runner.py
 git commit -m "build: pin dev container tools"
 ```
 
@@ -651,7 +825,7 @@ benchmarks and use `-count=3` for the evidence run.
 - [ ] **Step 2: Run and verify RED**
 
 ```bash
-python3 -m unittest scripts.dev.test_podman_runner -v
+python3 -m scripts.dev.podman_runner exec -- python3 -m unittest scripts.dev.test_podman_runner -v
 ```
 
 Expected: FAIL because the current fuzz command applies `-fuzz` to `./...` and
@@ -679,7 +853,7 @@ run is required; do not make CI unbounded. `make bench` must print at least one
 ```bash
 make fuzz
 make bench
-python3 -m unittest scripts.dev.test_podman_runner -v
+python3 -m scripts.dev.podman_runner exec -- python3 -m unittest scripts.dev.test_podman_runner -v
 ```
 
 Expected: exit `0`; output includes at least one `Fuzz...` baseline/run and two
@@ -698,6 +872,16 @@ git commit -m "test: add real fuzz and benchmark gates"
 - Modify: `tests/snapshots/analyze_snapshot_test.go:79-98`
 - Create: `corpus/fixtures/go-elf-buildinfo-linux-amd64/expected.analysis.json`
 - Create: `corpus/fixtures/go-elf-stripped-linux-amd64/expected.analysis.json`
+- Create: `tests/differential/baselines.lock.json`
+- Create: `scripts/baseline/prepare_locked.py`
+- Modify: `scripts/baseline/run_goresym.sh`
+- Modify: `scripts/baseline/run_redress.sh`
+- Modify: `scripts/baseline/run_gore.sh`
+- Modify: `tests/differential/differential_test.go`
+- Modify: `scripts/dev/podman_runner.py`
+- Modify: `scripts/dev/test_podman_runner.py`
+- Modify: `Makefile`
+- Modify: `Taskfile.yml`
 - Create: `.github/workflows/ci.yml`
 - Modify: `README.md`
 
@@ -721,9 +905,33 @@ Expected: FAIL for rich and stripped ELF.
 Run `make snapshot-update`, inspect every new semantic field, and verify the
 stripped fixture still emits `types: []` and explicit fallback evidence.
 
-- [ ] **Step 4: Add sequential Podman CI**
+- [ ] **Step 4: Lock and provision live differential baselines**
 
-The workflow installs Podman, builds the pinned dev image, then runs in order:
+Create a machine-readable lock with URL, exact commit SHA, expected license,
+build command, executable path, and executable SHA after the controlled build.
+The audited starting source identities are:
+
+- GoReSym `78c02cc73064da84dd528220a234e9bd9f133d81`;
+- redress `fe38d961b5d8bf0a0ebf58421527da64422a7922`;
+- gore `abfc7c568be817973509ef6a27386ba500a1edf4`.
+
+`prepare-baselines` runs inside the pinned dev container during a networked
+setup phase, clones into ignored `.tmp/baselines`, checks each HEAD against the
+lock, builds/downloads dependencies, and writes a verified executable manifest.
+The test phase mounts that directory read-only at `/baselines`, disables
+container network, and runs only verified binaries/caches. Remove the implicit
+`/opt/projects/repositories` dependency.
+
+`make test` and `make test-differential` must fail with a preparation command if
+the locked baseline bundle is absent or mismatched. Replace the current
+`t.Skip` path with a hard failure when the differential gate is requested. A
+developer may point preparation at an existing checkout only after its remote
+URL and exact SHA pass the same lock validation.
+
+- [ ] **Step 5: Add sequential Podman CI**
+
+The workflow installs the hash-locked host Podman client, builds the pinned dev
+image, prepares/validates the locked baselines, then runs in order:
 
 1. `make lint`;
 2. `make lint-scripts`;
@@ -735,9 +943,10 @@ The workflow installs Podman, builds the pinned dev image, then runs in order:
 
 Do not run workspace-writing jobs concurrently.
 
-- [ ] **Step 5: Verify locally**
+- [ ] **Step 6: Verify locally**
 
 ```bash
+python3 -m scripts.dev.podman_runner task prepare-baselines
 make lint
 make lint-scripts
 make test
@@ -748,12 +957,13 @@ make bench
 git diff --check
 ```
 
-Expected: all exit `0` and all new snapshots are reviewed.
+Expected: all exit `0`, no differential test reports skip, the baseline manifest
+contains the three exact SHAs, and all new snapshots are reviewed.
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 7: Commit**
 
 ```bash
-git add tests/snapshots corpus/fixtures .github/workflows/ci.yml README.md
+git add tests/snapshots tests/differential corpus/fixtures scripts/baseline scripts/dev Makefile Taskfile.yml .github/workflows/ci.yml README.md
 git commit -m "ci: enforce reproducible evidence gates"
 ```
 
@@ -798,7 +1008,7 @@ whether RT1-S3 has a positive delta hypothesis.
 - [ ] **Step 6: Verify and commit**
 
 ```bash
-python3 -m unittest discover -s scripts -p 'test_*.py'
+python3 -m scripts.dev.podman_runner exec -- python3 -m unittest discover -s scripts -p 'test_*.py'
 git diff --check
 git add docs/evidence docs/plans/2026-07-22-goreveal-proposal-post-ida-experience.md
 # Add LICENSE and scripts/evidence only when the preceding decision/validator
@@ -890,8 +1100,12 @@ diagnostic contract for non-Go binaries.
 
 - [ ] **Step 5: Verify**
 
+Populate dependencies/settings in the v1 fixture analysis before the
+frozen-byte assertion; the new canonical fields must not leak into v1.
+
 ```bash
 python3 -m scripts.dev.podman_runner exec -- /usr/local/go/bin/go test ./core/buildinfo ./cmd/goreveal/internal -v
+python3 -m scripts.dev.podman_runner exec -- /usr/local/go/bin/go test ./schema -run 'Test(IDA|Ghidra)ExportV1FrozenBytes' -v
 make test-snapshots
 ```
 
@@ -959,11 +1173,21 @@ git commit -m "feat(identity): bind analysis to exact binary bytes"
 - Modify: `core/pclntab/pclntab.go`
 - Modify: `core/runtime/moduledata.go`
 - Modify: `schema/analysis.go`
+- Create: `corpus/fixtures/go-elf-pie-linux-amd64/src/go.mod`
+- Create: `corpus/fixtures/go-elf-pie-linux-amd64/src/main.go`
+- Create: `corpus/fixtures/go-elf-pie-linux-amd64/fixture.bin`
+- Create: `corpus/fixtures/go-elf-pie-linux-amd64/fixture.json`
+- Create: `corpus/fixtures/go-elf-pie-linux-amd64/expected.analysis.json`
+- Create: `corpus/fixtures/go-elf-pie-linux-amd64/expected.ida-v2.json`
 
 - [ ] **Step 1: Write table tests before implementation**
 
 Cover ELF ET_EXEC, PIE ELF, PE image base plus section RVA, Mach-O VM address,
 section start/end, rebased VA, unmapped gaps, and arithmetic overflow.
+
+Define the PIE fixture source and manifest at the same time. The manifest pins
+Go/toolchain identity, source hashes, exact build flags, binary SHA-256, ELF
+type, preferred base, sections/segments, and known VA/RVA/file-offset tuples.
 
 - [ ] **Step 2: Run and verify RED**
 
@@ -979,72 +1203,204 @@ Use half-open ranges throughout. Keep file offset optional. Never infer image
 base from `.text`. A mapping failure is explicit and carries section/segment
 context when available.
 
+Build the real PIE fixture in the pinned container:
+
+```bash
+python3 -m scripts.dev.podman_runner exec -- bash -lc \
+  'cd corpus/fixtures/go-elf-pie-linux-amd64/src && \
+   GOOS=linux GOARCH=amd64 CGO_ENABLED=0 /usr/local/go/bin/go build \
+   -buildvcs=false -trimpath -buildmode=pie -o ../fixture.bin .'
+```
+
+Verify the produced digest and ELF type against the manifest; a drifted binary
+is a fixture failure, not an automatic manifest update.
+
 - [ ] **Step 4: Replace duplicate address inference**
 
 Adapt pclntab/runtime projections to consume the location mapper instead of
 recomputing PE or ELF translations independently. Preserve raw runtime
 evidence fields until a separate compatibility migration removes them.
 
+Add an integration test that reads the real PIE binary, round-trips every
+manifest tuple, applies a nonzero loaded-base delta, and rejects a wrong base,
+unmapped gap, and changed binary. Generate/review its canonical analysis and v2
+export snapshots explicitly.
+
 - [ ] **Step 5: Verify and commit**
+
+Populate the canonical location/runtime additions in the v1 fixture analysis;
+the pre-RT1 v1 bytes must remain unchanged.
 
 ```bash
 python3 -m scripts.dev.podman_runner exec -- /usr/local/go/bin/go test ./core/location ./core/pclntab ./core/runtime -v
+python3 -m scripts.dev.podman_runner exec -- /usr/local/go/bin/go test ./schema -run 'Test(IDA|Ghidra)ExportV1FrozenBytes' -v
 make test
-git add schema/location.go core/location core/pclntab core/runtime schema/analysis.go
+git add schema core/location core/pclntab core/runtime corpus/fixtures/go-elf-pie-linux-amd64
 git commit -m "feat(core): add explicit address location mapping"
 ```
 
-### Task 15: Publish explicit v2 exports without changing v1
+### Task 15: Build and measure v2 envelope candidates without changing v1
 
 **Files:**
+- Create: `schema/artifact_envelope.go`
+- Create: `schema/artifact_envelope_test.go`
 - Create: `schema/export_ida_v2.go`
 - Create: `schema/export_ida_v2_test.go`
-- Create if ADR promotes it: `schema/export_ghidra_v2.go`
+- Create: `schema/export_ida_v2_bench_test.go`
+- Create: `schema/verify_ida_v2.go`
+- Create: `schema/verify_ida_v2_test.go`
 - Modify: `cmd/goreveal/internal/export_ida.go`
+- Create: `cmd/goreveal/internal/verify_ida_export.go`
+- Create: `cmd/goreveal/internal/verify_ida_export_test.go`
 - Modify: `cmd/goreveal/main.go`
+- Create: `scripts/evidence/measure_artifact_envelope.py`
+- Create: `scripts/evidence/test_measure_artifact_envelope.py`
+
+- [ ] **Step 1: Re-run the pre-RT1 v1 freeze**
+
+Run the Task 0 IDA/Ghidra byte fixtures after Tasks 12-14 have populated new
+canonical fields. They must remain byte-identical; do not update the goldens.
+
+- [ ] **Step 2: Freeze candidate envelope integrity before encoding v2**
+
+Test a format-neutral envelope abstraction with two candidates:
+
+- single JSON: the external approval digest covers the exact file bytes;
+- bundle: the external approval digest covers exact UTF-8 manifest bytes, and
+  the manifest lists components in canonical order with safe relative ASCII
+  name, media type, byte length, record count, and exact SHA-256.
+
+The bundle manifest has no self-digest. Component records use UTF-8 NDJSON,
+exactly one JSON record per LF-terminated line, deterministic field/record
+ordering, and no implicit canonicalization. Verification rejects duplicate or
+out-of-order names, absolute/path-traversal names, missing/extra files, length
+or digest mismatch, malformed final newline, and changed manifest bytes. The
+approved manifest digest plus verified component digests constitutes one bundle
+identity.
+
+- [ ] **Step 3: Write v2 model and verifier tests and verify RED**
+
+Require binary identity, analyzer identity, address-space declaration,
+function IDs/locations, build provenance, and diagnostics. The payload and
+manifest have no `artifact_sha256` field. The pure verifier receives a parsed
+v2 stream plus independently computed target context. Test:
+
+- changed envelope bytes versus detached `sha256:<lowercase-hex>`;
+- wrong binary digest/size/format/architecture;
+- wrong or undeclared loaded image base;
+- unmappable VA/RVA/file-offset relation;
+- unknown contract and malformed digest;
+- a correct rebased target context.
+
+```bash
+python3 -m scripts.dev.podman_runner exec -- /usr/local/go/bin/go test ./schema ./cmd/goreveal/internal -run 'Test(IDAExportV2|ArtifactEnvelope|VerifyIDAExportV2)' -v
+```
+
+Expected: v1 passes; v2/envelope/verifier tests fail because the types do not
+exist.
+
+- [ ] **Step 4: Implement the model, both candidate encoders, and verifier**
+
+Keep v2 separate from recursively frozen v1. Sort every collection
+deterministically. Implement both candidate encoders behind an explicitly
+experimental envelope option used only by tests/evidence until Task 16 selects
+one. The verifier reads records incrementally for the bundle candidate and
+validates the envelope before exposing semantic records.
+
+Add read-only experimental commands equivalent to:
+
+```text
+goreveal export ida --contract goreveal.export.ida/v2 \
+  --experimental-envelope json|bundle --output <path> <binary>
+goreveal verify ida-export --artifact <file-or-manifest> \
+  --artifact-sha256 sha256:<64-lowercase-hex> \
+  --binary fixture.bin --loaded-base 0x400000
+```
+
+The verifier hashes exact envelope bytes, derives binary identity with
+`core/identity`, strict-decodes/streams v2, and performs no mutation.
+
+- [ ] **Step 5: Add an executable provider-and-consumer measurement protocol**
+
+The containerized evidence script builds the actual `goreveal` CLI once, then
+runs both the export provider and reference verifier as subprocesses under the
+pinned GNU `time -v`. For each envelope and input, record five isolated runs:
+command, binary/tool identities, exit status, wall time, output/component
+bytes, record counts, maximum RSS, and verifier result. Measure a deterministic
+458,600-function generated fixture plus the permitted real large binary; if the
+real binary cannot be retained, record its identity and keep raw measurements
+outside git. The consumer must parse/validate every record, not merely hash the
+files.
+
+Unit-test parsing of `time -v`, failed subprocesses, incomplete bundles, and
+metric JSON. All script tests run through the Podman runner.
+
+- [ ] **Step 6: Run candidate tests and commit the pre-decision machinery**
+
+```bash
+python3 -m scripts.dev.podman_runner exec -- /usr/local/go/bin/go test ./schema ./cmd/goreveal/... -v
+python3 -m scripts.dev.podman_runner exec -- python3 -m unittest scripts.evidence.test_measure_artifact_envelope -v
+git add schema cmd/goreveal scripts/evidence
+git commit -m "feat(export): add measurable v2 envelope candidates"
+```
+
+Do not update IDA/Ghidra consumers or call v2 published in this task.
+
+### Task 16: Select, freeze, and publish the v2 envelope
+
+**Files:**
+- Modify: v2 envelope/export/verifier files from Task 15
+- Modify: `cmd/goreveal/internal/export_ida.go`
+- Modify: `cmd/goreveal/internal/verify_ida_export.go`
+- Create: `docs/evidence/rt1-s2-artifact-envelope.md`
 - Modify: `plugins/ida/goreveal_ida.py`
 - Modify: `plugins/ghidra/goreveal_ghidra.py`
 - Modify: plugin tests and fixtures
+- Update: ELF, PIE ELF, PE, and Mach-O v2 fixtures
 
-- [ ] **Step 1: Freeze unchanged v1 bytes**
+- [ ] **Step 1: Run both candidate envelopes through the real protocol**
 
-Add or retain a golden v1 fixture and assert the constructor emits contract
-`goreveal.export.ida/v1` with the old field shape.
+Run the Task 15 provider and reference consumer sequentially in the pinned
+container. Attach the machine-readable measurements and commands to the
+evidence record. A missing real-binary permission is explicit; the synthetic
+large case remains mandatory.
 
-- [ ] **Step 2: Write v2 contract tests and verify RED**
+- [ ] **Step 2: Apply the decision rule once**
 
-Require binary identity, analyzer identity, address-space declaration,
-function IDs/locations, build provenance, and diagnostics. The payload has no
-`artifact_sha256` field.
+- select single JSON only if both provider and reference-consumer peak RSS are
+  at most `2x` total artifact bytes on the large case and remain within the
+  declared time envelope;
+- otherwise select manifest plus NDJSON;
+- record go/reduce/kill, trade-offs, and the exact evidence SHA;
+- do not change the transport later without a new contract version.
 
-```bash
-python3 -m scripts.dev.podman_runner exec -- /usr/local/go/bin/go test ./schema -run 'TestIDAExportV1Frozen|TestIDAExportV2' -v
-```
+For a bundle, the externally approved digest is always the exact manifest
+digest and every ordered component must pass its manifest length/digest/count
+check. For single JSON, the approved digest is exact JSON bytes. `idacli` and
+all other consumers use the same envelope rule.
 
-Expected: v1 passes; v2 test fails because no constructor exists.
+- [ ] **Step 3: Remove experimental ambiguity and freeze CLI behavior**
 
-- [ ] **Step 3: Implement a separate v2 type and constructor**
-
-Do not add v2-only populated fields to the v1 wire struct. Sort all exported
-collections deterministically.
-
-- [ ] **Step 4: Add explicit CLI selection**
-
-Support:
+Publish:
 
 ```text
 goreveal export ida --contract goreveal.export.ida/v1 <binary>
-goreveal export ida --contract goreveal.export.ida/v2 <binary>
+goreveal export ida --contract goreveal.export.ida/v2 --output <path> <binary>
 ```
 
-Keep the no-flag default on v1 during the compatibility window.
+Keep no-flag default on v1 during the compatibility window. Make the selected
+v2 envelope the only public v2 encoding; remove or test-hide the rejected
+candidate. Freeze fixtures for exact envelope bytes and detached approval
+digest.
 
-- [ ] **Step 5: Make consumers explicit**
+- [ ] **Step 4: Make consumers explicit after selection**
 
-Existing thin consumers either parse a tested v2 subset or return an exact
-unsupported-contract error. They must not accidentally treat v2 as v1.
+Existing thin IDA/Ghidra consumers either parse the selected tested v2 subset
+and validate its whole envelope or return an exact unsupported-contract error.
+They must not treat v2 as v1 or validate only the manifest while ignoring
+components.
 
-- [ ] **Step 6: Verify contracts and plugins**
+- [ ] **Step 5: Verify the selected envelope across the real fixture matrix**
 
 ```bash
 python3 -m scripts.dev.podman_runner exec -- /usr/local/go/bin/go test ./schema ./cmd/goreveal/... -v
@@ -1052,43 +1408,15 @@ make test-plugins
 make test-snapshots
 ```
 
-Expected: v1 and v2 fixtures pass; unknown contracts are rejected.
+Expected: pre-RT1 v1 bytes pass; exact v2 envelope fixtures pass for ELF, PIE
+ELF, PE, and Mach-O; every artifact/binary/base/address mismatch rejects; the
+rejected experimental encoding is not exposed as a public v2 alternative.
 
-- [ ] **Step 7: Commit**
-
-```bash
-git add schema cmd/goreveal plugins corpus/fixtures
-git commit -m "feat(export): publish identity-bound IDA v2 contract"
-```
-
-### Task 16: Decide JSON versus streaming bundle from evidence
-
-**Files:**
-- Create: `schema/export_ida_v2_bench_test.go`
-- Create: `docs/evidence/rt1-s2-artifact-envelope.md`
-- Modify only if threshold is exceeded: v2 export implementation and CLI
-
-- [ ] **Step 1: Benchmark a large deterministic function export**
-
-Record encoded bytes, elapsed time, allocations, and peak RSS for a synthetic
-458,600-function payload plus the measured real-binary artifact when allowed.
-
-- [ ] **Step 2: Apply the decision rule**
-
-- keep single JSON if peak RSS is at most `2x` artifact bytes and both provider
-  and reference consumer stay within the declared large-binary envelope;
-- otherwise use a small manifest plus deterministic NDJSON record streams;
-- do not invent chunking before the measurement.
-
-- [ ] **Step 3: Freeze the selected envelope and rerun v2 tests**
-
-The exact transport bytes remain what the consumer hashes.
-
-- [ ] **Step 4: Commit**
+- [ ] **Step 6: Commit the decision and published contract**
 
 ```bash
-git add schema docs/evidence/rt1-s2-artifact-envelope.md cmd/goreveal
-git commit -m "perf(export): freeze RT1 artifact envelope"
+git add schema cmd/goreveal plugins corpus/fixtures docs/evidence/rt1-s2-artifact-envelope.md
+git commit -m "feat(export): publish measured identity-bound IDA v2"
 ```
 
 ### Task 17: Close RT1-S2 evidence and compatibility
@@ -1131,21 +1459,28 @@ git commit -m "docs: close RT1-S2 identity contract"
 
 ## RT1-S3 Promotion and Cross-Repository Plan Gate
 
-### Task 18: Create and review the idacli implementation plan
+### Task 18: Consolidate and promote the idacli implementation plan
 
 **GoREveal inputs required before promotion:**
 
 - frozen `goreveal.export.ida/v2` fixture;
-- exact provider artifact digest fixture;
+- selected envelope fixture, exact provider approval digest, and, for a bundle,
+  ordered component length/digest/count fixtures;
 - address mapping fixtures including rebased and mismatch cases;
 - function action fixture with missing, matching, named, unnamed, and boundary
   conflict cases;
 - S1 forced Golang-plugin baseline.
 
-**Expected idacli plan files:**
+**idacli documentation authority at RT1 publication:**
 
-- Spec: `/opt/projects/repositories/idacli/docs/superpowers/specs/2026-07-22-go-provider-preview-apply-design.md`
-- Plan: `/opt/projects/repositories/idacli/docs/superpowers/plans/2026-07-22-go-provider-preview-apply.md`
+- existing draft to reconcile, not duplicate:
+  `/opt/projects/repositories/idacli/docs/planning/2026-07-22-go-function-recovery-task.md`;
+- approved implementation belongs under `docs/planning/active/` according to
+  idacli's `docs/standards/documentation.md`;
+- the promoted plan and any new ADR must be linked from `docs/index.md`;
+- if a separate durable architecture decision is necessary, use idacli's
+  `docs/decisions/adr-NNNN-kebab-case.md` convention, not GoREveal's
+  `docs/superpowers/specs/` layout.
 
 **Expected idacli implementation ownership:**
 
@@ -1159,24 +1494,39 @@ git commit -m "docs: close RT1-S2 identity contract"
 - [ ] **Step 1: Re-audit current idacli HEAD and instructions**
 
 Do not assume the July draft matches the current task parser or runtime
-discovery work.
+discovery work. Read idacli `AGENTS.md`, its documentation skill, documentation
+governance, naming rules, `docs/index.md`, current roadmap/backlog, and the
+existing draft. At RT1 plan publication, the observed idacli HEAD was
+`15a41d7`; always record the actual execution-time SHA.
 
-- [ ] **Step 2: Write the idacli spec around exact preview bytes**
+- [ ] **Step 2: Reconcile the existing draft before promotion**
 
-`go-preview` writes an immutable `idacli.go-preview/v1` artifact without a
-self-digest. `go-apply` receives preview path plus expected
+The draft currently contains stale self-digest and identity/base assumptions.
+Revise or supersede it explicitly; do not create a second competing plan. Move
+the approved implementation plan into `docs/planning/active/` with `git mv`,
+valid lifecycle front matter, and atomic inbound-link/`docs/index.md` updates.
+Create an ADR only if idacli maintainers decide the provider/preview/apply
+boundary is a durable architecture decision.
+
+- [ ] **Step 3: Freeze the idacli contract around exact preview bytes**
+
+`go-preview` validates the complete selected provider envelope and writes an
+immutable `idacli.go-preview/v1` artifact without a self-digest. `go-apply`
+receives preview path plus expected
 `sha256:<lowercase-hex>`, rehashes exact bytes, validates embedded provider and
-IDB identities, and applies the embedded actions.
+IDB identities, and applies the embedded actions. Consume the S2 reference
+verifier fixtures rather than reinterpreting GoREveal VA/RVA/base rules.
 
-- [ ] **Step 3: Keep first apply conservative**
+- [ ] **Step 4: Keep first apply conservative**
 
 Allow create missing function, set default name, and additive comment only.
 Skip boundary conflict and user name. Forbid `del_func` and automatic resize.
 
-- [ ] **Step 4: Review and approve the separate idacli plan**
+- [ ] **Step 5: Review and approve the separate idacli plan**
 
-Use one plan-document reviewer and run idacli's own gates. No GoREveal commit
-contains idacli source changes.
+Use one plan-document reviewer and run idacli's naming, lifecycle, link,
+Markdown, Mermaid, commit-range, and applicable product-contract gates. No
+GoREveal commit contains idacli source changes.
 
 ### Task 19: Validate end-to-end function-only workflow
 
