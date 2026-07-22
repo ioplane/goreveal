@@ -1,6 +1,8 @@
 # GoREveal Market / Killer Features Brainstorm
 
-> Status: PM strategy / product brainstorming note
+> Status: historical PM/product brainstorming; superseded for execution by the
+> [RT1 product design](../superpowers/specs/2026-07-22-goreveal-rt1-product-design.md)
+> and [RT1 Horizon A plan](../superpowers/plans/2026-07-22-goreveal-rt1-horizon-a.md)
 > Date: 2026-03-20
 > Purpose: compare `GoREveal` with major RE platforms and typical Go RE utilities, then identify which external-platform capabilities are worth absorbing into `GoREveal` as differentiated product features.
 
@@ -286,7 +288,7 @@ Risk:
 
 Recommended rule:
 - treat this as a corpus/comparison and workflow epic first
-- only promote individual parser or deobfuscation slices into the active lane when protected-binary evidence shows a concrete analyst pain point
+- only promote individual parser or deobfuscation slices into the then-active lane when protected-binary evidence shows a concrete analyst pain point
 - this could become a defining product property if kept consistent
 
 PM value:
@@ -412,9 +414,9 @@ Reason:
 - differentiates from narrow Go metadata tools
 - the current bounded `matched_functions` plus `classification_evidence` surfaces now make the first transfer-oriented workflow a realistic next increment rather than a distant concept
 
-## Current Weighted Decision
+## Historical Weighted Decision
 
-From the current repository state, the best next move is:
+At the March repository checkpoint, the recommended next move was:
 - do not open a broader parser lane
 - do not add more raw matching rules by default
 - do build the first accepted or annotated transfer workflow on top of current `engine/peeling` and `storage/diff` outputs
@@ -444,9 +446,9 @@ Do not prioritize:
 
 Those are expensive and dilute the product.
 
-## Strategic Recommendation
+## Historical Strategic Recommendation
 
-The current recommended direction is:
+The then-current recommended direction was:
 
 1. Treat `Sprint 12` as effectively complete for the current declared recovery/value scope, not as the default next expansion lane.
 2. Keep `Sprint 13` focused on **workstation handoff contract hardening** over already-landed review and handoff surfaces.
@@ -460,11 +462,15 @@ Related review:
 
 Exploratory note:
 - `docs/plans/2026-03-22-goreveal-v2-ng-plan.md` remains exploratory only and is not the active roadmap baseline
-- `docs/plans/2026-04-01-goreveal-post-sprint12-sprint-plan.md` is the active near-term sprint sequence
+- `docs/plans/2026-04-01-goreveal-post-sprint12-sprint-plan.md` is a superseded
+  historical sequence; RT1 is the only active execution authority
 
-## Suggested Backlog Epics
+## Historical Suggested Backlog Epics
 
-Recommended near-to-mid-term epics:
+These ideas require re-prioritization through RT1 and do not select current
+work.
+
+Historical candidate epics:
 
 - `Epic: Workstation Handoff Contract`
 - `Epic: Review Workflow Actionability`

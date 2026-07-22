@@ -1,6 +1,8 @@
 # GoREveal Next Bounded Analyst Slices Plan
 
-> Status: PM/risk planning note
+> Status: historical PM/risk planning note; superseded for execution by the
+> [RT1 product design](../superpowers/specs/2026-07-22-goreveal-rt1-product-design.md)
+> and [RT1 Horizon A plan](../superpowers/plans/2026-07-22-goreveal-rt1-horizon-a.md)
 > Date: 2026-03-20
 > Purpose: choose the next bounded analyst-facing slice in the canonical CLI/runtime navigation surface without drifting into broad parser or heuristic rewrites.
 
@@ -18,9 +20,9 @@ The current question is narrower:
 
 This note evaluates the immediate options with product, risk, and execution criteria.
 
-## Current Product Read
+## Historical Product Read
 
-The current product is already strong in these analyst-facing areas:
+At that checkpoint, the product was already strong in these analyst-facing areas:
 - function navigation metadata
 - string address truth
 - stripped-runtime fallback visibility
@@ -94,7 +96,10 @@ Add explicit origin/scope classification across package/type/function surfaces, 
 **Speed**
 - Medium.
 
-## Recommendation
+## Historical Recommendation
+
+The recommendation below records the March checkpoint and no longer selects
+active work.
 
 Update after the latest checkpoint:
 - **Option A is complete.**
@@ -102,13 +107,13 @@ Update after the latest checkpoint:
 - `inspect packages` now exposes explicit `has_source_evidence`.
 - the next bounded analyst-facing move should now shift away from source-tree/package trust flags and into runtime trust summarization.
 
-Recommend **Option B: Runtime Summary/Source Enum** as the next active slice.
+The then-current recommendation was **Option B: Runtime Summary/Source Enum**.
 
 Why:
 - it adds new analyst-facing truth without changing recovery semantics
 - it improves the already-landed `inspect runtime` surface instead of widening parser scope
 - it makes the current bounded runtime contract easier to read for operators and adapters
-- it stays inside current `Sprint 12` claim boundaries
+- it stayed inside the then-current `Sprint 12` claim boundaries
 
 Do **not** choose Option C yet.
 

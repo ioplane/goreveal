@@ -170,7 +170,7 @@ goreveal/
 │   ├── strings.go             # Go string extraction
 │   ├── functions.go           # Function/method recovery
 │   └── internal/
-│       ├── gosym/             # Форк debug/gosym с расширениями (из GoReSym)
+│       ├── gosym/             # Независимый bounded reader по upstream Go evidence
 │       ├── elfutil/           # ELF helpers: section scanning, mmap
 │       ├── peutil/            # PE helpers + saferwall/pe integration
 │       └── machoutil/         # Mach-O helpers

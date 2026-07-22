@@ -1,6 +1,8 @@
 # GoREveal Sprint 12 PCLN Checkpoint
 
-> Status: checkpoint note
+> Status: historical checkpoint; superseded for execution by the
+> [RT1 product design](../superpowers/specs/2026-07-22-goreveal-rt1-product-design.md)
+> and [RT1 Horizon A plan](../superpowers/plans/2026-07-22-goreveal-rt1-horizon-a.md)
 > Date: 2026-03-20
 > Purpose: stop blind `.gopclntab` bridge expansion at the right point and translate the current runtime density into the next roadmap decision.
 
@@ -32,12 +34,12 @@ The next best move is one of:
 2. use the current bounded runtime model to test whether any existing heuristic can be safely reduced
 3. deliberately pause `Sprint 12` expansion and return to another lane if neither `1` nor `2` is ready
 
-Current recommendation:
+Historical recommendation:
 - choose `1` first
 - only choose `2` if there is a very small, evidence-backed heuristic adjustment
 - do not choose “one more bridge” unless it adds new semantic shape rather than just more of the same layout confidence
 
-## What The Current Runtime Layer Now Gives Us
+## What The Runtime Layer Gave At This Checkpoint
 
 On the canonical fixture, `GoREveal` now has a bounded runtime model that is strong enough to say:
 - the current `.gopclntab` layout is internally self-consistent
@@ -55,13 +57,16 @@ It still does **not** give us:
 - runtime-driven type scoping
 - support claims outside the current fixture/layout family
 
-## Near-Term Backlog After This Checkpoint
+## Historical Near-Term Backlog After This Checkpoint
+
+This list is retained as evidence of the checkpoint decision and does not
+select active work.
 
 1. Add a second runtime fixture or fixture variant to validate the current pcln-layout chain.
 2. Re-check whether the existing `DWARF + source-tree` heuristics can safely consume any of the new runtime truth.
 3. Keep `Sprint 7` in maintenance mode and avoid widening claims prematurely.
 4. Only return to more `Sprint 12` bridge work if the next slice adds clearly new semantic structure.
-5. Re-evaluate whether `Sprint 12` remains the best active lane after the second-fixture question is answered.
+5. The historical plan was to re-evaluate Sprint 12 after the second-fixture question; RT1 has replaced that decision.
 
 ## PM/Product Reading
 
