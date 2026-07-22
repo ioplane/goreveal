@@ -1,8 +1,30 @@
 package schema
 
+import (
+	"bytes"
+	"encoding/json"
+	"errors"
+)
+
 // The private v1 wire graph deliberately duplicates every serialized field.
 // Canonical schema structs evolve; these DTOs may change only after an explicit
 // v1 compatibility decision and fixture update.
+
+func marshalV1Wire(value any) ([]byte, error) {
+	var output bytes.Buffer
+	encoder := json.NewEncoder(&output)
+	encoder.SetEscapeHTML(false)
+	if err := encoder.Encode(value); err != nil {
+		return nil, err
+	}
+
+	encoded := output.Bytes()
+	if len(encoded) == 0 || encoded[len(encoded)-1] != '\n' {
+		return nil, errors.New("v1 wire encoder did not terminate JSON with a newline")
+	}
+
+	return bytes.Clone(encoded[:len(encoded)-1]), nil
+}
 
 type idaExportV1Wire struct {
 	Contract   string                 `json:"contract"`
@@ -44,125 +66,161 @@ type buildInfoV1Wire struct {
 }
 
 type runtimeMetadataV1Wire struct {
-	TrustSummary                         string           `json:"trust_summary,omitempty"`
-	ELFPclntabHeaderMagic                string           `json:"elf_pclntab_header_magic,omitempty"`
-	ELFPclntabHeaderMagicKind            string           `json:"elf_pclntab_header_magic_kind,omitempty"`
-	ELFPclntabHeaderQuantum              uint64           `json:"elf_pclntab_header_quantum,omitempty"`
-	ELFPclntabHeaderPointerSize          uint64           `json:"elf_pclntab_header_pointer_size,omitempty"`
-	ELFPclntabFunctionCountHint          uint64           `json:"elf_pclntab_function_count_hint,omitempty"`
-	ELFPclntabFileCountHint              uint64           `json:"elf_pclntab_file_count_hint,omitempty"`
-	ELFPclntabFuncnametabOffsetHint      uint64           `json:"elf_pclntab_funcnametab_offset_hint,omitempty"`
-	ELFPclntabCuOffsetHint               uint64           `json:"elf_pclntab_cu_offset_hint,omitempty"`
-	ELFPclntabFiletabOffsetHint          uint64           `json:"elf_pclntab_filetab_offset_hint,omitempty"`
-	ELFPclntabPctabOffsetHint            uint64           `json:"elf_pclntab_pctab_offset_hint,omitempty"`
-	ELFPclntabFunctabOffsetHint          uint64           `json:"elf_pclntab_functab_offset_hint,omitempty"`
-	ELFFunctabFirstPCOffsetHint          uint64           `json:"elf_functab_first_pc_offset_hint,omitempty"`
-	ELFFunctabLastPCOffsetHint           uint64           `json:"elf_functab_last_pc_offset_hint,omitempty"`
-	ELFFunctabPCOffsetsMonotonic         bool             `json:"elf_functab_pc_offsets_monotonic,omitempty"`
-	ELFTextSectionAddr                   uint64           `json:"elf_text_section_addr,omitempty"`
-	ELFTextSectionEndInclusive           uint64           `json:"elf_text_section_end_inclusive,omitempty"`
-	ELFFunctabFirstPCAddrHint            uint64           `json:"elf_functab_first_pc_addr_hint,omitempty"`
-	ELFFunctabLastPCAddrHint             uint64           `json:"elf_functab_last_pc_addr_hint,omitempty"`
-	ELFFunctabPCAddrHintsWithinText      bool             `json:"elf_functab_pc_addr_hints_within_text,omitempty"`
-	ELFFunctabPCAddrSample               []uint64         `json:"elf_functab_pc_addr_sample,omitempty"`
-	ELFFunctabPCAddrSampleAllWithinText  bool             `json:"elf_functab_pc_addr_sample_all_within_text,omitempty"`
-	ELFFunctionFoothold                  string           `json:"elf_function_foothold,omitempty"`
-	ELFFunctionFootholdCountHint         uint64           `json:"elf_function_foothold_count_hint,omitempty"`
-	ELFFunctionFootholdTextSource        string           `json:"elf_function_foothold_text_source,omitempty"`
-	ELFFunctionFootholdStartAddr         uint64           `json:"elf_function_foothold_start_addr,omitempty"`
-	ELFFunctionFootholdEndAddr           uint64           `json:"elf_function_foothold_end_addr,omitempty"`
-	ELFFunctionRecoveryBlocker           string           `json:"elf_function_recovery_blocker,omitempty"`
-	PETextSectionAddr                    uint64           `json:"pe_text_section_addr,omitempty"`
-	PETextSectionSize                    uint64           `json:"pe_text_section_size,omitempty"`
-	PERdataSectionAddr                   uint64           `json:"pe_rdata_section_addr,omitempty"`
-	PERdataSectionSize                   uint64           `json:"pe_rdata_section_size,omitempty"`
-	PEPclntabMagicSection                string           `json:"pe_pclntab_magic_section,omitempty"`
-	PEPclntabMagicAddr                   uint64           `json:"pe_pclntab_magic_addr,omitempty"`
-	PEPclntabMagicCount                  uint64           `json:"pe_pclntab_magic_count,omitempty"`
-	PEPclntabHeaderSection               string           `json:"pe_pclntab_header_section,omitempty"`
-	PEPclntabHeaderAddr                  uint64           `json:"pe_pclntab_header_addr,omitempty"`
-	PEPclntabHeaderMagic                 string           `json:"pe_pclntab_header_magic,omitempty"`
-	PEPclntabHeaderQuantum               uint64           `json:"pe_pclntab_header_quantum,omitempty"`
-	PEPclntabHeaderPointerSize           uint64           `json:"pe_pclntab_header_pointer_size,omitempty"`
-	FirstModuleDataAddr                  uint64           `json:"firstmoduledata_addr,omitempty"`
-	FirstModuleDataFromGoModuleFallback  bool             `json:"firstmoduledata_from_go_module_fallback,omitempty"`
-	GopclntabAddr                        uint64           `json:"gopclntab_addr,omitempty"`
-	GopclntabSize                        uint64           `json:"gopclntab_size,omitempty"`
-	TypelinkAddr                         uint64           `json:"typelink_addr,omitempty"`
-	TypelinkSize                         uint64           `json:"typelink_size,omitempty"`
-	TypelinkCount                        uint64           `json:"typelink_count,omitempty"`
-	ItablinkAddr                         uint64           `json:"itablink_addr,omitempty"`
-	ItablinkSize                         uint64           `json:"itablink_size,omitempty"`
-	ItablinkCount                        uint64           `json:"itablink_count,omitempty"`
-	TypelinkSample                       []int32          `json:"typelink_sample,omitempty"`
-	TypelinkResolvedBaseAddr             uint64           `json:"typelink_resolved_base_addr,omitempty"`
-	TypelinkResolvedSample               []uint64         `json:"typelink_resolved_sample,omitempty"`
-	TypelinkResolvedWithinRodataCount    uint64           `json:"typelink_resolved_within_rodata_count,omitempty"`
-	TypelinkAllResolvedWithinRodata      bool             `json:"typelink_all_resolved_within_rodata,omitempty"`
-	TypelinkMinOffset                    int32            `json:"typelink_min_offset,omitempty"`
-	TypelinkMaxOffset                    int32            `json:"typelink_max_offset,omitempty"`
-	TypelinkNegativeCount                uint64           `json:"typelink_negative_count,omitempty"`
-	TypelinkNonNegativeCount             uint64           `json:"typelink_non_negative_count,omitempty"`
-	GoModuleAddr                         uint64           `json:"go_module_addr,omitempty"`
-	GoModuleSize                         uint64           `json:"go_module_size,omitempty"`
-	FirstModuleDataInGoModule            bool             `json:"firstmoduledata_in_go_module,omitempty"`
-	FirstModuleDataGoModuleOffset        uint64           `json:"firstmoduledata_go_module_offset,omitempty"`
-	GoModuleWordSize                     uint64           `json:"go_module_word_size,omitempty"`
-	GoModuleWordSample                   []uint64         `json:"go_module_word_sample,omitempty"`
-	ModuledataPCHeaderAddr               uint64           `json:"moduledata_pcheader_addr,omitempty"`
-	ModuledataPCHeaderMatchesGopclntab   bool             `json:"moduledata_pcheader_matches_gopclntab,omitempty"`
-	ModuledataFuncnametabSliceWordIndex  uint64           `json:"moduledata_funcnametab_slice_word_index,omitempty"`
-	ModuledataFuncnametabAddr            uint64           `json:"moduledata_funcnametab_addr,omitempty"`
-	ModuledataFuncnametabLen             uint64           `json:"moduledata_funcnametab_len,omitempty"`
-	ModuledataFuncnametabCap             uint64           `json:"moduledata_funcnametab_cap,omitempty"`
-	ModuledataFuncnametabWithinGopclntab bool             `json:"moduledata_funcnametab_within_gopclntab,omitempty"`
-	ModuledataCutabSliceWordIndex        uint64           `json:"moduledata_cutab_slice_word_index,omitempty"`
-	ModuledataCutabAddr                  uint64           `json:"moduledata_cutab_addr,omitempty"`
-	ModuledataCutabLen                   uint64           `json:"moduledata_cutab_len,omitempty"`
-	ModuledataCutabCap                   uint64           `json:"moduledata_cutab_cap,omitempty"`
-	ModuledataCutabWithinGopclntab       bool             `json:"moduledata_cutab_within_gopclntab,omitempty"`
-	ModuledataFiletabSliceWordIndex      uint64           `json:"moduledata_filetab_slice_word_index,omitempty"`
-	ModuledataFiletabAddr                uint64           `json:"moduledata_filetab_addr,omitempty"`
-	ModuledataFiletabLen                 uint64           `json:"moduledata_filetab_len,omitempty"`
-	ModuledataFiletabCap                 uint64           `json:"moduledata_filetab_cap,omitempty"`
-	ModuledataFiletabWithinGopclntab     bool             `json:"moduledata_filetab_within_gopclntab,omitempty"`
-	ModuledataPctabSliceWordIndex        uint64           `json:"moduledata_pctab_slice_word_index,omitempty"`
-	ModuledataPctabAddr                  uint64           `json:"moduledata_pctab_addr,omitempty"`
-	ModuledataPctabLen                   uint64           `json:"moduledata_pctab_len,omitempty"`
-	ModuledataPctabCap                   uint64           `json:"moduledata_pctab_cap,omitempty"`
-	ModuledataPctabWithinGopclntab       bool             `json:"moduledata_pctab_within_gopclntab,omitempty"`
-	ModuledataPclntableSliceWordIndex    uint64           `json:"moduledata_pclntable_slice_word_index,omitempty"`
-	ModuledataPclntableAddr              uint64           `json:"moduledata_pclntable_addr,omitempty"`
-	ModuledataPclntableLen               uint64           `json:"moduledata_pclntable_len,omitempty"`
-	ModuledataPclntableCap               uint64           `json:"moduledata_pclntable_cap,omitempty"`
-	ModuledataPclntableWithinGopclntab   bool             `json:"moduledata_pclntable_within_gopclntab,omitempty"`
-	ModuledataTypelinkSliceWordIndex     uint64           `json:"moduledata_typelink_slice_word_index,omitempty"`
-	ModuledataTypelinkLen                uint64           `json:"moduledata_typelink_len,omitempty"`
-	ModuledataTypelinkCap                uint64           `json:"moduledata_typelink_cap,omitempty"`
-	ModuledataItablinkSliceWordIndex     uint64           `json:"moduledata_itablink_slice_word_index,omitempty"`
-	ModuledataItablinkLen                uint64           `json:"moduledata_itablink_len,omitempty"`
-	ModuledataItablinkCap                uint64           `json:"moduledata_itablink_cap,omitempty"`
-	ModuledataMemoryRangesWordIndex      uint64           `json:"moduledata_memory_ranges_word_index,omitempty"`
-	ModuledataNoptrdataAddr              uint64           `json:"moduledata_noptrdata_addr,omitempty"`
-	ModuledataNoptrdataEnd               uint64           `json:"moduledata_noptrdata_end,omitempty"`
-	ModuledataDataAddr                   uint64           `json:"moduledata_data_addr,omitempty"`
-	ModuledataDataEnd                    uint64           `json:"moduledata_data_end,omitempty"`
-	ModuledataBssAddr                    uint64           `json:"moduledata_bss_addr,omitempty"`
-	ModuledataBssEnd                     uint64           `json:"moduledata_bss_end,omitempty"`
-	ModuledataNoptrbssAddr               uint64           `json:"moduledata_noptrbss_addr,omitempty"`
-	ModuledataNoptrbssEnd                uint64           `json:"moduledata_noptrbss_end,omitempty"`
-	ModuledataRodataWordIndex            uint64           `json:"moduledata_rodata_word_index,omitempty"`
-	ModuledataRodataAddr                 uint64           `json:"moduledata_rodata_addr,omitempty"`
-	ModuledataRodataEnd                  uint64           `json:"moduledata_rodata_end,omitempty"`
-	ModuledataTextWordIndex              uint64           `json:"moduledata_text_word_index,omitempty"`
-	ModuledataTextAddr                   uint64           `json:"moduledata_text_addr,omitempty"`
-	ModuledataTextEndInclusive           uint64           `json:"moduledata_text_end_inclusive,omitempty"`
-	ModuledataTypesRangeWordIndex        uint64           `json:"moduledata_types_range_word_index,omitempty"`
-	ModuledataTypesAddr                  uint64           `json:"moduledata_types_addr,omitempty"`
-	ModuledataETypesAddr                 uint64           `json:"moduledata_etypes_addr,omitempty"`
-	TypelinkResolvedWithinTypesCount     uint64           `json:"typelink_resolved_within_types_count,omitempty"`
-	TypelinkAllResolvedWithinTypes       bool             `json:"typelink_all_resolved_within_types,omitempty"`
-	Provenance                           provenanceV1Wire `json:"provenance"`
+	runtimeELFHeaderV1Wire
+	runtimeELFRangeV1Wire
+	runtimePEV1Wire
+	runtimeLinkEvidenceV1Wire
+	runtimeGoModuleV1Wire
+	runtimeModuleTablesV1Wire
+	runtimeModuleLinksV1Wire
+	runtimeMemoryRangesV1Wire
+	runtimeTypesV1Wire
+	Provenance provenanceV1Wire `json:"provenance"`
+}
+
+type runtimeELFHeaderV1Wire struct {
+	TrustSummary                    string `json:"trust_summary,omitempty"`
+	ELFPclntabHeaderMagic           string `json:"elf_pclntab_header_magic,omitempty"`
+	ELFPclntabHeaderMagicKind       string `json:"elf_pclntab_header_magic_kind,omitempty"`
+	ELFPclntabHeaderQuantum         uint64 `json:"elf_pclntab_header_quantum,omitempty"`
+	ELFPclntabHeaderPointerSize     uint64 `json:"elf_pclntab_header_pointer_size,omitempty"`
+	ELFPclntabFunctionCountHint     uint64 `json:"elf_pclntab_function_count_hint,omitempty"`
+	ELFPclntabFileCountHint         uint64 `json:"elf_pclntab_file_count_hint,omitempty"`
+	ELFPclntabFuncnametabOffsetHint uint64 `json:"elf_pclntab_funcnametab_offset_hint,omitempty"`
+	ELFPclntabCuOffsetHint          uint64 `json:"elf_pclntab_cu_offset_hint,omitempty"`
+	ELFPclntabFiletabOffsetHint     uint64 `json:"elf_pclntab_filetab_offset_hint,omitempty"`
+	ELFPclntabPctabOffsetHint       uint64 `json:"elf_pclntab_pctab_offset_hint,omitempty"`
+	ELFPclntabFunctabOffsetHint     uint64 `json:"elf_pclntab_functab_offset_hint,omitempty"`
+	ELFFunctabFirstPCOffsetHint     uint64 `json:"elf_functab_first_pc_offset_hint,omitempty"`
+	ELFFunctabLastPCOffsetHint      uint64 `json:"elf_functab_last_pc_offset_hint,omitempty"`
+	ELFFunctabPCOffsetsMonotonic    bool   `json:"elf_functab_pc_offsets_monotonic,omitempty"`
+}
+
+type runtimeELFRangeV1Wire struct {
+	ELFTextSectionAddr                  uint64   `json:"elf_text_section_addr,omitempty"`
+	ELFTextSectionEndInclusive          uint64   `json:"elf_text_section_end_inclusive,omitempty"`
+	ELFFunctabFirstPCAddrHint           uint64   `json:"elf_functab_first_pc_addr_hint,omitempty"`
+	ELFFunctabLastPCAddrHint            uint64   `json:"elf_functab_last_pc_addr_hint,omitempty"`
+	ELFFunctabPCAddrHintsWithinText     bool     `json:"elf_functab_pc_addr_hints_within_text,omitempty"`
+	ELFFunctabPCAddrSample              []uint64 `json:"elf_functab_pc_addr_sample,omitempty"`
+	ELFFunctabPCAddrSampleAllWithinText bool     `json:"elf_functab_pc_addr_sample_all_within_text,omitempty"`
+	ELFFunctionFoothold                 string   `json:"elf_function_foothold,omitempty"`
+	ELFFunctionFootholdCountHint        uint64   `json:"elf_function_foothold_count_hint,omitempty"`
+	ELFFunctionFootholdTextSource       string   `json:"elf_function_foothold_text_source,omitempty"`
+	ELFFunctionFootholdStartAddr        uint64   `json:"elf_function_foothold_start_addr,omitempty"`
+	ELFFunctionFootholdEndAddr          uint64   `json:"elf_function_foothold_end_addr,omitempty"`
+	ELFFunctionRecoveryBlocker          string   `json:"elf_function_recovery_blocker,omitempty"`
+}
+
+type runtimePEV1Wire struct {
+	PETextSectionAddr                   uint64 `json:"pe_text_section_addr,omitempty"`
+	PETextSectionSize                   uint64 `json:"pe_text_section_size,omitempty"`
+	PERdataSectionAddr                  uint64 `json:"pe_rdata_section_addr,omitempty"`
+	PERdataSectionSize                  uint64 `json:"pe_rdata_section_size,omitempty"`
+	PEPclntabMagicSection               string `json:"pe_pclntab_magic_section,omitempty"`
+	PEPclntabMagicAddr                  uint64 `json:"pe_pclntab_magic_addr,omitempty"`
+	PEPclntabMagicCount                 uint64 `json:"pe_pclntab_magic_count,omitempty"`
+	PEPclntabHeaderSection              string `json:"pe_pclntab_header_section,omitempty"`
+	PEPclntabHeaderAddr                 uint64 `json:"pe_pclntab_header_addr,omitempty"`
+	PEPclntabHeaderMagic                string `json:"pe_pclntab_header_magic,omitempty"`
+	PEPclntabHeaderQuantum              uint64 `json:"pe_pclntab_header_quantum,omitempty"`
+	PEPclntabHeaderPointerSize          uint64 `json:"pe_pclntab_header_pointer_size,omitempty"`
+	FirstModuleDataAddr                 uint64 `json:"firstmoduledata_addr,omitempty"`
+	FirstModuleDataFromGoModuleFallback bool   `json:"firstmoduledata_from_go_module_fallback,omitempty"`
+}
+
+type runtimeLinkEvidenceV1Wire struct {
+	GopclntabAddr                     uint64   `json:"gopclntab_addr,omitempty"`
+	GopclntabSize                     uint64   `json:"gopclntab_size,omitempty"`
+	TypelinkAddr                      uint64   `json:"typelink_addr,omitempty"`
+	TypelinkSize                      uint64   `json:"typelink_size,omitempty"`
+	TypelinkCount                     uint64   `json:"typelink_count,omitempty"`
+	ItablinkAddr                      uint64   `json:"itablink_addr,omitempty"`
+	ItablinkSize                      uint64   `json:"itablink_size,omitempty"`
+	ItablinkCount                     uint64   `json:"itablink_count,omitempty"`
+	TypelinkSample                    []int32  `json:"typelink_sample,omitempty"`
+	TypelinkResolvedBaseAddr          uint64   `json:"typelink_resolved_base_addr,omitempty"`
+	TypelinkResolvedSample            []uint64 `json:"typelink_resolved_sample,omitempty"`
+	TypelinkResolvedWithinRodataCount uint64   `json:"typelink_resolved_within_rodata_count,omitempty"`
+	TypelinkAllResolvedWithinRodata   bool     `json:"typelink_all_resolved_within_rodata,omitempty"`
+	TypelinkMinOffset                 int32    `json:"typelink_min_offset,omitempty"`
+	TypelinkMaxOffset                 int32    `json:"typelink_max_offset,omitempty"`
+	TypelinkNegativeCount             uint64   `json:"typelink_negative_count,omitempty"`
+	TypelinkNonNegativeCount          uint64   `json:"typelink_non_negative_count,omitempty"`
+}
+
+type runtimeGoModuleV1Wire struct {
+	GoModuleAddr                         uint64   `json:"go_module_addr,omitempty"`
+	GoModuleSize                         uint64   `json:"go_module_size,omitempty"`
+	FirstModuleDataInGoModule            bool     `json:"firstmoduledata_in_go_module,omitempty"`
+	FirstModuleDataGoModuleOffset        uint64   `json:"firstmoduledata_go_module_offset,omitempty"`
+	GoModuleWordSize                     uint64   `json:"go_module_word_size,omitempty"`
+	GoModuleWordSample                   []uint64 `json:"go_module_word_sample,omitempty"`
+	ModuledataPCHeaderAddr               uint64   `json:"moduledata_pcheader_addr,omitempty"`
+	ModuledataPCHeaderMatchesGopclntab   bool     `json:"moduledata_pcheader_matches_gopclntab,omitempty"`
+	ModuledataFuncnametabSliceWordIndex  uint64   `json:"moduledata_funcnametab_slice_word_index,omitempty"`
+	ModuledataFuncnametabAddr            uint64   `json:"moduledata_funcnametab_addr,omitempty"`
+	ModuledataFuncnametabLen             uint64   `json:"moduledata_funcnametab_len,omitempty"`
+	ModuledataFuncnametabCap             uint64   `json:"moduledata_funcnametab_cap,omitempty"`
+	ModuledataFuncnametabWithinGopclntab bool     `json:"moduledata_funcnametab_within_gopclntab,omitempty"`
+}
+
+type runtimeModuleTablesV1Wire struct {
+	ModuledataCutabSliceWordIndex    uint64 `json:"moduledata_cutab_slice_word_index,omitempty"`
+	ModuledataCutabAddr              uint64 `json:"moduledata_cutab_addr,omitempty"`
+	ModuledataCutabLen               uint64 `json:"moduledata_cutab_len,omitempty"`
+	ModuledataCutabCap               uint64 `json:"moduledata_cutab_cap,omitempty"`
+	ModuledataCutabWithinGopclntab   bool   `json:"moduledata_cutab_within_gopclntab,omitempty"`
+	ModuledataFiletabSliceWordIndex  uint64 `json:"moduledata_filetab_slice_word_index,omitempty"`
+	ModuledataFiletabAddr            uint64 `json:"moduledata_filetab_addr,omitempty"`
+	ModuledataFiletabLen             uint64 `json:"moduledata_filetab_len,omitempty"`
+	ModuledataFiletabCap             uint64 `json:"moduledata_filetab_cap,omitempty"`
+	ModuledataFiletabWithinGopclntab bool   `json:"moduledata_filetab_within_gopclntab,omitempty"`
+	ModuledataPctabSliceWordIndex    uint64 `json:"moduledata_pctab_slice_word_index,omitempty"`
+	ModuledataPctabAddr              uint64 `json:"moduledata_pctab_addr,omitempty"`
+	ModuledataPctabLen               uint64 `json:"moduledata_pctab_len,omitempty"`
+	ModuledataPctabCap               uint64 `json:"moduledata_pctab_cap,omitempty"`
+	ModuledataPctabWithinGopclntab   bool   `json:"moduledata_pctab_within_gopclntab,omitempty"`
+}
+
+type runtimeModuleLinksV1Wire struct {
+	ModuledataPclntableSliceWordIndex  uint64 `json:"moduledata_pclntable_slice_word_index,omitempty"`
+	ModuledataPclntableAddr            uint64 `json:"moduledata_pclntable_addr,omitempty"`
+	ModuledataPclntableLen             uint64 `json:"moduledata_pclntable_len,omitempty"`
+	ModuledataPclntableCap             uint64 `json:"moduledata_pclntable_cap,omitempty"`
+	ModuledataPclntableWithinGopclntab bool   `json:"moduledata_pclntable_within_gopclntab,omitempty"`
+	ModuledataTypelinkSliceWordIndex   uint64 `json:"moduledata_typelink_slice_word_index,omitempty"`
+	ModuledataTypelinkLen              uint64 `json:"moduledata_typelink_len,omitempty"`
+	ModuledataTypelinkCap              uint64 `json:"moduledata_typelink_cap,omitempty"`
+	ModuledataItablinkSliceWordIndex   uint64 `json:"moduledata_itablink_slice_word_index,omitempty"`
+	ModuledataItablinkLen              uint64 `json:"moduledata_itablink_len,omitempty"`
+	ModuledataItablinkCap              uint64 `json:"moduledata_itablink_cap,omitempty"`
+	ModuledataMemoryRangesWordIndex    uint64 `json:"moduledata_memory_ranges_word_index,omitempty"`
+}
+
+type runtimeMemoryRangesV1Wire struct {
+	ModuledataNoptrdataAddr    uint64 `json:"moduledata_noptrdata_addr,omitempty"`
+	ModuledataNoptrdataEnd     uint64 `json:"moduledata_noptrdata_end,omitempty"`
+	ModuledataDataAddr         uint64 `json:"moduledata_data_addr,omitempty"`
+	ModuledataDataEnd          uint64 `json:"moduledata_data_end,omitempty"`
+	ModuledataBssAddr          uint64 `json:"moduledata_bss_addr,omitempty"`
+	ModuledataBssEnd           uint64 `json:"moduledata_bss_end,omitempty"`
+	ModuledataNoptrbssAddr     uint64 `json:"moduledata_noptrbss_addr,omitempty"`
+	ModuledataNoptrbssEnd      uint64 `json:"moduledata_noptrbss_end,omitempty"`
+	ModuledataRodataWordIndex  uint64 `json:"moduledata_rodata_word_index,omitempty"`
+	ModuledataRodataAddr       uint64 `json:"moduledata_rodata_addr,omitempty"`
+	ModuledataRodataEnd        uint64 `json:"moduledata_rodata_end,omitempty"`
+	ModuledataTextWordIndex    uint64 `json:"moduledata_text_word_index,omitempty"`
+	ModuledataTextAddr         uint64 `json:"moduledata_text_addr,omitempty"`
+	ModuledataTextEndInclusive uint64 `json:"moduledata_text_end_inclusive,omitempty"`
+}
+
+type runtimeTypesV1Wire struct {
+	ModuledataTypesRangeWordIndex    uint64 `json:"moduledata_types_range_word_index,omitempty"`
+	ModuledataTypesAddr              uint64 `json:"moduledata_types_addr,omitempty"`
+	ModuledataETypesAddr             uint64 `json:"moduledata_etypes_addr,omitempty"`
+	TypelinkResolvedWithinTypesCount uint64 `json:"typelink_resolved_within_types_count,omitempty"`
+	TypelinkAllResolvedWithinTypes   bool   `json:"typelink_all_resolved_within_types,omitempty"`
 }
 
 type peelingAnalysisV1Wire struct {
@@ -230,7 +288,7 @@ type sourcePackageV1Wire struct {
 type sourceTreeV1Wire struct {
 	Root                  string                      `json:"root"`
 	SourceEvidenceKind    string                      `json:"source_evidence_kind,omitempty"`
-	SourceEvidenceSummary sourceEvidenceSummaryV1Wire `json:"source_evidence_summary,omitempty"`
+	SourceEvidenceSummary sourceEvidenceSummaryV1Wire `json:"source_evidence_summary,omitempty"` //nolint:modernize // Frozen v1 keeps the ineffective omitempty tag byte-contract declaration.
 	PathlessFileEvidence  bool                        `json:"pathless_file_evidence,omitempty"`
 	Files                 []string                    `json:"files"`
 	Packages              []sourcePackageV1Wire       `json:"packages"`
@@ -356,11 +414,7 @@ func newGhidraExportV1Wire(source GhidraExport) ghidraExportV1Wire {
 }
 
 func newInputV1Wire(source Input) inputV1Wire {
-	return inputV1Wire{
-		Path:   source.Path,
-		Size:   source.Size,
-		Format: source.Format,
-	}
+	return inputV1Wire(source)
 }
 
 func newBuildInfoV1Wire(source *BuildInfo) *buildInfoV1Wire {
@@ -379,65 +433,100 @@ func newRuntimeMetadataV1Wire(source *RuntimeMetadata) *runtimeMetadataV1Wire {
 		return nil
 	}
 	return &runtimeMetadataV1Wire{
-		TrustSummary:                         string(source.TrustSummary),
-		ELFPclntabHeaderMagic:                source.ELFPclntabHeaderMagic,
-		ELFPclntabHeaderMagicKind:            source.ELFPclntabHeaderMagicKind,
-		ELFPclntabHeaderQuantum:              source.ELFPclntabHeaderQuantum,
-		ELFPclntabHeaderPointerSize:          source.ELFPclntabHeaderPointerSize,
-		ELFPclntabFunctionCountHint:          source.ELFPclntabFunctionCountHint,
-		ELFPclntabFileCountHint:              source.ELFPclntabFileCountHint,
-		ELFPclntabFuncnametabOffsetHint:      source.ELFPclntabFuncnametabOffsetHint,
-		ELFPclntabCuOffsetHint:               source.ELFPclntabCuOffsetHint,
-		ELFPclntabFiletabOffsetHint:          source.ELFPclntabFiletabOffsetHint,
-		ELFPclntabPctabOffsetHint:            source.ELFPclntabPctabOffsetHint,
-		ELFPclntabFunctabOffsetHint:          source.ELFPclntabFunctabOffsetHint,
-		ELFFunctabFirstPCOffsetHint:          source.ELFFunctabFirstPCOffsetHint,
-		ELFFunctabLastPCOffsetHint:           source.ELFFunctabLastPCOffsetHint,
-		ELFFunctabPCOffsetsMonotonic:         source.ELFFunctabPCOffsetsMonotonic,
-		ELFTextSectionAddr:                   source.ELFTextSectionAddr,
-		ELFTextSectionEndInclusive:           source.ELFTextSectionEndInclusive,
-		ELFFunctabFirstPCAddrHint:            source.ELFFunctabFirstPCAddrHint,
-		ELFFunctabLastPCAddrHint:             source.ELFFunctabLastPCAddrHint,
-		ELFFunctabPCAddrHintsWithinText:      source.ELFFunctabPCAddrHintsWithinText,
-		ELFFunctabPCAddrSample:               cloneV1Slice(source.ELFFunctabPCAddrSample),
-		ELFFunctabPCAddrSampleAllWithinText:  source.ELFFunctabPCAddrSampleAllWithinText,
-		ELFFunctionFoothold:                  source.ELFFunctionFoothold,
-		ELFFunctionFootholdCountHint:         source.ELFFunctionFootholdCountHint,
-		ELFFunctionFootholdTextSource:        source.ELFFunctionFootholdTextSource,
-		ELFFunctionFootholdStartAddr:         source.ELFFunctionFootholdStartAddr,
-		ELFFunctionFootholdEndAddr:           source.ELFFunctionFootholdEndAddr,
-		ELFFunctionRecoveryBlocker:           source.ELFFunctionRecoveryBlocker,
-		PETextSectionAddr:                    source.PETextSectionAddr,
-		PETextSectionSize:                    source.PETextSectionSize,
-		PERdataSectionAddr:                   source.PERdataSectionAddr,
-		PERdataSectionSize:                   source.PERdataSectionSize,
-		PEPclntabMagicSection:                source.PEPclntabMagicSection,
-		PEPclntabMagicAddr:                   source.PEPclntabMagicAddr,
-		PEPclntabMagicCount:                  source.PEPclntabMagicCount,
-		PEPclntabHeaderSection:               source.PEPclntabHeaderSection,
-		PEPclntabHeaderAddr:                  source.PEPclntabHeaderAddr,
-		PEPclntabHeaderMagic:                 source.PEPclntabHeaderMagic,
-		PEPclntabHeaderQuantum:               source.PEPclntabHeaderQuantum,
-		PEPclntabHeaderPointerSize:           source.PEPclntabHeaderPointerSize,
-		FirstModuleDataAddr:                  source.FirstModuleDataAddr,
-		FirstModuleDataFromGoModuleFallback:  source.FirstModuleDataFromGoModuleFallback,
-		GopclntabAddr:                        source.GopclntabAddr,
-		GopclntabSize:                        source.GopclntabSize,
-		TypelinkAddr:                         source.TypelinkAddr,
-		TypelinkSize:                         source.TypelinkSize,
-		TypelinkCount:                        source.TypelinkCount,
-		ItablinkAddr:                         source.ItablinkAddr,
-		ItablinkSize:                         source.ItablinkSize,
-		ItablinkCount:                        source.ItablinkCount,
-		TypelinkSample:                       cloneV1Slice(source.TypelinkSample),
-		TypelinkResolvedBaseAddr:             source.TypelinkResolvedBaseAddr,
-		TypelinkResolvedSample:               cloneV1Slice(source.TypelinkResolvedSample),
-		TypelinkResolvedWithinRodataCount:    source.TypelinkResolvedWithinRodataCount,
-		TypelinkAllResolvedWithinRodata:      source.TypelinkAllResolvedWithinRodata,
-		TypelinkMinOffset:                    source.TypelinkMinOffset,
-		TypelinkMaxOffset:                    source.TypelinkMaxOffset,
-		TypelinkNegativeCount:                source.TypelinkNegativeCount,
-		TypelinkNonNegativeCount:             source.TypelinkNonNegativeCount,
+		runtimeELFHeaderV1Wire:    newRuntimeELFHeaderV1Wire(source),
+		runtimeELFRangeV1Wire:     newRuntimeELFRangeV1Wire(source),
+		runtimePEV1Wire:           newRuntimePEV1Wire(source),
+		runtimeLinkEvidenceV1Wire: newRuntimeLinkEvidenceV1Wire(source),
+		runtimeGoModuleV1Wire:     newRuntimeGoModuleV1Wire(source),
+		runtimeModuleTablesV1Wire: newRuntimeModuleTablesV1Wire(source),
+		runtimeModuleLinksV1Wire:  newRuntimeModuleLinksV1Wire(source),
+		runtimeMemoryRangesV1Wire: newRuntimeMemoryRangesV1Wire(source),
+		runtimeTypesV1Wire:        newRuntimeTypesV1Wire(source),
+		Provenance:                newProvenanceV1Wire(source.Provenance),
+	}
+}
+
+func newRuntimeELFHeaderV1Wire(source *RuntimeMetadata) runtimeELFHeaderV1Wire {
+	return runtimeELFHeaderV1Wire{
+		TrustSummary:                    string(source.TrustSummary),
+		ELFPclntabHeaderMagic:           source.ELFPclntabHeaderMagic,
+		ELFPclntabHeaderMagicKind:       source.ELFPclntabHeaderMagicKind,
+		ELFPclntabHeaderQuantum:         source.ELFPclntabHeaderQuantum,
+		ELFPclntabHeaderPointerSize:     source.ELFPclntabHeaderPointerSize,
+		ELFPclntabFunctionCountHint:     source.ELFPclntabFunctionCountHint,
+		ELFPclntabFileCountHint:         source.ELFPclntabFileCountHint,
+		ELFPclntabFuncnametabOffsetHint: source.ELFPclntabFuncnametabOffsetHint,
+		ELFPclntabCuOffsetHint:          source.ELFPclntabCuOffsetHint,
+		ELFPclntabFiletabOffsetHint:     source.ELFPclntabFiletabOffsetHint,
+		ELFPclntabPctabOffsetHint:       source.ELFPclntabPctabOffsetHint,
+		ELFPclntabFunctabOffsetHint:     source.ELFPclntabFunctabOffsetHint,
+		ELFFunctabFirstPCOffsetHint:     source.ELFFunctabFirstPCOffsetHint,
+		ELFFunctabLastPCOffsetHint:      source.ELFFunctabLastPCOffsetHint,
+		ELFFunctabPCOffsetsMonotonic:    source.ELFFunctabPCOffsetsMonotonic,
+	}
+}
+
+func newRuntimeELFRangeV1Wire(source *RuntimeMetadata) runtimeELFRangeV1Wire {
+	return runtimeELFRangeV1Wire{
+		ELFTextSectionAddr:                  source.ELFTextSectionAddr,
+		ELFTextSectionEndInclusive:          source.ELFTextSectionEndInclusive,
+		ELFFunctabFirstPCAddrHint:           source.ELFFunctabFirstPCAddrHint,
+		ELFFunctabLastPCAddrHint:            source.ELFFunctabLastPCAddrHint,
+		ELFFunctabPCAddrHintsWithinText:     source.ELFFunctabPCAddrHintsWithinText,
+		ELFFunctabPCAddrSample:              cloneV1Slice(source.ELFFunctabPCAddrSample),
+		ELFFunctabPCAddrSampleAllWithinText: source.ELFFunctabPCAddrSampleAllWithinText,
+		ELFFunctionFoothold:                 source.ELFFunctionFoothold,
+		ELFFunctionFootholdCountHint:        source.ELFFunctionFootholdCountHint,
+		ELFFunctionFootholdTextSource:       source.ELFFunctionFootholdTextSource,
+		ELFFunctionFootholdStartAddr:        source.ELFFunctionFootholdStartAddr,
+		ELFFunctionFootholdEndAddr:          source.ELFFunctionFootholdEndAddr,
+		ELFFunctionRecoveryBlocker:          source.ELFFunctionRecoveryBlocker,
+	}
+}
+
+func newRuntimePEV1Wire(source *RuntimeMetadata) runtimePEV1Wire {
+	return runtimePEV1Wire{
+		PETextSectionAddr:                   source.PETextSectionAddr,
+		PETextSectionSize:                   source.PETextSectionSize,
+		PERdataSectionAddr:                  source.PERdataSectionAddr,
+		PERdataSectionSize:                  source.PERdataSectionSize,
+		PEPclntabMagicSection:               source.PEPclntabMagicSection,
+		PEPclntabMagicAddr:                  source.PEPclntabMagicAddr,
+		PEPclntabMagicCount:                 source.PEPclntabMagicCount,
+		PEPclntabHeaderSection:              source.PEPclntabHeaderSection,
+		PEPclntabHeaderAddr:                 source.PEPclntabHeaderAddr,
+		PEPclntabHeaderMagic:                source.PEPclntabHeaderMagic,
+		PEPclntabHeaderQuantum:              source.PEPclntabHeaderQuantum,
+		PEPclntabHeaderPointerSize:          source.PEPclntabHeaderPointerSize,
+		FirstModuleDataAddr:                 source.FirstModuleDataAddr,
+		FirstModuleDataFromGoModuleFallback: source.FirstModuleDataFromGoModuleFallback,
+	}
+}
+
+func newRuntimeLinkEvidenceV1Wire(source *RuntimeMetadata) runtimeLinkEvidenceV1Wire {
+	return runtimeLinkEvidenceV1Wire{
+		GopclntabAddr:                     source.GopclntabAddr,
+		GopclntabSize:                     source.GopclntabSize,
+		TypelinkAddr:                      source.TypelinkAddr,
+		TypelinkSize:                      source.TypelinkSize,
+		TypelinkCount:                     source.TypelinkCount,
+		ItablinkAddr:                      source.ItablinkAddr,
+		ItablinkSize:                      source.ItablinkSize,
+		ItablinkCount:                     source.ItablinkCount,
+		TypelinkSample:                    cloneV1Slice(source.TypelinkSample),
+		TypelinkResolvedBaseAddr:          source.TypelinkResolvedBaseAddr,
+		TypelinkResolvedSample:            cloneV1Slice(source.TypelinkResolvedSample),
+		TypelinkResolvedWithinRodataCount: source.TypelinkResolvedWithinRodataCount,
+		TypelinkAllResolvedWithinRodata:   source.TypelinkAllResolvedWithinRodata,
+		TypelinkMinOffset:                 source.TypelinkMinOffset,
+		TypelinkMaxOffset:                 source.TypelinkMaxOffset,
+		TypelinkNegativeCount:             source.TypelinkNegativeCount,
+		TypelinkNonNegativeCount:          source.TypelinkNonNegativeCount,
+	}
+}
+
+func newRuntimeGoModuleV1Wire(source *RuntimeMetadata) runtimeGoModuleV1Wire {
+	return runtimeGoModuleV1Wire{
 		GoModuleAddr:                         source.GoModuleAddr,
 		GoModuleSize:                         source.GoModuleSize,
 		FirstModuleDataInGoModule:            source.FirstModuleDataInGoModule,
@@ -451,53 +540,72 @@ func newRuntimeMetadataV1Wire(source *RuntimeMetadata) *runtimeMetadataV1Wire {
 		ModuledataFuncnametabLen:             source.ModuledataFuncnametabLen,
 		ModuledataFuncnametabCap:             source.ModuledataFuncnametabCap,
 		ModuledataFuncnametabWithinGopclntab: source.ModuledataFuncnametabWithinGopclntab,
-		ModuledataCutabSliceWordIndex:        source.ModuledataCutabSliceWordIndex,
-		ModuledataCutabAddr:                  source.ModuledataCutabAddr,
-		ModuledataCutabLen:                   source.ModuledataCutabLen,
-		ModuledataCutabCap:                   source.ModuledataCutabCap,
-		ModuledataCutabWithinGopclntab:       source.ModuledataCutabWithinGopclntab,
-		ModuledataFiletabSliceWordIndex:      source.ModuledataFiletabSliceWordIndex,
-		ModuledataFiletabAddr:                source.ModuledataFiletabAddr,
-		ModuledataFiletabLen:                 source.ModuledataFiletabLen,
-		ModuledataFiletabCap:                 source.ModuledataFiletabCap,
-		ModuledataFiletabWithinGopclntab:     source.ModuledataFiletabWithinGopclntab,
-		ModuledataPctabSliceWordIndex:        source.ModuledataPctabSliceWordIndex,
-		ModuledataPctabAddr:                  source.ModuledataPctabAddr,
-		ModuledataPctabLen:                   source.ModuledataPctabLen,
-		ModuledataPctabCap:                   source.ModuledataPctabCap,
-		ModuledataPctabWithinGopclntab:       source.ModuledataPctabWithinGopclntab,
-		ModuledataPclntableSliceWordIndex:    source.ModuledataPclntableSliceWordIndex,
-		ModuledataPclntableAddr:              source.ModuledataPclntableAddr,
-		ModuledataPclntableLen:               source.ModuledataPclntableLen,
-		ModuledataPclntableCap:               source.ModuledataPclntableCap,
-		ModuledataPclntableWithinGopclntab:   source.ModuledataPclntableWithinGopclntab,
-		ModuledataTypelinkSliceWordIndex:     source.ModuledataTypelinkSliceWordIndex,
-		ModuledataTypelinkLen:                source.ModuledataTypelinkLen,
-		ModuledataTypelinkCap:                source.ModuledataTypelinkCap,
-		ModuledataItablinkSliceWordIndex:     source.ModuledataItablinkSliceWordIndex,
-		ModuledataItablinkLen:                source.ModuledataItablinkLen,
-		ModuledataItablinkCap:                source.ModuledataItablinkCap,
-		ModuledataMemoryRangesWordIndex:      source.ModuledataMemoryRangesWordIndex,
-		ModuledataNoptrdataAddr:              source.ModuledataNoptrdataAddr,
-		ModuledataNoptrdataEnd:               source.ModuledataNoptrdataEnd,
-		ModuledataDataAddr:                   source.ModuledataDataAddr,
-		ModuledataDataEnd:                    source.ModuledataDataEnd,
-		ModuledataBssAddr:                    source.ModuledataBssAddr,
-		ModuledataBssEnd:                     source.ModuledataBssEnd,
-		ModuledataNoptrbssAddr:               source.ModuledataNoptrbssAddr,
-		ModuledataNoptrbssEnd:                source.ModuledataNoptrbssEnd,
-		ModuledataRodataWordIndex:            source.ModuledataRodataWordIndex,
-		ModuledataRodataAddr:                 source.ModuledataRodataAddr,
-		ModuledataRodataEnd:                  source.ModuledataRodataEnd,
-		ModuledataTextWordIndex:              source.ModuledataTextWordIndex,
-		ModuledataTextAddr:                   source.ModuledataTextAddr,
-		ModuledataTextEndInclusive:           source.ModuledataTextEndInclusive,
-		ModuledataTypesRangeWordIndex:        source.ModuledataTypesRangeWordIndex,
-		ModuledataTypesAddr:                  source.ModuledataTypesAddr,
-		ModuledataETypesAddr:                 source.ModuledataETypesAddr,
-		TypelinkResolvedWithinTypesCount:     source.TypelinkResolvedWithinTypesCount,
-		TypelinkAllResolvedWithinTypes:       source.TypelinkAllResolvedWithinTypes,
-		Provenance:                           newProvenanceV1Wire(source.Provenance),
+	}
+}
+
+func newRuntimeModuleTablesV1Wire(source *RuntimeMetadata) runtimeModuleTablesV1Wire {
+	return runtimeModuleTablesV1Wire{
+		ModuledataCutabSliceWordIndex:    source.ModuledataCutabSliceWordIndex,
+		ModuledataCutabAddr:              source.ModuledataCutabAddr,
+		ModuledataCutabLen:               source.ModuledataCutabLen,
+		ModuledataCutabCap:               source.ModuledataCutabCap,
+		ModuledataCutabWithinGopclntab:   source.ModuledataCutabWithinGopclntab,
+		ModuledataFiletabSliceWordIndex:  source.ModuledataFiletabSliceWordIndex,
+		ModuledataFiletabAddr:            source.ModuledataFiletabAddr,
+		ModuledataFiletabLen:             source.ModuledataFiletabLen,
+		ModuledataFiletabCap:             source.ModuledataFiletabCap,
+		ModuledataFiletabWithinGopclntab: source.ModuledataFiletabWithinGopclntab,
+		ModuledataPctabSliceWordIndex:    source.ModuledataPctabSliceWordIndex,
+		ModuledataPctabAddr:              source.ModuledataPctabAddr,
+		ModuledataPctabLen:               source.ModuledataPctabLen,
+		ModuledataPctabCap:               source.ModuledataPctabCap,
+		ModuledataPctabWithinGopclntab:   source.ModuledataPctabWithinGopclntab,
+	}
+}
+
+func newRuntimeModuleLinksV1Wire(source *RuntimeMetadata) runtimeModuleLinksV1Wire {
+	return runtimeModuleLinksV1Wire{
+		ModuledataPclntableSliceWordIndex:  source.ModuledataPclntableSliceWordIndex,
+		ModuledataPclntableAddr:            source.ModuledataPclntableAddr,
+		ModuledataPclntableLen:             source.ModuledataPclntableLen,
+		ModuledataPclntableCap:             source.ModuledataPclntableCap,
+		ModuledataPclntableWithinGopclntab: source.ModuledataPclntableWithinGopclntab,
+		ModuledataTypelinkSliceWordIndex:   source.ModuledataTypelinkSliceWordIndex,
+		ModuledataTypelinkLen:              source.ModuledataTypelinkLen,
+		ModuledataTypelinkCap:              source.ModuledataTypelinkCap,
+		ModuledataItablinkSliceWordIndex:   source.ModuledataItablinkSliceWordIndex,
+		ModuledataItablinkLen:              source.ModuledataItablinkLen,
+		ModuledataItablinkCap:              source.ModuledataItablinkCap,
+		ModuledataMemoryRangesWordIndex:    source.ModuledataMemoryRangesWordIndex,
+	}
+}
+
+func newRuntimeMemoryRangesV1Wire(source *RuntimeMetadata) runtimeMemoryRangesV1Wire {
+	return runtimeMemoryRangesV1Wire{
+		ModuledataNoptrdataAddr:    source.ModuledataNoptrdataAddr,
+		ModuledataNoptrdataEnd:     source.ModuledataNoptrdataEnd,
+		ModuledataDataAddr:         source.ModuledataDataAddr,
+		ModuledataDataEnd:          source.ModuledataDataEnd,
+		ModuledataBssAddr:          source.ModuledataBssAddr,
+		ModuledataBssEnd:           source.ModuledataBssEnd,
+		ModuledataNoptrbssAddr:     source.ModuledataNoptrbssAddr,
+		ModuledataNoptrbssEnd:      source.ModuledataNoptrbssEnd,
+		ModuledataRodataWordIndex:  source.ModuledataRodataWordIndex,
+		ModuledataRodataAddr:       source.ModuledataRodataAddr,
+		ModuledataRodataEnd:        source.ModuledataRodataEnd,
+		ModuledataTextWordIndex:    source.ModuledataTextWordIndex,
+		ModuledataTextAddr:         source.ModuledataTextAddr,
+		ModuledataTextEndInclusive: source.ModuledataTextEndInclusive,
+	}
+}
+
+func newRuntimeTypesV1Wire(source *RuntimeMetadata) runtimeTypesV1Wire {
+	return runtimeTypesV1Wire{
+		ModuledataTypesRangeWordIndex:    source.ModuledataTypesRangeWordIndex,
+		ModuledataTypesAddr:              source.ModuledataTypesAddr,
+		ModuledataETypesAddr:             source.ModuledataETypesAddr,
+		TypelinkResolvedWithinTypesCount: source.TypelinkResolvedWithinTypesCount,
+		TypelinkAllResolvedWithinTypes:   source.TypelinkAllResolvedWithinTypes,
 	}
 }
 
@@ -693,10 +801,7 @@ func newRefinedSummaryV1Wire(source *RefinedSummary) *refinedSummaryV1Wire {
 }
 
 func newProvenanceV1Wire(source Provenance) provenanceV1Wire {
-	return provenanceV1Wire{
-		Source:     source.Source,
-		Confidence: source.Confidence,
-	}
+	return provenanceV1Wire(source)
 }
 
 func mapV1Slice[Source, Destination any](source []Source, project func(Source) Destination) []Destination {

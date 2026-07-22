@@ -1,7 +1,5 @@
 package schema
 
-import "encoding/json"
-
 const GhidraExportContractV1 = "goreveal.export.ghidra/v1"
 
 // GhidraExport is the stable v1 payload for thin Ghidra-side consumers.
@@ -68,7 +66,7 @@ type GhidraString struct {
 // MarshalJSON freezes GhidraExport to the v1 wire graph instead of serializing
 // mutable canonical schema structs directly.
 func (export GhidraExport) MarshalJSON() ([]byte, error) {
-	return json.Marshal(newGhidraExportV1Wire(export))
+	return marshalV1Wire(newGhidraExportV1Wire(export))
 }
 
 // NewGhidraExport maps canonical analysis into the stable Ghidra-oriented payload.
