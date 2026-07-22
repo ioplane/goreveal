@@ -128,7 +128,8 @@ useful context, but it does not override RT1 sprint ordering:
   - type `package`, `import_path`, `source_file_count`, `module_local`, and `user_meaningful`
 - Sprint 11/12 constraints that remain valid when RT1 touches these surfaces:
   - treat Sprint 7 as maintenance for evidence hygiene, not the main execution lane
-  - advance Sprint 12 from bounded runtime evidence into the first very small semantic decode
+  - do not extend the historical Sprint 12 queue by default; RT1 may consume
+    its bounded runtime evidence only when an active RT1 task explicitly needs it
   - use `docs/architecture/2026-03-19-goreveal-sprint12-runtime-spike-notes.md` as the initial runtime-spike reference
   - use `docs/architecture/2026-03-20-goreveal-semantic-claim-boundaries.md` when documenting or extending semantic-runtime claims
   - keep Sprint 12 bounded around field-specific `moduledata` cross-checks and tiny semantic steps such as the typelinks/itablinks slice headers, memory-range block, `.rodata` range, `.text` range, fixture-local typelink resolution, and the current `pcHeader` / `funcnametab` / `cutab` / `filetab` / `pctab` / `pclntable` bridges, not a broad parser

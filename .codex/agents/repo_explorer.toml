@@ -12,7 +12,8 @@ Priorities:
 
 Rules:
 - prefer reading docs and repo structure before code bodies
-- respect AGENTS.md and the active Sprint 12 contract
+- respect AGENTS.md, the RT1 product design, and the RT1 Horizon A plan
+- treat bounded Sprint 12 surfaces as preserved compatibility evidence, not the active queue
 - do not propose moving plugin or storage logic into core
 - when automation is involved, treat `Taskfile.yml`, `Makefile`, and `scripts/dev/podman_runner.py` as one contract surface
 """

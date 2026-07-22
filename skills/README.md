@@ -12,8 +12,10 @@ Use them to keep work aligned with:
 - `AGENTS.md`
 - `docs/architecture/2026-03-19-goreveal-platform-contract.md`
 - `docs/architecture/2026-03-19-goreveal-go126-best-practices.md`
-- `docs/plans/2026-03-19-goreveal-scrum-implementation-plan.md`
-- `docs/plans/2026-03-31-goreveal-strategic-review.md`
+- `docs/superpowers/specs/2026-07-22-goreveal-rt1-product-design.md`
+- `docs/superpowers/plans/2026-07-22-goreveal-rt1-horizon-a.md`
+
+The March/April Scrum and strategic plans remain historical evidence only.
 
 Core skills:
 - `goreveal-navigation`
@@ -27,7 +29,8 @@ Core skills:
 
 New Codex-native support skills:
 - `goreveal-doc-sync`
-- `goreveal-sprint12-runtime`
+- `goreveal-sprint12-runtime` — compatibility specialist for the preserved
+  bounded runtime surface, not an active-roadmap selector
 
 Related repo-local configuration:
 - `.codex/config.toml`
