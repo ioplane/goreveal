@@ -277,9 +277,7 @@ def profile_record(
         "files": _count_source_files(analysis),
         "pathless_file_evidence": bool(source_tree.get("pathless_file_evidence", False)),
         "peeling_functions": len(peel_functions),
-        "user_functions": sum(
-            1 for fn in peel_functions if fn.get("classification") == "user"
-        ),
+        "user_functions": sum(1 for fn in peel_functions if fn.get("classification") == "user"),
         "user_packages": sum(
             1 for pkg in peel_packages if pkg.get("primary_classification") == "user"
         ),

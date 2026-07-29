@@ -1,16 +1,36 @@
+---
+title: GoREveal Go 1.26 Best Practices
+status: active
+date: 2026-03-19
+owners:
+  - ioplane/goreveal-maintainers
+tags:
+  - go
+  - engineering
+  - performance
+---
+
 # GoREveal Go 1.26 Best Practices
 
-> Status: normative engineering guide
-> Date: 2026-03-19
-> Purpose: define implementation patterns, anti-patterns, and performance rules for GoREveal on Go 1.26.
+<img
+  src="https://shieldcn.dev/badge/status-active-slate.svg?variant=outline&size=xs"
+  alt="status: active" height="20">
+<img
+  src="https://shieldcn.dev/badge/docs-architecture-slate.svg?variant=outline&size=xs"
+  alt="docs: architecture" height="20">
+
+> **Purpose.** Define implementation patterns, anti-patterns, and performance rules for GoREveal on
+  Go 1.26.
 
 ## 0. Container-First Rule
 
-All development workflows must run inside the project Podman dev container. Host-installed Go tooling is not part of the supported development contract.
+All development workflows must run inside the project Podman dev container. Host-installed Go
+tooling is not part of the supported development contract.
 
 ## 1. Core Engineering Patterns
 
 Required patterns:
+
 - small focused packages with one clear responsibility
 - constructor-based wiring instead of dependency-injection frameworks
 - `context.Context` as the first argument for long-running, cancelable, or I/O-heavy operations
@@ -22,6 +42,7 @@ Required patterns:
 - provenance and confidence as first-class fields in analysis results
 
 Allowed modern Go patterns:
+
 - generics only where they reduce duplication without obscuring behavior
 - `log/slog` as the default logging API
 - `errors.Is` and `errors.As` for operational error handling
@@ -32,6 +53,7 @@ Allowed modern Go patterns:
 ## 2. Forbidden or Discouraged Patterns
 
 Avoid or prohibit:
+
 - god packages and mega-files
 - hidden global mutable state
 - plugin-specific logic inside `core`
@@ -45,6 +67,7 @@ Avoid or prohibit:
 ## 3. Parsing and Recovery Patterns
 
 Use these rules:
+
 - separate `ingest`, `recover`, `normalize`, `refine`, and `export`
 - keep raw offsets/addresses and interpreted semantic values clearly distinguished
 - make heuristics explicit and testable
@@ -54,6 +77,7 @@ Use these rules:
 ## 4. Performance Patterns
 
 Optimization policy:
+
 - measure first, optimize second
 - pure Go reference implementation first
 - optimized scalar implementation second
@@ -62,6 +86,7 @@ Optimization policy:
 - prefer data-oriented layout in hotspots only when measurements justify it
 
 Every performance change must include:
+
 - before/after benchmarks
 - correctness equivalence tests
 - scalar fallback path
@@ -70,6 +95,7 @@ Every performance change must include:
 ## 5. Testing Patterns
 
 Required test classes:
+
 - corpus fixtures by binary family, Go version, format, and obfuscation profile
 - snapshot tests at the schema boundary
 - differential tests at the behavior boundary
@@ -79,6 +105,7 @@ Required test classes:
 ## 6. Repository Structure Patterns
 
 Intended repository shape:
+
 - `core` for recovery primitives
 - `schema` for canonical data contracts
 - `engine` for orchestration
@@ -91,8 +118,11 @@ Intended repository shape:
 SIMD is optional and subordinate to correctness.
 
 Rules:
+
 - no SIMD path without a scalar reference implementation
 - no SIMD path without deterministic output equivalence tests
 - no SIMD work before profiler or benchmark evidence identifies the hotspot
-- any architecture-specific implementation must be isolated behind build tags or explicit runtime feature detection
-- `simd/archsimd` experiments are allowed only after a stable scalar path exists and their behavior is fully benchmarked and validated
+- any architecture-specific implementation must be isolated behind build tags or explicit runtime
+  feature detection
+- `simd/archsimd` experiments are allowed only after a stable scalar path exists and their behavior
+  is fully benchmarked and validated

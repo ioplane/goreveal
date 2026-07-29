@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/dantte-lp/goreveal/schema"
+	"github.com/ioplane/goreveal/schema"
 )
 
 // Pass refines the mutable deobfuscation layer without mutating raw recovered truth.

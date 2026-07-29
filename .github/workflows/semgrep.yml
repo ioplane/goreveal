@@ -1,0 +1,78 @@
+---
+name: Semgrep
+
+# yamllint disable-line rule:truthy
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+  schedule:
+    - cron: "23 5 * * 1"
+  workflow_dispatch: {}
+
+permissions: {}
+
+concurrency:
+  group: semgrep-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  semgrep:
+    name: semgrep/ci
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      contents: read
+      actions: read
+    # Dependabot pull requests cannot read repository secrets, so the scan would
+    # silently degrade. Skip rather than report a misleading result.
+    if: github.actor != 'dependabot[bot]'
+    container:
+      # semgrep/semgrep:1.172.0 — digest-pinned; Dependabot keeps it current.
+      image: semgrep/semgrep@sha256:65dcd4408adda7c183a6b4550cb1e9b19f7f627a6fbb7e0559bd466bedc44d7b
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          # Diff-aware scanning on pull requests needs the base commit present.
+          fetch-depth: 0
+
+      # `semgrep ci` uses the AppSec Platform rule configuration and Pro engine
+      # when a token is present, and falls back to curated OSS rulesets when it
+      # is not, so forks still get a real scan.
+      - name: Semgrep scan
+        env:
+          SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -n "${SEMGREP_APP_TOKEN:-}" ]; then
+            echo "Running Semgrep with AppSec Platform configuration (Pro rules)."
+            semgrep ci --sarif --sarif-output=semgrep.sarif || status=$?
+          else
+            echo "::notice::SEMGREP_APP_TOKEN absent; falling back to OSS rulesets."
+            semgrep scan \
+              --config=p/golang \
+              --config=p/python \
+              --config=p/security-audit \
+              --config=p/secrets \
+              --config=p/github-actions \
+              --config=p/dockerfile \
+              --exclude='docs/.local' \
+              --exclude='corpus' \
+              --exclude='.tmp' \
+              --sarif --sarif-output=semgrep.sarif || status=$?
+          fi
+          # A non-zero exit from findings must not lose the SARIF upload below.
+          echo "semgrep exit status: ${status:-0}"
+          test -f semgrep.sarif
+
+      - name: Upload SARIF to code scanning
+        if: always() && hashFiles('semgrep.sarif') != ''
+        uses: github/codeql-action/upload-sarif@e4fba868fa4b1b91e1fdab776edc8cfbe6e9fb81 # v4
+        with:
+          sarif_file: semgrep.sarif
+          category: semgrep

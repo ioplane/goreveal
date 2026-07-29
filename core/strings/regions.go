@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/dantte-lp/goreveal/schema"
+	"github.com/ioplane/goreveal/schema"
 )
 
 // Region is a scan region used for string candidate extraction.

@@ -1,5 +1,7 @@
 # Fixtures
 
+<img src="https://shieldcn.dev/badge/corpus-fixtures-slate.svg?variant=outline&size=xs" alt="corpus: fixtures" height="20">
+
 This directory stores canonical corpus fixtures used by `GoREveal` snapshot,
 golden, and differential tests.
 

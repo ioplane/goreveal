@@ -3,7 +3,7 @@ package packages
 import (
 	"testing"
 
-	"github.com/dantte-lp/goreveal/core/functions"
+	"github.com/ioplane/goreveal/core/functions"
 )
 
 func TestRecoverFixturePackages(t *testing.T) {

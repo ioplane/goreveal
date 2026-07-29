@@ -195,10 +195,7 @@ def build_fixture_report(
         baseline="goresym",
         subject="functions.complete_parity",
         status="skipped",
-        note=(
-            "Current GoReSym evidence intentionally covers a narrow "
-            "user-function subset only."
-        ),
+        note=("Current GoReSym evidence intentionally covers a narrow user-function subset only."),
     )
 
     summary = {

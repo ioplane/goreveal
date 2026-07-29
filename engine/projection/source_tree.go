@@ -11,7 +11,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/dantte-lp/goreveal/schema"
+	"github.com/ioplane/goreveal/schema"
 )
 
 // BuildSourceTree projects recovered files into a minimal source tree.
@@ -97,6 +97,11 @@ func BuildFallbackSourceTree(analysis schema.Analysis) (schema.SourceTree, error
 
 // BuildFunctionSourceTree projects a bounded source-like tree from recovered
 // function source_file metadata when richer DWARF-backed file evidence is unavailable.
+// The three evidence tiers (DWARF paths, line-table files, package fallback)
+// are decided in one pass so the emitted source_evidence_kind cannot drift
+// from the evidence that actually produced the nodes.
+//
+//nolint:funlen // single-pass evidence-tier decision; splitting risks drift
 func BuildFunctionSourceTree(analysis schema.Analysis) (schema.SourceTree, error) {
 	root := ""
 	if analysis.BuildInfo != nil {
@@ -513,8 +518,8 @@ func sourcePackagesFromMap(byImportPath map[string]*schema.SourcePackage) []sche
 
 func classifyExternalPackage(file string) (string, string) {
 	dir := path.Dir(file)
-	if idx := strings.Index(dir, "/src/"); idx >= 0 {
-		trimmed := strings.TrimPrefix(dir[idx+len("/src/"):], "/")
+	if _, after, ok := strings.Cut(dir, "/src/"); ok {
+		trimmed := strings.TrimPrefix(after, "/")
 		if trimmed != "" && trimmed != "." {
 			return trimmed, path.Base(trimmed)
 		}

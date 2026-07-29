@@ -4,7 +4,7 @@ import (
 	"context"
 	"strings"
 
-	"github.com/dantte-lp/goreveal/schema"
+	"github.com/ioplane/goreveal/schema"
 )
 
 // Pass normalizes selected synthetic compiler-generated names into a more readable form.

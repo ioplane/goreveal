@@ -1,0 +1,107 @@
+---
+# Path-based pull request labeling. Labels feed release-note categories in
+# .github/release.yml, so the mapping here determines how changes are grouped.
+
+"area/core":
+  - changed-files:
+      - any-glob-to-any-file:
+          - core/**
+
+"area/schema":
+  - changed-files:
+      - any-glob-to-any-file:
+          - schema/**
+
+"area/engine":
+  - changed-files:
+      - any-glob-to-any-file:
+          - engine/**
+
+"area/deobfuscation":
+  - changed-files:
+      - any-glob-to-any-file:
+          - deobfuscation/**
+
+"area/storage":
+  - changed-files:
+      - any-glob-to-any-file:
+          - storage/**
+
+"area/cmd":
+  - changed-files:
+      - any-glob-to-any-file:
+          - cmd/**
+
+"area/plugins":
+  - changed-files:
+      - any-glob-to-any-file:
+          - plugins/**
+
+"area/corpus":
+  - changed-files:
+      - any-glob-to-any-file:
+          - corpus/**
+
+"area/tests":
+  - changed-files:
+      - any-glob-to-any-file:
+          - tests/**
+          - "**/*_test.go"
+          - "**/test_*.py"
+
+documentation:
+  - changed-files:
+      - any-glob-to-any-file:
+          - docs/**
+          - "*.md"
+          - .agents/**
+
+ci:
+  - changed-files:
+      - any-glob-to-any-file:
+          - .github/workflows/**
+          - .github/dependabot.yml
+          - .golangci.yml
+          - .yamllint.yml
+          - .shellcheckrc
+          - .markdownlint-cli2.yaml
+          - sonar-project.properties
+          - codecov.yml
+
+build:
+  - changed-files:
+      - any-glob-to-any-file:
+          - Makefile
+          - Taskfile.yml
+          - .goreleaser.yaml
+          - deployments/**
+          - scripts/dev/**
+
+dependencies:
+  - changed-files:
+      - any-glob-to-any-file:
+          - go.mod
+          - go.sum
+          - go.work
+          - go.work.sum
+          - pyproject.toml
+          - uv.lock
+
+security:
+  - changed-files:
+      - any-glob-to-any-file:
+          - SECURITY.md
+          - .semgrepignore
+          - .trivyignore
+
+python:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "**/*.py"
+          - pyproject.toml
+          - uv.lock
+
+go:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "**/*.go"

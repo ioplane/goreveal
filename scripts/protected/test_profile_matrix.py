@@ -82,7 +82,7 @@ class ProfileMatrixTests(unittest.TestCase):
                     binary_name="enterprise-sample.exe",
                 ),
                 binary_path=Path(
-                    "/opt/projects/repositories/goreveal/.tmp/protected-matrix/windows/amd64/stripped-trimpath/enterprise-sample.exe"
+                    "/workspace/.tmp/protected-matrix/windows/amd64/stripped-trimpath/enterprise-sample.exe"
                 ),
                 analysis_bundle={
                     "analyze": {

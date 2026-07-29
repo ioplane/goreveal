@@ -1,0 +1,57 @@
+# Code owners for GoREveal.
+#
+# Later patterns win. Ownership mirrors the area table in MAINTAINERS.md.
+# Review requests are assigned automatically from this file.
+
+# Default owner for anything not matched below.
+*                           @dantte-lp
+
+# --- Canonical contract -------------------------------------------------------
+# schema/ defines the analysis and export contracts every other layer projects.
+# Changes here are backward-compatibility events.
+/schema/                    @dantte-lp
+
+# --- Recovery primitives ------------------------------------------------------
+# core/ must stay independent of CLI, storage, API, and plugin concerns.
+/core/                       @dantte-lp
+
+# --- Pipeline and refinement --------------------------------------------------
+/engine/                     @dantte-lp
+/deobfuscation/              @dantte-lp
+
+# --- Persistence and diffing --------------------------------------------------
+/storage/                    @dantte-lp
+
+# --- Operator surface ---------------------------------------------------------
+/cmd/                        @dantte-lp
+
+# --- Host-tool adapters -------------------------------------------------------
+# Thin consumers of exports only; recovery logic here is a review failure.
+/plugins/                    @dantte-lp
+
+# --- Evidence -----------------------------------------------------------------
+# Golden snapshots and fixtures gate correctness claims.
+/corpus/                     @dantte-lp
+/tests/                      @dantte-lp
+
+# --- Build, CI, and supply chain ----------------------------------------------
+# Anything that can change what ships or how it is signed.
+/.github/                    @dantte-lp
+/.goreleaser.yaml            @dantte-lp
+/deployments/                @dantte-lp
+/Makefile                    @dantte-lp
+/Taskfile.yml                @dantte-lp
+/go.mod                      @dantte-lp
+/go.sum                      @dantte-lp
+/uv.lock                     @dantte-lp
+
+# --- Policy and licensing -----------------------------------------------------
+/LICENSE                     @dantte-lp
+/NOTICE                      @dantte-lp
+/SECURITY.md                 @dantte-lp
+/CODE_OF_CONDUCT.md          @dantte-lp
+/MAINTAINERS.md              @dantte-lp
+
+# --- Agent contract -----------------------------------------------------------
+/AGENTS.md                   @dantte-lp
+/.agents/                    @dantte-lp

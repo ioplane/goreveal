@@ -1,0 +1,211 @@
+---
+name: Supply chain
+
+# yamllint disable-line rule:truthy
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+  schedule:
+    - cron: "12 6 * * 1"
+  workflow_dispatch: {}
+
+permissions: {}
+
+concurrency:
+  group: supply-chain-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  GO_VERSION: "1.26.5"
+  GOWORK: "off"
+  GOTOOLCHAIN: local
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # License and advisory gate on dependency changes only.
+  # ---------------------------------------------------------------------------
+  dependency-review:
+    name: Dependency review
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: audit
+
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Review dependency changes
+        uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+        with:
+          fail-on-severity: high
+          comment-summary-in-pr: on-failure
+          # GoREveal ships under Apache-2.0 and deliberately keeps its distance
+          # from the AGPL prior art it studies. A copyleft dependency would
+          # break both the license and the clean-room posture.
+          deny-licenses: >-
+            AGPL-1.0-only, AGPL-1.0-or-later,
+            AGPL-3.0-only, AGPL-3.0-or-later,
+            GPL-2.0-only, GPL-2.0-or-later,
+            GPL-3.0-only, GPL-3.0-or-later,
+            SSPL-1.0,
+            BUSL-1.1,
+            CC-BY-NC-4.0
+
+  # ---------------------------------------------------------------------------
+  # Go vulnerability database, call-graph aware: reports only reachable issues.
+  # ---------------------------------------------------------------------------
+  govulncheck:
+    name: govulncheck
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: audit
+
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          check-latest: true
+
+      - name: Run govulncheck
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+          govulncheck -show verbose ./...
+
+  # ---------------------------------------------------------------------------
+  # Cross-ecosystem advisories (Go modules and the uv lockfile).
+  # ---------------------------------------------------------------------------
+  osv-scanner:
+    name: OSV-Scanner
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      contents: read
+      actions: read
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: audit
+
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Scan lockfiles
+        uses: google/osv-scanner-action@9a498708959aeaef5ef730655706c5a1df1edbc2 # v2.3.8
+        continue-on-error: true
+        with:
+          scan-args: |-
+            --output=osv-results.sarif
+            --format=sarif
+            --recursive
+            --skip-git
+            ./
+
+      - name: Upload SARIF to code scanning
+        if: always() && hashFiles('osv-results.sarif') != ''
+        uses: github/codeql-action/upload-sarif@e4fba868fa4b1b91e1fdab776edc8cfbe6e9fb81 # v4
+        with:
+          sarif_file: osv-results.sarif
+          category: osv-scanner
+
+  # ---------------------------------------------------------------------------
+  # Committed-secret detection over full history. Complements Trivy's
+  # content-based secret scan with git-aware detection.
+  # ---------------------------------------------------------------------------
+  gitleaks:
+    name: Gitleaks
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: audit
+
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Scan history for secrets
+        uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Optional: only needed for organization-level license features.
+          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
+
+  # ---------------------------------------------------------------------------
+  # SBOM for the current tree. Release SBOMs are produced by GoReleaser; this
+  # keeps a current-state SPDX document attached to every main-branch commit.
+  # ---------------------------------------------------------------------------
+  sbom:
+    name: SPDX SBOM
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: audit
+
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Generate SPDX JSON SBOM
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
+        with:
+          path: .
+          format: spdx-json
+          artifact-name: goreveal-source-sbom.spdx.json
+          output-file: goreveal-source-sbom.spdx.json
+          upload-artifact: true
+          upload-release-assets: false
+
+      - name: Validate SBOM structure
+        run: |
+          python3 - <<'PY'
+          import json
+          import sys
+
+          with open("goreveal-source-sbom.spdx.json", encoding="utf-8") as handle:
+              doc = json.load(handle)
+
+          required = ("spdxVersion", "SPDXID", "name", "packages")
+          missing = [key for key in required if key not in doc]
+          if missing:
+              sys.exit(f"SBOM missing required SPDX fields: {missing}")
+
+          packages = doc["packages"]
+          print(f"SPDX {doc['spdxVersion']}: {len(packages)} packages")
+          if not packages:
+              sys.exit("SBOM contains no packages; the scan did not resolve dependencies")
+          PY

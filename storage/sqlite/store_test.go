@@ -8,7 +8,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/dantte-lp/goreveal/schema"
+	"github.com/ioplane/goreveal/schema"
 )
 
 func TestStoreSaveAndLoad(t *testing.T) {

@@ -59,8 +59,7 @@ class BuildFixtureReportTest(unittest.TestCase):
         self.assertGreaterEqual(report["summary"]["skipped"], 1)
 
         statuses = {
-            (entry["baseline"], entry["subject"]): entry["status"]
-            for entry in report["checks"]
+            (entry["baseline"], entry["subject"]): entry["status"] for entry in report["checks"]
         }
         self.assertEqual(statuses[("gore", "build_info.path")], "diverged")
         self.assertEqual(statuses[("goresym", "build_info.go_version")], "matched")

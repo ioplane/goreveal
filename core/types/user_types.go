@@ -4,7 +4,7 @@ import (
 	"path"
 	"strings"
 
-	"github.com/dantte-lp/goreveal/schema"
+	"github.com/ioplane/goreveal/schema"
 )
 
 // EnrichUserMetadata annotates types with package and module-local usefulness hints.

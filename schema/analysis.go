@@ -235,9 +235,11 @@ type SourcePackage struct {
 
 // SourceTree is a minimal source-like projection recovered from file paths.
 type SourceTree struct {
-	Root                  string                `json:"root"`
-	SourceEvidenceKind    SourceEvidenceKind    `json:"source_evidence_kind,omitempty"`
-	SourceEvidenceSummary SourceEvidenceSummary `json:"source_evidence_summary,omitempty"`
+	Root               string             `json:"root"`
+	SourceEvidenceKind SourceEvidenceKind `json:"source_evidence_kind,omitempty"`
+	// omitempty is deliberately absent: it has no effect on a nested struct,
+	// and switching to omitzero would change the frozen wire contract.
+	SourceEvidenceSummary SourceEvidenceSummary `json:"source_evidence_summary"`
 	PathlessFileEvidence  bool                  `json:"pathless_file_evidence,omitempty"`
 	Files                 []string              `json:"files"`
 	Packages              []SourcePackage       `json:"packages"`

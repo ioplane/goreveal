@@ -1,170 +1,405 @@
-<p align="center">
-  <strong>GoREveal</strong><br>
-  Go-native reverse-engineering platform for binary recovery, trust, and transfer workflows
+<div align="center">
+
+<picture>
+  <source
+    media="(prefers-color-scheme: dark)"
+    srcset="https://shieldcn.dev/header/graph.svg?title=GoREveal&amp;subtitle=Clean-room+reverse+engineering+for+Go+binaries&amp;logo=go&amp;align=center&amp;mode=dark&amp;theme=slate"/>
+  <img
+    alt="GoREveal"
+    src="https://shieldcn.dev/header/graph.svg?title=GoREveal&amp;subtitle=Clean-room+reverse+engineering+for+Go+binaries&amp;logo=go&amp;align=center&amp;mode=light&amp;theme=slate"/>
+</picture>
+
+<p>
+  <a href="https://github.com/ioplane/goreveal/actions/workflows/ci.yml">
+    <img
+      src="https://shieldcn.dev/github/ci/ioplane/goreveal.svg?variant=secondary&amp;size=sm&amp;workflow=CI&amp;branch=main"
+      alt="CI status" height="22"></a>
+  <a href="https://github.com/ioplane/goreveal/releases/latest">
+    <img
+      src="https://shieldcn.dev/github/release/ioplane/goreveal.svg?variant=secondary&amp;size=sm"
+      alt="Latest release" height="22"></a>
+  <a href="https://github.com/ioplane/goreveal/blob/main/LICENSE">
+    <img
+      src="https://shieldcn.dev/github/license/ioplane/goreveal.svg?variant=secondary&amp;size=sm"
+      alt="License" height="22"></a>
+  <a href="https://go.dev/dl/">
+    <img
+      src="https://shieldcn.dev/badge/Go-1.26-secondary.svg?variant=secondary&amp;size=sm&amp;logo=go"
+      alt="Go 1.26" height="22"></a>
+  <a href="https://github.com/ioplane/goreveal/blob/main/docs/RELEASE.md">
+    <img
+      src="https://shieldcn.dev/badge/SLSA-Build%20L2-secondary.svg?variant=secondary&amp;size=sm"
+      alt="SLSA Build Level 2" height="22"></a>
+  <a href="https://github.com/ioplane/goreveal/blob/main/docs/RELEASE.md">
+    <img
+      src="https://shieldcn.dev/badge/SBOM-SPDX-secondary.svg?variant=secondary&amp;size=sm"
+      alt="SPDX SBOM" height="22"></a>
 </p>
 
-<p align="center">
-  <img src="https://img.shields.io/badge/Language-Go%201.26-1a73e8?style=for-the-badge" alt="Language">
-  <img src="https://img.shields.io/badge/Mode-Local%20%2B%20Server-34a853?style=for-the-badge" alt="Mode">
-  <img src="https://img.shields.io/badge/Focus-Go%20Binary%20RE-ea4335?style=for-the-badge" alt="Focus">
-  <img src="https://img.shields.io/badge/Status-Sprint%2012-0b57d0?style=for-the-badge" alt="Status">
-</p>
+</div>
 
 ---
 
-GoREveal is a clean-room reverse-engineering platform for Go binaries.
+**GoREveal recovers structure from Go binaries — including stripped and
+obfuscated ones — and hands it to your disassembler.**
 
-It is being built as:
-- a local autonomous tool for analyst workstations
-- a future server platform for multi-tenant artifact analysis, trust-aware recovery, and report delivery
-- a Go-native recovery and transfer layer that plugs into `IDA`, `Ghidra`, and later `JEB` and `Binary Ninja`
+Go binaries carry rich metadata: a function-to-line table, module data, type
+descriptors, embedded build info. Strip the symbol table and most tools go quiet.
+GoREveal reads what remains, reports exactly how confident it is about each
+claim, and refuses to guess when the evidence is not there.
 
-## Quick Start
+```console
+$ goreveal inspect packages ./stripped-service | jq '.[0]'
+{
+  "name": "fmt",
+  "import_path": "fmt",
+  "source_file_count": 2,
+  "function_count": 39,
+  "has_source_evidence": true,
+  "source_evidence_kind": "dwarf_paths",
+  "provenance": {
+    "source": "core.packages.functions",
+    "confidence": "medium"
+  }
+}
+```
+
+Every field carries `provenance` and `confidence`. That is the point of the tool:
+you can tell what was read from the binary, what was inferred, and what is simply
+unknown.
+
+## Contents
+
+- [Why GoREveal](#why-goreveal)
+- [Install](#install)
+- [Usage](#usage)
+- [How it works](#how-it-works)
+- [Verifying what you downloaded](#verifying-what-you-downloaded)
+- [Documentation](#documentation)
+- [Development](#development)
+- [Clean-room boundary](#clean-room-boundary)
+- [Project status](#project-status)
+- [Contributing](#contributing)
+- [Security](#security)
+- [License](#license)
+
+## Why GoREveal
+
+| | |
+| --- | --- |
+| **Evidence-graded output** | Every recovered fact carries a `provenance` source and a `confidence` level. Absent evidence yields `unavailable` or an empty result — never a plausible-looking guess. |
+| **Works on stripped binaries** | Recovery falls back through `pclntab`, module data, and `.go.module` in a documented order, and reports which path it used. |
+| **Obfuscation handled as refinement** | `garble`-style string and name refinement is a layer *on top of* raw truth, never a replacement for it. Raw values stay in the output. |
+| **One canonical contract** | A single schema drives the CLI, SQLite storage, and the IDA and Ghidra adapters. The plugins consume it; they contain no recovery logic of their own. |
+| **Build-to-build diffing** | Match functions between two builds with an explicit reason per match — `exact_name`, `source_location`, `source_file`, or `module_local_normalized_name` — plus a review queue for what needs human judgment. |
+| **Verified releases** | Signed checksums, SPDX SBOMs, and SLSA build provenance on every tag. |
+
+## Install
+
+### Release binary
 
 ```bash
-# Clone
-gh repo clone ioplane/goreveal
-cd goreveal
-
-# Build the dev container
-podman build -f deployments/docker/Containerfile.dev -t goreveal:dev .
-
-# Install Python automation helper
-python3 -m pip install -e .
-
-# Run verification
-make fmt
-make test
-make lint
-make lint-scripts
+VERSION=0.1.0
+BASE="https://github.com/ioplane/goreveal/releases/download/v${VERSION}"
+curl -fsSLO "${BASE}/goreveal_${VERSION}_linux_amd64.tar.gz"
+tar -xzf "goreveal_${VERSION}_linux_amd64.tar.gz"
+./goreveal version
 ```
 
-## Architecture
+Verify the download before running it — see
+[Verifying what you downloaded](#verifying-what-you-downloaded).
+
+Prebuilt targets: `linux/amd64`, `linux/arm64`, `darwin/amd64`, `darwin/arm64`,
+`windows/amd64`. Debian and RPM packages are published alongside the archives.
+
+### Container
+
+```bash
+docker run --rm -v "$PWD:/work:ro,Z" \
+  ghcr.io/ioplane/goreveal:latest analyze /work/target-binary
+```
+
+The image runs as a non-root user with no shell — appropriate for analyzing
+samples you do not trust.
+
+### From source
+
+```bash
+go install github.com/ioplane/goreveal/cmd/goreveal@latest
+```
+
+Requires Go 1.26 or newer. A `go install` build still reports truthful identity:
+`goreveal version` falls back to the VCS stamps the toolchain embeds.
+
+## Usage
+
+```bash
+goreveal help
+```
+
+### Analyze
+
+`analyze` emits the full canonical document — input metadata, build info, runtime
+evidence, functions, packages, types, and strings — as one JSON object.
+
+```bash
+goreveal analyze ./target
+```
+
+### Inspect one surface
+
+When you want a single dimension rather than the whole document:
+
+```bash
+goreveal inspect functions ./target   # names, addresses, source location, package
+goreveal inspect packages ./target    # import paths, module locality, source evidence
+goreveal inspect types ./target       # recovered type descriptors
+goreveal inspect strings ./target     # string candidates with absolute addresses
+goreveal inspect runtime ./target     # module data and pclntab evidence
+goreveal inspect peeling ./target     # user-versus-runtime classification
+```
+
+`inspect runtime` returns `unavailable` rather than inventing runtime facts when
+the evidence is absent. That is intended behavior, not a failure.
+
+### Separate your code from the runtime
+
+`peel` projects only the parts that are plausibly yours, filtering out the Go
+runtime and standard library:
+
+```bash
+goreveal peel ./target
+goreveal source-tree ./target   # reconstruct the package and file layout
+```
+
+`source-tree` degrades honestly: with DWARF it reports real paths; without it,
+line-table-backed file evidence marked `pathless_file_evidence`; and failing
+that, package nodes flagged `has_file_evidence: false`.
+
+### Refine obfuscated output
+
+```bash
+goreveal deobfuscate ./garbled-target
+```
+
+Refined names and decoded strings are added; the raw recovered values remain in
+the document.
+
+### Export to your disassembler
+
+```bash
+goreveal export ida ./target     > goreveal-ida.json
+goreveal export ghidra ./target  > goreveal-ghidra.json
+goreveal export sqlite runs.db ./target
+```
+
+Then load the payload from the host tool:
+
+```text
+IDA      File → Script file… → plugins/ida/goreveal_ida.py
+Ghidra   Script Manager → plugins/ghidra/goreveal_ghidra.py
+```
+
+See [plugins/ida/README.md](plugins/ida/README.md) and
+[plugins/ghidra/README.md](plugins/ghidra/README.md).
+
+### Compare two builds
+
+Store several runs in one SQLite database, then diff them:
+
+```bash
+goreveal export sqlite runs.db ./service-v1
+goreveal export sqlite runs.db ./service-v2
+
+goreveal diff sqlite runs.db 1 2           # matched functions, with a reason each
+goreveal diff review sqlite runs.db 1 2    # queue of items needing human review
+goreveal diff next sqlite runs.db 1 2      # recommended next review pass
+goreveal diff handoff sqlite runs.db 1 2   # machine-readable workstation handoff
+```
+
+`diff next` is the one to start from: it carries the recommended actions, a review
+checklist, progress counters, and the upcoming package horizon.
+
+## How it works
 
 ```mermaid
-graph TD
-    R["README.md"]
-    C["core/<br/>Recovery primitives"]
-    S["schema/<br/>Canonical analysis contract"]
-    E["engine/<br/>Pipeline orchestration"]
-    CLI["cmd/goreveal/<br/>Operator CLI"]
-    ST["storage/<br/>SQLite persistence and diff"]
-    P["plugins/<br/>Thin RE-tool adapters"]
-    D["docs/<br/>Architecture, plans, checkpoints"]
-    K["skills/<br/>Repo-local workflows"]
-    X["exports/<br/>IDA / Ghidra payloads"]
+graph LR
+    B["Binary<br/>ELF · PE · Mach-O"] --> C
 
-    R --> C
-    R --> S
-    R --> E
-    R --> CLI
-    R --> ST
-    R --> P
-    R --> D
-    R --> K
-    E --> X
-    CLI --> E
-    ST --> S
-    P --> X
+    subgraph C["core/ — recovery primitives"]
+        direction TB
+        C1["format · ingest"]
+        C2["buildinfo"]
+        C3["pclntab · runtime"]
+        C4["functions · packages<br/>types · strings"]
+    end
 
-    style R fill:#1a73e8,color:#fff
+    C --> S["schema/<br/>canonical contract<br/>provenance · confidence"]
+    S --> E
+
+    subgraph E["engine/ — orchestration"]
+        direction TB
+        E1["peeling<br/>user vs runtime"]
+        E2["projection<br/>source tree"]
+    end
+
+    E --> D["deobfuscation/<br/>refines, never overwrites"]
+    D --> O
+
+    subgraph O["Operator surfaces"]
+        direction TB
+        O1["cmd/goreveal<br/>CLI"]
+        O2["storage/<br/>SQLite + diff"]
+        O3["exports<br/>IDA · Ghidra"]
+    end
+
+    O3 --> P["plugins/<br/>thin adapters"]
+
+    style S fill:#1a73e8,color:#fff
+    style B fill:#5f6368,color:#fff
 ```
+
+Three rules hold this together, enforced in review and mechanically by `depguard`
+in [`.golangci.yml`](.golangci.yml):
+
+1. **`schema` is canonical.** Every surface projects it. Nothing re-derives it.
+2. **`core` is independent.** No CLI, storage, or plugin concerns leak into it.
+3. **Plugins consume exports.** Recovery logic never lives in `plugins/`.
+
+## Verifying what you downloaded
+
+Every release is covered by a signed checksum file and carries SLSA build
+provenance.
+
+```bash
+VERSION=0.1.0
+BASE="https://github.com/ioplane/goreveal/releases/download/v${VERSION}"
+curl -fsSLO "${BASE}/goreveal_${VERSION}_checksums.txt"
+curl -fsSLO "${BASE}/goreveal_${VERSION}_checksums.txt.sig"
+curl -fsSLO "${BASE}/goreveal_${VERSION}_checksums.txt.pem"
+
+sha256sum --check --ignore-missing "goreveal_${VERSION}_checksums.txt"
+
+cosign verify-blob \
+  --certificate "goreveal_${VERSION}_checksums.txt.pem" \
+  --signature "goreveal_${VERSION}_checksums.txt.sig" \
+  --certificate-identity-regexp \
+    '^https://github\.com/ioplane/goreveal/\.github/workflows/release\.yml@refs/tags/v' \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+  "goreveal_${VERSION}_checksums.txt"
+
+gh attestation verify "goreveal_${VERSION}_linux_amd64.tar.gz" -R ioplane/goreveal
+```
+
+SPDX JSON SBOMs ship next to each archive. Full instructions, including container
+image verification and how to reproduce a build, are in
+[docs/RELEASE.md](docs/RELEASE.md).
 
 ## Documentation
 
-Core planning and architecture live under [docs/](docs/).
-
-| Area | Entry Point |
-|---|---|
+| Topic | Document |
+| --- | --- |
+| Documentation index | [docs/README.md](docs/README.md) |
 | Platform contract | [docs/architecture/2026-03-19-goreveal-platform-contract.md](docs/architecture/2026-03-19-goreveal-platform-contract.md) |
-| Go 1.26 practices | [docs/architecture/2026-03-19-goreveal-go126-best-practices.md](docs/architecture/2026-03-19-goreveal-go126-best-practices.md) |
+| Module map | [docs/architecture/2026-03-19-goreveal-module-map.md](docs/architecture/2026-03-19-goreveal-module-map.md) |
+| Schema principles | [docs/architecture/2026-03-19-goreveal-schema-principles.md](docs/architecture/2026-03-19-goreveal-schema-principles.md) |
+| Claim boundaries | [docs/architecture/2026-03-20-goreveal-semantic-claim-boundaries.md](docs/architecture/2026-03-20-goreveal-semantic-claim-boundaries.md) |
 | Testing strategy | [docs/architecture/2026-03-19-goreveal-testing-strategy.md](docs/architecture/2026-03-19-goreveal-testing-strategy.md) |
-| Sprint / roadmap plan | [docs/plans/2026-03-19-goreveal-scrum-implementation-plan.md](docs/plans/2026-03-19-goreveal-scrum-implementation-plan.md) |
-| Feature map | [docs/plans/2026-03-19-goreveal-feature-map.md](docs/plans/2026-03-19-goreveal-feature-map.md) |
-| Progress assessment | [docs/plans/2026-03-20-goreveal-progress-assessment.md](docs/plans/2026-03-20-goreveal-progress-assessment.md) |
-| Functional assessment | [docs/plans/2026-03-20-goreveal-functional-assessment.md](docs/plans/2026-03-20-goreveal-functional-assessment.md) |
-| Strategic review | [docs/plans/2026-03-31-goreveal-strategic-review.md](docs/plans/2026-03-31-goreveal-strategic-review.md) |
-| External binary matrix evaluation | [docs/plans/2026-03-31-goreveal-external-binary-matrix-evaluation.md](docs/plans/2026-03-31-goreveal-external-binary-matrix-evaluation.md) |
-| Baseline comparison plan | [docs/plans/2026-03-31-goreveal-baseline-comparison-plan.md](docs/plans/2026-03-31-goreveal-baseline-comparison-plan.md) |
-| Initial baseline comparison results | [docs/plans/2026-04-01-goreveal-initial-baseline-comparison-results.md](docs/plans/2026-04-01-goreveal-initial-baseline-comparison-results.md) |
-| Next execution plan | [docs/plans/2026-04-01-goreveal-next-execution-plan.md](docs/plans/2026-04-01-goreveal-next-execution-plan.md) |
-| Post-Sprint12 sprint plan | [docs/plans/2026-04-01-goreveal-post-sprint12-sprint-plan.md](docs/plans/2026-04-01-goreveal-post-sprint12-sprint-plan.md) |
-| Universal RE workbench comparison | [docs/plans/2026-04-01-goreveal-universal-re-workbench-comparison.md](docs/plans/2026-04-01-goreveal-universal-re-workbench-comparison.md) |
-| REHelp and RE lab inventory notes | [docs/plans/2026-04-01-goreveal-rehelp-and-re-lab-inventory-notes.md](docs/plans/2026-04-01-goreveal-rehelp-and-re-lab-inventory-notes.md) |
-| Protected binary comparison plan | [docs/plans/2026-04-01-goreveal-protected-binary-comparison-plan.md](docs/plans/2026-04-01-goreveal-protected-binary-comparison-plan.md) |
-| Protected binary initial results | [docs/plans/2026-04-01-goreveal-protected-binary-initial-results.md](docs/plans/2026-04-01-goreveal-protected-binary-initial-results.md) |
-| Garble Go 1.26 support research | [docs/plans/2026-04-01-garble-go126-support-research.md](docs/plans/2026-04-01-garble-go126-support-research.md) |
-| Review gap checklist | [docs/plans/2026-03-31-goreveal-review-gap-checklist.md](docs/plans/2026-03-31-goreveal-review-gap-checklist.md) |
-| Commercialization notes | [docs/plans/2026-03-31-goreveal-commercialization-and-compliance-notes.md](docs/plans/2026-03-31-goreveal-commercialization-and-compliance-notes.md) |
-| Deferred continuation | [docs/plans/2026-03-20-goreveal-deferred-continuation.md](docs/plans/2026-03-20-goreveal-deferred-continuation.md) |
-| Runtime modes and storage ideas | [docs/plans/2026-03-21-goreveal-runtime-modes-and-storage-ideas.md](docs/plans/2026-03-21-goreveal-runtime-modes-and-storage-ideas.md) |
-| Server stack decision | [docs/architecture/2026-03-31-goreveal-server-stack-decision.md](docs/architecture/2026-03-31-goreveal-server-stack-decision.md) |
-| MCP and artifact transfer ideas | [docs/plans/2026-03-21-goreveal-agent-mcp-and-artifact-transfer-ideas.md](docs/plans/2026-03-21-goreveal-agent-mcp-and-artifact-transfer-ideas.md) |
-| Repo-local skills | [skills/README.md](skills/README.md) |
+| Go 1.26 engineering guide | [docs/architecture/2026-03-19-goreveal-go126-best-practices.md](docs/architecture/2026-03-19-goreveal-go126-best-practices.md) |
+| Release and verification | [docs/RELEASE.md](docs/RELEASE.md) |
+| Contributing | [CONTRIBUTING.md](CONTRIBUTING.md) |
+| Security policy | [SECURITY.md](SECURITY.md) |
 
-## Current Product Surface
+## Development
 
-- canonical schema-backed `analyze`
-- `inspect functions`, `inspect runtime`, `inspect packages`, `inspect types`, `inspect strings`, `inspect peeling`
-- `peel`
-- `source-tree`
-- `deobfuscate`
-- `export sqlite`, `export ida`, `export ghidra`
-- `diff sqlite`, `diff review sqlite`, `diff handoff sqlite`, `diff next sqlite`
-- first engine-owned code-peeling layer over canonical truth, now with function classifications, explicit `classification_evidence`, package-level summaries, a small bounded stdlib/runtime fingerprint refinement, and a user-only projection through `peel`
-- SQLite persistence and stored-run diffing, now including bounded function matching in `diff sqlite` through `exact_name`, `source_location`, `source_file`, and `module_local_normalized_name` reasons
-- current bounded transfer foundation is now split cleanly across `engine/peeling` for classification/evidence and `storage/diff` for explainable build-to-build matches, `transfer_candidates`, deterministic `accepted_transfers`, and package-level `transfer_packages` summaries
-- that same transfer foundation now also carries a first compact analyst-facing `transfer_review` queue for pending human-review items plus explicit `projected_package`, a package-first `transfer_review_packages` triage surface, a bounded `transfer_review_focus` first-pass bundle for the recommended next package, and an explicit `goreveal diff review sqlite ...` projection for the focused review pass
-- that same review foundation now also carries a compact `transfer_review_plan` action queue with package-ordered attached review items, and `goreveal diff next sqlite ...` now exposes the recommended next review pass as its own operator-facing projection with self-contained `recommended_actions`, a compact `review_checklist`, a compact `review_snapshot`, explicit `review_progress`, a compact `up_next` package snapshot, and an `upcoming_packages` horizon that now also carries sample pair and strongest-match context instead of requiring operators to derive them from the larger review payload
-- that review-oriented CLI path now also carries a compact machine-readable `handoff` block with left/right input context and recommended host-platform targets, and `goreveal diff handoff sqlite ...` now exposes that handoff as a dedicated operator-facing artifact instead of only an embedded review field
-- that same handoff artifact now also carries a self-describing artifact bundle plus structured `target_profiles` for `ida` and `ghidra`, including explicit export contract IDs, preferred transport hints, artifact-role metadata, workspace phases, host action lists, binding-entrypoint hints, required-artifact hints, and expected host-outcome hints, so workstation guidance is no longer only a flat list of recommendations
-- a thin source-visibility increment is now landed too: when DWARF-backed source projection is unavailable, `source_tree` can fall back to line-table-backed package/file evidence with explicit `pathless_file_evidence`
-- the protected-binary lane now covers a purpose-built enterprise-gated sample across `amd64` and `arm64`, with the first real `garble` rows on both `linux/amd64` and `linux/arm64`
-- current empirical checks already show strong stripped-`ELF` behavior on external binaries, strong bounded `PE` footholds rather than posture-only output, and a real `Mach-O` function/package/peeling foothold without widened runtime claims
-- fresh external reruns now also confirm real file visibility on measured `ELF`, `PE`, and `Mach-O` targets, so the current practical gap is richer semantic/source confidence and stronger workstation handoff rather than raw file absence
-- the current real baseline comparison plus the widened protected matrix now show the clearest remaining practical gap is no longer generic format breadth and no longer Linux-architecture portability inside the protected lane: the bounded `elf_function_foothold = "address_only"` projection now survives on both `linux/amd64` and `linux/arm64`, while named-function recovery under custom `pclntab` magic still remains unresolved
-- the protected lane now also carries a compact analyst-facing explanation surface for that foothold: `elf_function_foothold_text_source` distinguishes `moduledata_text` and `elf_text_section`, and the bounded foothold span is projected directly through `elf_function_foothold_start_addr` / `elf_function_foothold_end_addr`
-- that same protected runtime surface is now locked into the thin `IDA` / `Ghidra` export contracts through `schema` tests and plugin consumer tests, so downstream adapters inherit it without adapter-local recovery logic
-- differential validation against `GoReSym`, `redress`, and `gore`
-- thin `IDA` and `Ghidra` adapters
+Development is Podman-first: the dev container pins every tool version, so local
+results match CI.
 
-## Repository Rules
+```bash
+git clone https://github.com/ioplane/goreveal.git
+cd goreveal
 
-- clean-room boundary first; external tools inform behavior, not copied implementation
-- schema-first outputs; operator surfaces should expose canonical truth, not plugin-local guesses
-- Podman-first development and verification
-- accuracy work outranks performance work
-- plugin and server logic do not belong in `core`
-- bounded runtime-semantic slices are valid; broad speculative parser rewrites are not
+podman build -f deployments/docker/Containerfile.dev -t localhost/goreveal:dev .
+task build-image      # or through the Python automation entrypoint
 
-## Current Execution Lanes
+task lint             # golangci-lint
+task test             # Go suite plus Python unit tests
+task lint-scripts     # ruff, ty, yamllint, shellcheck
+task test-snapshots   # golden snapshots
+```
 
-| Lane | Reading |
-|---|---|
-| `Sprint 12` | Primary lane for bounded runtime trust plus the first engine-owned code-peeling increments |
-| `Sprint 7` | Maintenance lane for differential evidence and claim hygiene |
-| `Sprint 11` | Completed usability checkpoint for package/type/source surfaces |
-| Current checkpoint | Windows `PE` bounded runtime posture plus the first `PE` and `Mach-O` function/package/peeling footholds are landed |
-| Next differentiator lane | Use the completed fresh external comparison, the universal RE workbench comparison, the dedicated next-execution plan, the current intermediate rerun, and the widened protected matrix as the evidence baseline. That baseline now shows stable non-garbled `arm64` results across `linux`, `windows`, and `darwin`, a truthful `elf_function_foothold = "address_only"` surface on garbled `linux/amd64` and `linux/arm64` rows, real file visibility on measured external and intermediate-rerun `ELF` / `PE` / `Mach-O` targets, and the same compact protected runtime surface locked through export-contract and plugin-consumer tests. The workflow/value lane now includes explicit `diff review sqlite`, `diff handoff sqlite`, and `diff next sqlite` operator paths over the existing review state, with `diff next sqlite` now carrying self-contained `recommended_actions`, a compact `review_checklist`, a compact `review_snapshot`, explicit `review_progress`, a compact `up_next` snapshot, and an `upcoming_packages` horizon with sample pair context for the immediate review pass. The latest bounded timing sample on `rclone-linux-amd64` also shows no operational efficiency regression that would outrank workflow or source-confidence work. `Sprint 14` is now held at its frozen stop-condition by default: extend it only if one named remaining operator inference step still exists. `Sprint 15` is now also frozen by default for the current bounded scope: `source_tree` and enriched package surfaces already expose `source_evidence_kind = dwarf_paths | line_table_files | package_fallback`, and `source_tree` also carries a compact `source_evidence_summary` with per-evidence-class file counts so operators can read both the high-level package landscape and the file-density shape without reconstructing them from the full package list. The active PM queue has therefore moved into `Sprint 16` protected workflow/orchestration ranking, and the first ranked target there is now `garble`-class workflows on the current enterprise-gated sample; the first named pain point there is no longer generic “recovery is weak”, but “current garbled rows do not yield a review-ready anchor set for peel/review/handoff/next despite the existing address-only foothold”. The first bounded neighboring-build rerun in that lane is now landed too and currently confirms the negative workflow result on both measured Linux architectures: no matched functions, no transfer/review packages, no handoff, and no next-step review projection. Later server-mode work remains ordered but deferred: first bounded control-plane foundations, then remote metadata/MCP platform work. |
-| Later sprint horizon | After the current local workflow sequence and the already-deferred server/remote-interoperability work, the next ordered horizons are `Sprint 19` public release readiness and licensing, `Sprint 20` evidence expansion and comparative automation, `Sprint 21` build correlation and version tracking, `Sprint 22` metadata knowledge network, `Sprint 23` analyst workspace automation and replay, and `Sprint 24` comparative knowledge packs and decision support. |
-| Sprint management | Sprint scope, PM+DEV task framing, and indicators now live in [docs/plans/2026-04-01-goreveal-post-sprint12-sprint-plan.md](docs/plans/2026-04-01-goreveal-post-sprint12-sprint-plan.md) and [docs/plans/2026-03-19-goreveal-scrum-implementation-plan.md](docs/plans/2026-03-19-goreveal-scrum-implementation-plan.md). |
+Python tooling is managed with [uv](https://docs.astral.sh/uv/):
 
-## Verification
+```bash
+uv sync --group dev
+uv run ruff check .
+uv run ty check
+```
 
-Current containerized entrypoints:
-- `make fmt`
-- `make test`
-- `make lint`
-- `make test-differential`
-- `make test-differential-report`
-- `make test-plugins`
-- `make test-snapshots`
-- `make lint-scripts`
-- `task build-image`
-- `task test`
-- `task lint`
-- `task lint-scripts`
-- `task verify`
+Equivalent `make` targets exist. Full setup, including the baseline repositories
+needed for differential tests, is in [CONTRIBUTING.md](CONTRIBUTING.md).
 
-Development is Podman-first. See [deployments/docker/README.md](deployments/docker/README.md).
-The dev image now also bundles `jq`, `yq`, `procps`, and `unzip` for structured-data inspection, YAML work, process debugging, and bounded artifact handling inside the canonical container workflow.
+## Clean-room boundary
+
+GoREveal studies the *observable behavior* of the prior art in this space —
+`gore`, `redress`, `GoReSym`, `GoResolver`, `gostringungarbler`, `AlphaGolang` —
+and converts that study into documented findings, corpus fixtures, and
+differential tests.
+
+**No implementation code from those projects is copied, translated, or derived
+here.** The differential suite compares against them as an evidence source, not
+as ground truth: a divergence is something to investigate, not automatically a
+GoREveal defect.
+
+This boundary is a licensing and review constraint, not a courtesy. See
+[NOTICE](NOTICE) and
+[CONTRIBUTING.md](CONTRIBUTING.md#1-clean-room-boundary).
+
+## Project status
+
+Pre-1.0 and under active development. The CLI surface and the canonical schema
+are usable but not yet frozen; breaking contract changes bump the minor version
+while the major version is `0`.
+
+Honest assessment of the current capability envelope:
+
+| Area | State |
+| --- | --- |
+| Stripped ELF recovery | Strong — functions, packages, source evidence |
+| PE and Mach-O | Real function, package, and peeling footholds; narrower than ELF |
+| `garble`-class obfuscation | Bounded address-level foothold; named-function recovery under custom `pclntab` magic is unresolved |
+| Source reconstruction | DWARF paths when present, line-table file evidence otherwise, both explicitly labeled |
+| Build-to-build diffing | Working, with explained matches and a review queue |
+| IDA and Ghidra adapters | Thin, contract-locked, covered by consumer tests |
+| Server mode | Not implemented; deferred by design |
+
+Where a capability is partial, the output says so rather than filling the gap with
+inference.
+
+## Contributing
+
+Contributions are welcome. Start with [CONTRIBUTING.md](CONTRIBUTING.md) — it
+covers the build, the verification gates, and the two rules that are genuinely
+non-negotiable: the clean-room boundary, and never inventing recovery truth.
+
+- [Report a bug](https://github.com/ioplane/goreveal/issues/new/choose) — wrong
+  output is a bug, and a fixture makes it fixable
+- [Request a capability](https://github.com/ioplane/goreveal/issues/new/choose)
+- [Ask a question](https://github.com/ioplane/goreveal/discussions)
+- [Code of Conduct](CODE_OF_CONDUCT.md) · [Support](SUPPORT.md) ·
+  [Maintainers](MAINTAINERS.md)
+
+## Security
+
+Report vulnerabilities privately through a
+[GitHub Security Advisory](https://github.com/ioplane/goreveal/security/advisories/new),
+never in a public issue. Scope, threat model, and response targets are in
+[SECURITY.md](SECURITY.md).
+
+GoREveal parses hostile input by design. Run unknown samples in an isolated
+container or VM.
+
+## License
+
+[Apache-2.0](LICENSE). See [NOTICE](NOTICE) for attribution and the clean-room
+declaration.

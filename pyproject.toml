@@ -2,17 +2,47 @@
 name = "goreveal-automation"
 version = "0.1.0"
 description = "Python automation helpers for Podman-first GoREveal workflows."
-requires-python = ">=3.11"
+readme = "README.md"
+requires-python = ">=3.14"
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE"]
+authors = [{ name = "The GoREveal Authors" }]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: Apache Software License",
+  "Programming Language :: Python :: 3.14",
+  "Topic :: Security",
+  "Topic :: Software Development :: Disassemblers",
+]
 dependencies = [
   "podman>=5.7,<6",
+]
+
+[project.urls]
+Homepage = "https://github.com/ioplane/goreveal"
+Repository = "https://github.com/ioplane/goreveal"
+Issues = "https://github.com/ioplane/goreveal/issues"
+Changelog = "https://github.com/ioplane/goreveal/blob/main/CHANGELOG.md"
+
+# PEP 735 dependency group consumed by `uv sync --group dev` in CI and locally.
+# Versions are floors, not pins: `uv.lock` is the reproducibility boundary.
+[dependency-groups]
+dev = [
+  "ruff>=0.16.0",
+  "ty>=0.0.65",
+  "yamllint>=1.38.0",
 ]
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+[tool.hatch.build.targets.wheel]
+packages = ["scripts", "plugins"]
+
 [tool.ruff]
-target-version = "py311"
+target-version = "py314"
 line-length = 100
 src = ["plugins", "scripts"]
 
@@ -90,3 +120,20 @@ ignore = [
 [tool.ruff.lint.isort]
 combine-as-imports = true
 known-first-party = ["plugins", "scripts"]
+
+[tool.ty.environment]
+python-version = "3.14"
+root = ["plugins", "scripts"]
+
+[tool.ty.src]
+exclude = [
+  ".tmp",
+  "corpus/generated",
+  "docs/.local",
+]
+
+[tool.ty.rules]
+# The IDA and Ghidra plugin entrypoints import host-tool modules (`idaapi`,
+# `ghidra.*`) that only exist inside those tools. They are unresolvable in CI by
+# design, so unresolved-import is downgraded rather than suppressed per-line.
+unresolved-import = "warn"

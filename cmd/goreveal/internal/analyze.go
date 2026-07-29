@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/dantte-lp/goreveal/engine"
-	"github.com/dantte-lp/goreveal/engine/peeling"
-	"github.com/dantte-lp/goreveal/schema"
+	"github.com/ioplane/goreveal/engine"
+	"github.com/ioplane/goreveal/engine/peeling"
+	"github.com/ioplane/goreveal/schema"
 )
 
 // RunAnalyze executes the minimal analyze command and writes canonical JSON.

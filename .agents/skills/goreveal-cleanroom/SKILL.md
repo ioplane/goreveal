@@ -30,6 +30,7 @@ description: Keep baseline-tool study clean-room and convert it into findings, f
 ## Required Output
 
 Produce at least one of:
+
 - a documented finding
 - a fixture note
 - a differential expectation

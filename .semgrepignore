@@ -1,0 +1,31 @@
+# Paths excluded from Semgrep scanning.
+# Reference: https://semgrep.dev/docs/ignoring-files-folders-code
+
+# Local-only maintainer notes; never published.
+docs/.local/
+
+# Build and scan output.
+dist/
+.tmp/
+bin/
+
+# Analysis corpus. These are deliberately unusual Go programs built as targets
+# for GoREveal to parse -- including an intentionally obfuscated sample. Scanning
+# them as first-party source produces findings about the fixtures, not the tool.
+corpus/
+
+# Golden outputs: large generated JSON with no code to analyze.
+tests/snapshots/*.json
+
+# Dependency and tooling caches.
+vendor/
+node_modules/
+__pycache__/
+.ruff_cache/
+.venv/
+
+# Lockfiles are analyzed by the dependency scanners, not by SAST rules.
+go.sum
+go.work.sum
+uv.lock
+pnpm-lock.yaml

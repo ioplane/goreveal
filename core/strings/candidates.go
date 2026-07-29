@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/dantte-lp/goreveal/schema"
+	"github.com/ioplane/goreveal/schema"
 )
 
 // Candidate is a canonical recovered string candidate.

@@ -7,8 +7,8 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/dantte-lp/goreveal/core/pclntab"
-	"github.com/dantte-lp/goreveal/schema"
+	"github.com/ioplane/goreveal/core/pclntab"
+	"github.com/ioplane/goreveal/schema"
 )
 
 // Function is the canonical recovered function representation.

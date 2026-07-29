@@ -3,7 +3,7 @@ package packages
 import (
 	"testing"
 
-	"github.com/dantte-lp/goreveal/schema"
+	"github.com/ioplane/goreveal/schema"
 )
 
 func TestEnrichSourceMetadata(t *testing.T) {

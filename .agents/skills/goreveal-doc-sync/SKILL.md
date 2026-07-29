@@ -22,7 +22,8 @@ description: Keep plans, roadmap notes, architecture docs, README, and agent con
 4. Update `README.md`.
 5. Update `AGENTS.md`, `.codex/agents/`, and skill READMEs if the operator workflow changed.
 6. Check that active and exploratory documents are clearly distinguished.
-7. Check that referenced verification commands still exist and match `Taskfile.yml`, `Makefile`, and `scripts/dev/podman_runner.py`.
+7. Check that referenced verification commands still exist and match `Taskfile.yml`, `Makefile`, and
+   `scripts/dev/podman_runner.py`.
 
 ## Borrowed Best Practices
 

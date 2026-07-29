@@ -1,0 +1,535 @@
+---
+name: CI
+
+# yamllint disable-line rule:truthy
+on:
+  pull_request:
+    branches:
+      - main
+  merge_group:
+    types:
+      - checks_requested
+  push:
+    branches:
+      - main
+    tags-ignore:
+      - "**"
+  workflow_dispatch: {}
+
+# Least privilege by default; jobs opt in to what they need.
+permissions: {}
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  GO_VERSION: "1.26.5"
+  PYTHON_VERSION: "3.14"
+  GOLANGCI_LINT_VERSION: v2.12.2
+  # go.work exists but only declares `use .`. Disabling workspace mode keeps
+  # `go mod tidy -diff` and `go mod verify` honest about the module itself.
+  GOWORK: "off"
+  GOTOOLCHAIN: local
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Audit the workflows themselves before trusting anything they report.
+  # ---------------------------------------------------------------------------
+  actions-lint:
+    name: Lint workflows
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: audit
+
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: actionlint
+        uses: reviewdog/action-actionlint@50842263c20a7c46bd0065b9e624d3c569db061e # v1.73.0
+        with:
+          reporter: github-check
+          fail_level: error
+
+      - name: zizmor
+        uses: zizmorcore/zizmor-action@6fc4b006235f201fdab3722e17240ab420d580e5 # v0.6.1
+        with:
+          # Findings are uploaded to code scanning by the security workflow;
+          # here we only gate on genuinely dangerous patterns.
+          min-severity: medium
+          persona: regular
+          advanced-security: false
+
+  # ---------------------------------------------------------------------------
+  # Go correctness gates.
+  # ---------------------------------------------------------------------------
+  go-hygiene:
+    name: Go hygiene
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: audit
+
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          check-latest: true
+
+      - name: Verify module graph
+        run: |
+          go mod verify
+          go mod tidy -diff
+
+      - name: Check formatting
+        run: |
+          set -euo pipefail
+          mapfile -t unformatted < <(gofmt -l . | grep -v '^corpus/' || true)
+          if [ ${#unformatted[@]} -gt 0 ]; then
+            echo "::error::gofmt found unformatted files: ${unformatted[*]}"
+            gofmt -d "${unformatted[@]}"
+            exit 1
+          fi
+
+      - name: go vet
+        run: go vet ./...
+
+      - name: Build all packages
+        run: go build ./...
+
+      - name: Verify version subcommand reports build identity
+        run: |
+          go build -o /tmp/goreveal ./cmd/goreveal
+          /tmp/goreveal version
+          /tmp/goreveal version --json | tee /tmp/version.json
+          python3 - <<'PY'
+          import json
+          import sys
+
+          with open("/tmp/version.json", encoding="utf-8") as handle:
+              info = json.load(handle)
+
+          expected = (
+              "version",
+              "git_commit",
+              "build_date",
+              "go_version",
+              "platform",
+              "modified",
+          )
+          missing = [key for key in expected if key not in info]
+          if missing:
+              sys.exit(f"version --json is missing keys: {missing}")
+          print("version --json exposes every expected key")
+          PY
+
+  go-lint:
+    name: golangci-lint
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: audit
+
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          check-latest: true
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
+        with:
+          version: ${{ env.GOLANGCI_LINT_VERSION }}
+          args: --timeout=10m
+
+  go-test:
+    name: Test ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - macos-latest
+          - windows-latest
+    steps:
+      - name: Harden runner
+        if: runner.os == 'Linux'
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: audit
+
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          check-latest: true
+
+      # Differential tests need baseline checkouts that are not available here.
+      # They skip rather than fail; see CONTRIBUTING.md.
+      - name: Test with race detector and coverage
+        run: >-
+          go test ./... -race -shuffle=on -timeout=15m
+          -coverprofile=coverage.out -covermode=atomic
+
+      - name: Upload coverage artifact
+        if: matrix.os == 'ubuntu-latest'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: coverage
+          path: coverage.out
+          retention-days: 7
+          if-no-files-found: error
+
+      - name: Upload coverage to Codecov
+        if: matrix.os == 'ubuntu-latest' && github.event_name != 'merge_group'
+        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
+        with:
+          files: coverage.out
+          flags: go
+          # Absent token on forks must not fail the build.
+          fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+  go-snapshots:
+    name: Golden snapshots
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: audit
+
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          check-latest: true
+
+      # Snapshots gate recovery-semantics changes: a drift here means either a
+      # real regression or an intentional change that needs an updated golden.
+      - name: Snapshot suite
+        run: go test ./tests/snapshots -v
+
+      - name: Assert snapshots are unchanged
+        run: |
+          if ! git diff --quiet -- tests/snapshots; then
+            echo "::error::Golden snapshots drifted during the test run."
+            git diff -- tests/snapshots
+            exit 1
+          fi
+
+  go-fuzz-smoke:
+    name: Fuzz smoke
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: audit
+
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          check-latest: true
+
+      # A short bounded run per target: enough to catch a parser regression on a
+      # pull request without turning CI into a fuzzing campaign.
+      - name: Run fuzz targets briefly
+        run: |
+          set -euo pipefail
+          found=0
+          while IFS= read -r pkg; do
+            while IFS= read -r target; do
+              [ -z "${target}" ] && continue
+              found=1
+              echo "::group::${pkg} ${target}"
+              go test "${pkg}" -run='^$' -fuzz="^${target}$" -fuzztime=30s
+              echo "::endgroup::"
+            done < <(go test "${pkg}" -list='Fuzz.*' 2>/dev/null | grep -E '^Fuzz' || true)
+          done < <(go list ./...)
+          if [ "${found}" -eq 0 ]; then
+            echo "No fuzz targets defined yet; nothing to run."
+          fi
+
+  # ---------------------------------------------------------------------------
+  # Python, YAML, and shell gates. uv owns the interpreter and the toolchain.
+  # ---------------------------------------------------------------------------
+  scripts-lint:
+    name: Python / YAML / shell
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: audit
+
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        with:
+          version: "0.12.0"
+          python-version: ${{ env.PYTHON_VERSION }}
+          enable-cache: true
+          cache-dependency-glob: |
+            pyproject.toml
+            uv.lock
+
+      - name: Sync dev dependencies
+        run: uv sync --group dev --frozen
+
+      - name: ruff check
+        run: uv run ruff check --output-format=github .
+
+      - name: ruff format check
+        run: uv run ruff format --check --diff .
+
+      - name: ty type check
+        run: uv run ty check --output-format=github
+
+      - name: yamllint
+        run: uv run yamllint --strict .
+
+      - name: shellcheck
+        run: |
+          shellcheck --version
+          mapfile -t scripts < <(git ls-files '*.sh')
+          if [ ${#scripts[@]} -eq 0 ]; then
+            echo "No shell scripts tracked; nothing to check."
+            exit 0
+          fi
+          shellcheck "${scripts[@]}"
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          check-latest: true
+
+      # The IDA and Ghidra adapter tests drive the real binary through the
+      # export contract, so they need it built first.
+      - name: Build goreveal for adapter tests
+        run: go build -o "${RUNNER_TEMP}/goreveal" ./cmd/goreveal
+
+      - name: Python unit tests
+        env:
+          GOREVEAL_BIN: ${{ runner.temp }}/goreveal
+        run: |
+          uv run python -m unittest discover -s scripts -p 'test_*.py' -t .
+          uv run python -m unittest plugins.ida.test_goreveal_ida
+          uv run python -m unittest plugins.ghidra.test_goreveal_ghidra
+
+  # ---------------------------------------------------------------------------
+  # Documentation gates.
+  # ---------------------------------------------------------------------------
+  docs-lint:
+    name: Markdown and links
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: audit
+
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: markdownlint
+        uses: DavidAnson/markdownlint-cli2-action@6bf21b07787794f89a243495939cd651942aeabe # v24.1.0
+        with:
+          globs: |
+            **/*.md
+            !docs/.local/**
+
+      - name: Link check
+        uses: lycheeverse/lychee-action@e7477775783ea5526144ba13e8db5eec57747ce8 # v2.9.0
+        with:
+          args: >-
+            --no-progress
+            --cache
+            --max-cache-age 1d
+            --accept 200,206,429
+            --exclude-path docs/.local
+            --exclude-mail
+            .
+          fail: true
+          failIfEmpty: true
+
+  # ---------------------------------------------------------------------------
+  # Container builds. Nothing is pushed from CI; publishing happens on release.
+  # ---------------------------------------------------------------------------
+  container-build:
+    name: Build ${{ matrix.containerfile }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        containerfile:
+          - Containerfile.dev
+          - Containerfile.builder
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: audit
+
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+
+      - name: Build image
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: .
+          file: deployments/docker/${{ matrix.containerfile }}
+          push: false
+          load: false
+          cache-from: type=gha,scope=${{ matrix.containerfile }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.containerfile }}
+
+  # The release image expects a prebuilt binary, so it is exercised end to end:
+  # build with the builder Containerfile, then assemble and smoke-test.
+  container-release-smoke:
+    name: Release image smoke test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: audit
+
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+
+      - name: Build binary through the builder image
+        run: |
+          docker buildx build \
+            --file deployments/docker/Containerfile.builder \
+            --target export \
+            --build-arg VERSION=ci \
+            --build-arg GIT_COMMIT="${GITHUB_SHA}" \
+            --build-arg BUILD_DATE="$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --output type=local,dest=./ci-out \
+            .
+          test -x ./ci-out/goreveal
+
+      - name: Assemble and run the release image
+        run: |
+          cp ./ci-out/goreveal ./goreveal
+          docker buildx build \
+            --file deployments/docker/Containerfile.release \
+            --tag goreveal:ci \
+            --load \
+            .
+          docker run --rm goreveal:ci version
+          docker run --rm goreveal:ci version --json
+          # The image must not ship a usable shell for the analysis user.
+          if docker run --rm --entrypoint /bin/sh goreveal:ci -c 'id' 2>/dev/null; then
+            echo "::warning::Release image exposes a shell; consider a distroless base."
+          fi
+
+  # ---------------------------------------------------------------------------
+  # Single required status check. Branch protection gates on this job only.
+  # ---------------------------------------------------------------------------
+  ci-success:
+    name: CI success
+    runs-on: ubuntu-latest
+    permissions: {}
+    if: always()
+    needs:
+      - actions-lint
+      - go-hygiene
+      - go-lint
+      - go-test
+      - go-snapshots
+      - go-fuzz-smoke
+      - scripts-lint
+      - docs-lint
+      - container-build
+      - container-release-smoke
+    steps:
+      - name: Report aggregate result
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+        run: |
+          echo "${RESULTS}" | python3 -c '
+          import json, sys
+          needs = json.load(sys.stdin)
+          failed = sorted(k for k, v in needs.items() if v["result"] not in ("success", "skipped"))
+          for job, meta in sorted(needs.items()):
+              print(f"{meta[\"result\"]:>9}  {job}")
+          if failed:
+              print("\nFailed jobs: " + ", ".join(failed), file=sys.stderr)
+              sys.exit(1)
+          print("\nAll required jobs passed.")
+          '

@@ -3,7 +3,7 @@ package diff
 import (
 	"testing"
 
-	"github.com/dantte-lp/goreveal/schema"
+	"github.com/ioplane/goreveal/schema"
 )
 
 func TestCompare(t *testing.T) {
@@ -194,7 +194,7 @@ func TestCompare(t *testing.T) {
 	if exactAccepted.ProjectedPackage != "main" {
 		t.Fatalf("exact accepted transfer package = %#v", exactAccepted)
 	}
-	if _, ok := findAcceptedTransfer(got.AcceptedTransfers, "main.service", "main.serviceV2"); ok {
+	if _, accepted := findAcceptedTransfer(got.AcceptedTransfers, "main.service", "main.serviceV2"); accepted {
 		t.Fatalf("source-file review candidate unexpectedly accepted in %#v", got.AcceptedTransfers)
 	}
 	if got.TransferReview.ReviewCount != 1 || got.TransferReview.AutoAcceptedCount != 3 || got.TransferReview.ReviewPackageCount != 1 {

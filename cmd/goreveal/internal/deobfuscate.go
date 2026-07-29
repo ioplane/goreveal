@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/dantte-lp/goreveal/engine"
+	"github.com/ioplane/goreveal/engine"
 )
 
 // RunDeobfuscate writes the refined layer as canonical JSON.

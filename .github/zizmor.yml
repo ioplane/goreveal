@@ -1,0 +1,28 @@
+---
+# zizmor configuration.
+#
+# Every entry below is a deliberate, justified exception. Adding one without a
+# reason defeats the point of running the audit at all -- prefer fixing the
+# workflow. Reference: https://docs.zizmor.sh/configuration/
+rules:
+  cache-poisoning:
+    ignore:
+      # ci.yml publishes nothing. Its `push: main` trigger is what makes zizmor
+      # treat the Go module cache as release-adjacent, but no artifact from this
+      # workflow is ever distributed, and release.yml deliberately builds with
+      # `cache: false` so a poisoned CI cache cannot reach a published binary.
+      - ci.yml
+
+  dangerous-triggers:
+    ignore:
+      # pr.yml uses pull_request_target so that fork pull requests can be
+      # labeled -- `pull_request` grants forks a read-only token, which cannot
+      # write labels.
+      #
+      # The documented hazard of pull_request_target is running untrusted code
+      # with a privileged token. This workflow never checks out the pull request
+      # head, never executes repository code, and never builds anything: it only
+      # reads pull request metadata and changed-file paths through
+      # actions/labeler and a title validator. If a checkout step is ever added
+      # to this file, remove this exception and split the workflow instead.
+      - pr.yml

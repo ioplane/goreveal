@@ -4,7 +4,11 @@ extends: default
 ignore: |
   .serena/
   node_modules/
-  pnpm-lock.yaml
+  uv.lock
+  docs/.local/
+  dist/
+  .tmp/
+  corpus/generated/
 
 rules:
   document-start:
@@ -14,6 +18,10 @@ rules:
     allow-non-breakable-words: true
     allow-non-breakable-inline-mappings: false
   truthy:
+    # GitHub Actions requires a literal `on:` trigger key, which this rule reads
+    # as the YAML 1.1 boolean `on`. Workflows carry an explicit
+    # `# yamllint disable-line rule:truthy` on that key rather than the rule
+    # being switched off repository-wide.
     allowed-values: ["true", "false"]
     check-keys: true
   comments:

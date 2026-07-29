@@ -5,10 +5,11 @@ import (
 	"debug/elf"
 	stdpe "debug/pe"
 	"encoding/binary"
+	"encoding/hex"
 	"fmt"
 	"os"
 
-	"github.com/dantte-lp/goreveal/schema"
+	"github.com/ioplane/goreveal/schema"
 )
 
 // ReadMetadata recovers bounded runtime layout evidence from supported binaries.
@@ -189,6 +190,10 @@ func populatePEPclntabHeader(pf *stdpe.File, meta *schema.RuntimeMetadata) {
 	}
 }
 
+// Each step is a bounded, individually guarded read of one pclntab field.
+// Extracting them would hide the ordering dependency between the offsets.
+//
+//nolint:funlen // sequential guarded field reads with an ordering dependency
 func populatePclnTab(ef *elf.File, meta *schema.RuntimeMetadata) {
 	section := ef.Section(".gopclntab")
 	if section == nil {
@@ -813,7 +818,7 @@ func parseELFPclntabHeader(data []byte) (string, string, byte, byte, bool) {
 		}
 	}
 
-	return fmt.Sprintf("%x", magic), kind, quantum, pointerSize, true
+	return hex.EncodeToString(magic), kind, quantum, pointerSize, true
 }
 
 type elfPclntabHeaderHints struct {
@@ -882,7 +887,7 @@ func parseELFFunctabPCOffsetHints(
 
 	const entryFieldSize = 4
 	entrySize := entryFieldSize * 2
-	required := functabOffset + uint64((functionCount*2+1)*entryFieldSize)
+	required := functabOffset + (functionCount*2+1)*entryFieldSize
 	if required > uint64(len(data)) {
 		return 0, 0, false, false
 	}
@@ -924,17 +929,14 @@ func parseELFFunctabPCOffsetSample(
 
 	const entryFieldSize = 4
 	entrySize := entryFieldSize * 2
-	maxEntries := functionCount
-	if uint64(limit) < maxEntries {
-		maxEntries = uint64(limit)
-	}
-	required := functabOffset + uint64((maxEntries-1)*uint64(entrySize)) + entryFieldSize
+	maxEntries := min(uint64(limit), functionCount)
+	required := functabOffset + (maxEntries-1)*uint64(entrySize) + entryFieldSize
 	if required > uint64(len(data)) {
 		return nil, false
 	}
 
 	sample := make([]uint64, 0, maxEntries)
-	for i := uint64(0); i < maxEntries; i++ {
+	for i := range maxEntries {
 		start := int(functabOffset + i*uint64(entrySize))
 		sample = append(sample, uint64(order.Uint32(data[start:start+entryFieldSize])))
 	}
@@ -979,7 +981,7 @@ func findPEPclntabHeaderCandidate(data []byte) (int, string, byte, byte, bool) {
 			absolute := start + index
 			quantum, pointerSize, ok := parsePEPclntabHeaderCandidate(data, absolute)
 			if ok {
-				return absolute, fmt.Sprintf("%x", magic), quantum, pointerSize, true
+				return absolute, hex.EncodeToString(magic), quantum, pointerSize, true
 			}
 
 			start = absolute + 1

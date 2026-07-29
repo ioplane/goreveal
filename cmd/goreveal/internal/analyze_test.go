@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/dantte-lp/goreveal/schema"
-	storesqlite "github.com/dantte-lp/goreveal/storage/sqlite"
+	"github.com/ioplane/goreveal/schema"
+	storesqlite "github.com/ioplane/goreveal/storage/sqlite"
 )
 
 func TestRunAnalyze(t *testing.T) {

@@ -1,0 +1,19 @@
+# Trivy suppressions.
+#
+# Rules for this file:
+#   - every entry needs a reason and an expiry date
+#   - "noisy" is not a reason; "not reachable because X" is
+#   - expired entries are removed, not renewed by default
+#
+# Format:
+#   CVE-YYYY-NNNNN exp:YYYY-MM-DD
+#
+# Reference: https://trivy.dev/latest/docs/configuration/filtering/
+
+# No active suppressions.
+#
+# Note on the corpus: corpus/fixtures and corpus/protected contain small Go
+# programs built deliberately as analysis targets, including an intentionally
+# obfuscated sample. They are inputs to the test suite, never dependencies of
+# the shipped binary, and are excluded via skip-dirs in .github/workflows/trivy.yml
+# rather than suppressed here.

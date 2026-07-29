@@ -23,6 +23,7 @@ description: Keep exports schema-driven and thin for CLI, SQLite, API, and RE-to
 ## Decision Questions
 
 When schema changes:
+
 1. Should the export inherit the field?
 2. Is the field already canonical truth?
 3. Would projecting it keep the adapter thinner?

@@ -1,7 +1,22 @@
+---
+title: GoREveal Module Map
+status: active
+date: 2026-03-19
+owners:
+  - ioplane/goreveal-maintainers
+tags:
+  - architecture
+  - modules
+---
+
 # GoREveal Module Map
 
-> Status: architecture support document
-> Date: 2026-03-19
+<img
+  src="https://shieldcn.dev/badge/status-active-slate.svg?variant=outline&size=xs"
+  alt="status: active" height="20">
+<img
+  src="https://shieldcn.dev/badge/docs-architecture-slate.svg?variant=outline&size=xs"
+  alt="docs: architecture" height="20">
 
 ## Purpose
 
@@ -14,7 +29,8 @@ This document fixes the intended module ownership and dependency rules for GoREv
 - `schema`
   - owns canonical analysis data structures and provenance/confidence semantics
 - `engine`
-  - owns orchestration of recovery, normalization, enrichment, export preparation, and bounded analyst-facing classification layers such as the current first code-peeling slice
+  - owns orchestration of recovery, normalization, enrichment, export preparation, and bounded
+    analyst-facing classification layers such as the current first code-peeling slice
 - `deobfuscation`
   - owns refinement passes over recovered data without mutating raw truth
 - `cmd/goreveal`
@@ -35,6 +51,7 @@ This document fixes the intended module ownership and dependency rules for GoREv
 ## Dependency Rules
 
 Allowed dependency direction:
+
 - `core -> schema`
 - `deobfuscation -> core + schema`
 - `engine -> core + deobfuscation + schema`
@@ -45,6 +62,7 @@ Allowed dependency direction:
 - `bench -> engine/core/schema` as needed for benchmarks only
 
 Forbidden dependency direction:
+
 - `core -> cli`
 - `core -> plugins`
 - `core -> storage`
@@ -57,11 +75,13 @@ Forbidden dependency direction:
 - Any code that parses binary internals belongs in `core`.
 - Any code that defines stable result shape belongs in `schema`.
 - Any code that sequences stages belongs in `engine`.
-- Any code that classifies already-recovered truth for analyst workflows, such as the current code-peeling layer, belongs in `engine` or `deobfuscation`, not in `core`.
+- Any code that classifies already-recovered truth for analyst workflows, such as the current
+  code-peeling layer, belongs in `engine` or `deobfuscation`, not in `core`.
 - Any code that improves readability but is not raw recovery belongs in `deobfuscation`.
 - Any code that exists only to render or transport results belongs outside `core`.
 
-
 ## Development Environment Boundary
 
-The repository must include OCI-compatible Podman container definitions under `deployments/docker`. Tooling, tests, linters, and benchmarks should be executed through the dev container rather than directly on the host.
+The repository must include OCI-compatible Podman container definitions under `deployments/docker`.
+Tooling, tests, linters, and benchmarks should be executed through the dev container rather than
+directly on the host.

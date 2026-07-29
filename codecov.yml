@@ -1,0 +1,83 @@
+---
+# Codecov configuration.
+# Reference: https://docs.codecov.com/docs/codecov-yaml
+
+codecov:
+  require_ci_to_pass: true
+  notify:
+    wait_for_ci: true
+
+coverage:
+  precision: 2
+  round: down
+  range: "55...85"
+
+  status:
+    # The project gate allows small dips: a refactor that removes covered lines
+    # should not fail a pull request that is otherwise an improvement.
+    project:
+      default:
+        target: auto
+        threshold: 1%
+        informational: false
+    # New code carries a firmer expectation, but stays informational while the
+    # coverage baseline is still being established.
+    patch:
+      default:
+        target: 70%
+        threshold: 5%
+        informational: true
+
+comment:
+  layout: "condensed_header, diff, flags, components"
+  behavior: default
+  require_changes: true
+
+# Coverage numbers for these paths are not meaningful signal.
+ignore:
+  - "corpus/**"          # analysis targets, not project code
+  - "tests/snapshots/**" # golden data
+  - "**/*_test.go"
+  - "docs/**"
+  - "scripts/**"         # exercised by unittest, not go cover
+  - "plugins/**"         # exercised by unittest against the export contract
+  - "deployments/**"
+
+component_management:
+  individual_components:
+    - component_id: core
+      name: Recovery primitives
+      paths:
+        - core/**
+    - component_id: schema
+      name: Canonical contract
+      paths:
+        - schema/**
+    - component_id: engine
+      name: Pipeline
+      paths:
+        - engine/**
+    - component_id: deobfuscation
+      name: Refinement
+      paths:
+        - deobfuscation/**
+    - component_id: storage
+      name: Persistence and diffing
+      paths:
+        - storage/**
+    - component_id: cmd
+      name: Operator CLI
+      paths:
+        - cmd/**
+
+flags:
+  go:
+    paths:
+      - core/
+      - schema/
+      - engine/
+      - deobfuscation/
+      - storage/
+      - cmd/
+      - internal/
+    carryforward: false

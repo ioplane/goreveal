@@ -1,0 +1,128 @@
+---
+name: Bug report
+description: Incorrect recovery output, a crash, or a documented-contract violation
+title: "fix: "
+labels:
+  - bug
+  - needs-triage
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for filing a report.
+
+        **Security vulnerabilities do not belong here.** Report them privately
+        through a [security advisory](https://github.com/ioplane/goreveal/security/advisories/new).
+
+        Note what is *not* a bug: returning `unavailable`, an empty list, or an
+        explicit error when evidence is absent is intended behavior. GoREveal
+        does not guess. A divergence from `gore`, `redress`, or `GoReSym` is a
+        data point worth reporting, but those tools are not ground truth.
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What went wrong, in one or two sentences.
+    validations:
+      required: true
+
+  - type: textarea
+    id: version
+    attributes:
+      label: Build identity
+      description: Output of `goreveal version --json`.
+      render: json
+    validations:
+      required: true
+
+  - type: dropdown
+    id: format
+    attributes:
+      label: Binary format
+      options:
+        - ELF (Linux)
+        - PE (Windows)
+        - Mach-O (macOS)
+        - Unknown or other
+    validations:
+      required: true
+
+  - type: input
+    id: platform
+    attributes:
+      label: Target GOOS/GOARCH of the analyzed binary
+      placeholder: linux/amd64
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: artifact_traits
+    attributes:
+      label: Artifact characteristics
+      description: Check everything that applies to the binary being analyzed.
+      options:
+        - label: Stripped (no symbol table)
+        - label: Built with `-trimpath`
+        - label: Obfuscated with `garble`
+        - label: Obfuscated with another tool (name it below)
+        - label: Statically linked
+        - label: CGO enabled
+        - label: None of the above / plain `go build`
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Reproduction
+      description: |
+        The exact command and its output. Redact anything sensitive.
+
+        Do not attach binaries you are not authorized to share — describe the
+        sample or build an equivalent reproducer instead. See
+        `corpus/fixtures/` for the shape we can act on.
+      render: console
+      placeholder: |
+        $ goreveal inspect functions ./sample
+        ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What should have happened, and what makes you confident of that.
+    validations:
+      required: true
+
+  - type: textarea
+    id: baseline
+    attributes:
+      label: Reference tool comparison
+      description: |
+        Optional but very helpful. If `gore`, `redress`, or `GoReSym` produce
+        something different, show it.
+      render: console
+
+  - type: input
+    id: environment
+    attributes:
+      label: Host environment
+      description: >-
+        OS, architecture, and how you ran GoREveal (release binary,
+        `go install`, or container).
+      placeholder: Fedora 43 x86_64, release binary v0.1.0
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched existing issues for a duplicate
+          required: true
+        - label: This is not a security vulnerability
+          required: true
+        - label: I have not attached any binary I lack authorization to share
+          required: true

@@ -1,0 +1,88 @@
+---
+version: 2
+
+updates:
+  # --- Go modules -------------------------------------------------------------
+  - package-ecosystem: gomod
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "05:00"
+      timezone: Etc/UTC
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+      - go
+    commit-message:
+      prefix: "build(deps)"
+      prefix-development: "build(deps-dev)"
+    groups:
+      go-minor-and-patch:
+        applies-to: version-updates
+        update-types:
+          - minor
+          - patch
+      go-security:
+        applies-to: security-updates
+        patterns:
+          - "*"
+
+  # --- GitHub Actions ---------------------------------------------------------
+  # All actions are SHA-pinned; Dependabot updates the pin and the trailing
+  # version comment together.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "05:00"
+      timezone: Etc/UTC
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+      - ci
+    commit-message:
+      prefix: "ci(deps)"
+    groups:
+      actions-all:
+        patterns:
+          - "*"
+
+  # --- Python (uv) ------------------------------------------------------------
+  - package-ecosystem: uv
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "05:00"
+      timezone: Etc/UTC
+    open-pull-requests-limit: 3
+    labels:
+      - dependencies
+      - python
+    commit-message:
+      prefix: "build(deps)"
+      prefix-development: "build(deps-dev)"
+    groups:
+      python-all:
+        patterns:
+          - "*"
+
+  # --- Container base images --------------------------------------------------
+  # Base images are digest-pinned in the Containerfiles; Dependabot keeps the
+  # digests current.
+  - package-ecosystem: docker
+    directories:
+      - /deployments/docker
+    schedule:
+      interval: weekly
+      day: monday
+      time: "05:00"
+      timezone: Etc/UTC
+    open-pull-requests-limit: 3
+    labels:
+      - dependencies
+      - container
+    commit-message:
+      prefix: "build(deps)"

@@ -1,0 +1,36 @@
+GoREveal
+Copyright 2026 The GoREveal Authors
+
+This product includes software developed at ioplane (https://github.com/ioplane).
+
+Licensed under the Apache License, Version 2.0 (the "License"); you may not use
+this file except in compliance with the License. You may obtain a copy of the
+License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software distributed
+under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
+CONDITIONS OF ANY KIND, either express or implied. See the License for the
+specific language governing permissions and limitations under the License.
+
+--------------------------------------------------------------------------------
+Clean-room notice
+--------------------------------------------------------------------------------
+
+GoREveal is a clean-room implementation. It studies the observable behavior of
+prior art in the Go binary reverse-engineering space -- including gore, redress,
+GoReSym, GoResolver, gostringungarbler, and AlphaGolang -- and converts that
+study into documented findings, corpus fixtures, and differential tests.
+
+No implementation code from those projects is copied, translated, or derived
+into this repository. See CONTRIBUTING.md for the clean-room contribution rules
+that enforce this boundary.
+
+--------------------------------------------------------------------------------
+Third-party dependencies
+--------------------------------------------------------------------------------
+
+Runtime dependencies and their licenses are enumerated in the Software Bill of
+Materials (SBOM) published with every release. See docs/RELEASE.md for how to
+retrieve and verify it.

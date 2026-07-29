@@ -1,8 +1,23 @@
+---
+title: "Methodology: Go Binary Reverse Engineering with goreveal + idacli + IDA"
+status: draft
+date: 2026-07-22
+owners:
+  - ioplane/goreveal-maintainers
+tags:
+  - methodology
+  - ida
+  - workflow
+---
+
 # Methodology: Go Binary Reverse Engineering with goreveal + idacli + IDA
 
-**Date:** 2026-07-22
-**Status:** proposal
-**Authors:** infra4 RE team
+<img
+  src="https://shieldcn.dev/badge/status-draft-slate.svg?variant=outline&size=xs"
+  alt="status: draft" height="20">
+<img
+  src="https://shieldcn.dev/badge/docs-architecture-slate.svg?variant=outline&size=xs"
+  alt="docs: architecture" height="20">
 
 ## Problem
 
@@ -18,6 +33,7 @@ IDA Pro's auto-analysis fails on large stripped Go binaries because:
    Hex-Rays can't build valid control flow graph
 
 Observed in Teleport 18.10.0 (410MB, 458K functions):
+
 - IDA identified 248K functions (54% of actual) via auto-analysis
 - goreveal identified all 458K functions from pclntab
 - Hex-Rays decompiled only 2 of 9 key license functions
@@ -28,7 +44,7 @@ Observed in Teleport 18.10.0 (410MB, 458K functions):
 
 ### Architecture
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────────────┐
 │  PHASE 1: GOREVEAL (Go-native, pclntab ground truth)               │
 │                                                                     │
@@ -93,7 +109,7 @@ Observed in Teleport 18.10.0 (410MB, 458K functions):
 ### Why this works
 
 | Problem | IDA alone | goreveal + idacli |
-|---|---|---|
+| --- | --- | --- |
 | Function boundaries | Heuristic (wrong for Go) | pclntab (authoritative) |
 | Function names | Missing (stripped) | pclntab (all 458K names) |
 | Function count | 248K (54%) | 458K (100%) |
@@ -150,6 +166,7 @@ class task_import_goreveal : public task_base {
 ```
 
 Implementation:
+
 ```cpp
 // For each function in goreveal export:
 for (const auto& fn : export_data["functions"]) {
@@ -187,6 +204,7 @@ for (const auto& fn : export_data["functions"]) {
 #### Task 3: Pipeline orchestration
 
 Single command:
+
 ```bash
 # Full Go binary RE pipeline
 goreveal analyze binary && \
@@ -197,6 +215,7 @@ idat -A -S'-OIDACli:task=decompile,targets=@targets.txt,output=decompiled.jsonl'
 ```
 
 Or as idacli multi-task pipeline:
+
 ```bash
 idat -A -S'-OIDACli:task=import-goreveal+decompile,input=goreveal-export.json,targets=@targets.txt' binary.i64
 ```
@@ -204,6 +223,7 @@ idat -A -S'-OIDACli:task=import-goreveal+decompile,input=goreveal-export.json,ta
 #### Task 4: goreveal diff capability
 
 Add `goreveal diff` to compare two goreveal analyses:
+
 ```bash
 goreveal diff sqlite db1.db db2.db
 # Shows: functions added/removed/changed, types changed, strings changed
@@ -223,7 +243,7 @@ This enables version comparison (18.7.2 vs 18.10.0) without IDA.
 ### Alternative approaches considered
 
 | Approach | Pros | Cons | Verdict |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | **goreveal + idacli** (proposed) | Go-native, pclntab truth, integrates with existing tools | Requires new idacli task | ✅ Recommended |
 | IDA Go plugin (golang.so) | Built into IDA | Incomplete, may not load in batch mode | Insufficient |
 | AlphaGolang plugin | Better Go support | Third-party, may not work in batch | Supplementary |
@@ -233,10 +253,9 @@ This enables version comparison (18.7.2 vs 18.10.0) without IDA.
 ### Sprint plan
 
 | Sprint | Tasks | Deliverable |
-|---|---|---|
+| --- | --- | --- |
 | Sprint A | goreveal: add prologue detection to export | Enhanced IDAExport with Go metadata |
 | Sprint B | idacli: implement import-goreveal task | New task that fixes function boundaries |
 | Sprint C | idacli: pipeline orchestration | Single-command Go RE workflow |
 | Sprint D | goreveal: diff capability | Version comparison without IDA |
 | Sprint E | Validation on Teleport 18.10.0 | 9/9 license functions decompiled |
-

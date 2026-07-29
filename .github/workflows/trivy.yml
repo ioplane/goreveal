@@ -1,0 +1,209 @@
+---
+name: Trivy
+
+# yamllint disable-line rule:truthy
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+  schedule:
+    # Daily: the vulnerability database moves faster than the code does.
+    - cron: "48 3 * * *"
+  workflow_dispatch: {}
+
+permissions: {}
+
+concurrency:
+  group: trivy-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  TRIVY_VERSION: v0.72.0
+  # Trivy pulls its DB from ghcr.io; authenticating with the workflow token
+  # avoids anonymous-pull rate limiting.
+  TRIVY_DB_REPOSITORY: ghcr.io/aquasecurity/trivy-db:2
+  TRIVY_JAVA_DB_REPOSITORY: ghcr.io/aquasecurity/trivy-java-db:1
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Dependency and configuration vulnerabilities across the whole repository.
+  # ---------------------------------------------------------------------------
+  vulnerabilities:
+    name: Vulnerability scan
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      contents: read
+      actions: read
+      packages: read
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: audit
+
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Trivy filesystem scan (SARIF)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        env:
+          TRIVY_DB_REPOSITORY: ${{ env.TRIVY_DB_REPOSITORY }}
+          TRIVY_JAVA_DB_REPOSITORY: ${{ env.TRIVY_JAVA_DB_REPOSITORY }}
+        with:
+          scan-type: fs
+          scan-ref: .
+          scanners: vuln,misconfig,license
+          format: sarif
+          output: trivy-vuln.sarif
+          severity: MEDIUM,HIGH,CRITICAL
+          ignore-unfixed: true
+          trivyignores: .trivyignore
+          version: ${{ env.TRIVY_VERSION }}
+          # Report-only here; the gate below is what fails the build.
+          exit-code: "0"
+          skip-dirs: docs/.local,corpus,.tmp
+
+      - name: Upload SARIF to code scanning
+        if: always() && hashFiles('trivy-vuln.sarif') != ''
+        uses: github/codeql-action/upload-sarif@e4fba868fa4b1b91e1fdab776edc8cfbe6e9fb81 # v4
+        with:
+          sarif_file: trivy-vuln.sarif
+          category: trivy-vulnerabilities
+
+      # Separate gating pass so the dashboard keeps the full MEDIUM+ picture
+      # while CI only blocks on HIGH and CRITICAL with an available fix.
+      - name: Fail on fixable high or critical findings
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        env:
+          TRIVY_DB_REPOSITORY: ${{ env.TRIVY_DB_REPOSITORY }}
+          TRIVY_JAVA_DB_REPOSITORY: ${{ env.TRIVY_JAVA_DB_REPOSITORY }}
+        with:
+          scan-type: fs
+          scan-ref: .
+          scanners: vuln
+          format: table
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          trivyignores: .trivyignore
+          version: ${{ env.TRIVY_VERSION }}
+          exit-code: "1"
+          skip-dirs: docs/.local,corpus,.tmp
+
+  # ---------------------------------------------------------------------------
+  # Secret scanning. Any hit fails immediately -- a committed credential is not
+  # something to triage later.
+  # ---------------------------------------------------------------------------
+  secrets:
+    name: Secret scan
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      contents: read
+      actions: read
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: audit
+
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Trivy secret scan (SARIF)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          scanners: secret
+          format: sarif
+          output: trivy-secrets.sarif
+          version: ${{ env.TRIVY_VERSION }}
+          exit-code: "0"
+          skip-dirs: docs/.local,.tmp
+
+      - name: Upload SARIF to code scanning
+        if: always() && hashFiles('trivy-secrets.sarif') != ''
+        uses: github/codeql-action/upload-sarif@e4fba868fa4b1b91e1fdab776edc8cfbe6e9fb81 # v4
+        with:
+          sarif_file: trivy-secrets.sarif
+          category: trivy-secrets
+
+      - name: Fail on any detected secret
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          scanners: secret
+          format: table
+          version: ${{ env.TRIVY_VERSION }}
+          exit-code: "1"
+          skip-dirs: docs/.local,.tmp
+
+  # ---------------------------------------------------------------------------
+  # Container images. Built here rather than pulled so pull requests scan what
+  # they would actually publish.
+  # ---------------------------------------------------------------------------
+  image:
+    name: Image scan
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      contents: read
+      actions: read
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: audit
+
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+
+      - name: Build the release image
+        run: |
+          docker buildx build \
+            --file deployments/docker/Containerfile.builder \
+            --target export \
+            --output type=local,dest=./scan-out \
+            .
+          cp ./scan-out/goreveal ./goreveal
+          docker buildx build \
+            --file deployments/docker/Containerfile.release \
+            --tag goreveal:scan \
+            --load \
+            .
+
+      - name: Trivy image scan (SARIF)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        env:
+          TRIVY_DB_REPOSITORY: ${{ env.TRIVY_DB_REPOSITORY }}
+        with:
+          scan-type: image
+          image-ref: goreveal:scan
+          scanners: vuln,secret
+          format: sarif
+          output: trivy-image.sarif
+          severity: MEDIUM,HIGH,CRITICAL
+          ignore-unfixed: true
+          version: ${{ env.TRIVY_VERSION }}
+          exit-code: "0"
+
+      - name: Upload SARIF to code scanning
+        if: always() && hashFiles('trivy-image.sarif') != ''
+        uses: github/codeql-action/upload-sarif@e4fba868fa4b1b91e1fdab776edc8cfbe6e9fb81 # v4
+        with:
+          sarif_file: trivy-image.sarif
+          category: trivy-image

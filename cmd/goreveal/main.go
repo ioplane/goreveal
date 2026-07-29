@@ -2,12 +2,15 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"strconv"
 
-	internalcmd "github.com/dantte-lp/goreveal/cmd/goreveal/internal"
+	internalcmd "github.com/ioplane/goreveal/cmd/goreveal/internal"
+	"github.com/ioplane/goreveal/internal/version"
 )
 
 func main() {
@@ -18,6 +21,20 @@ func main() {
 }
 
 func run(ctx context.Context, args []string) error {
+	// Zero-argument and single-argument commands are handled before the arity
+	// guard below, which exists for the binary-taking subcommands.
+	if len(args) == 0 {
+		return errUsageRoot()
+	}
+
+	switch args[0] {
+	case "version", "--version", "-v":
+		return runVersionCmd(os.Stdout, args)
+	case "help", "--help", "-h":
+		fmt.Fprintln(os.Stdout, usageRoot())
+		return nil
+	}
+
 	if len(args) < 2 {
 		return errUsageRoot()
 	}
@@ -40,6 +57,22 @@ func run(ctx context.Context, args []string) error {
 	default:
 		return errUsageRoot()
 	}
+}
+
+func runVersionCmd(out io.Writer, args []string) error {
+	info := version.Get()
+
+	if len(args) > 1 {
+		if args[1] != "--json" {
+			return errors.New("usage: goreveal version [--json]")
+		}
+		encoder := json.NewEncoder(out)
+		encoder.SetIndent("", "  ")
+		return encoder.Encode(info)
+	}
+
+	_, err := fmt.Fprintln(out, info)
+	return err
 }
 
 func runAnalyzeCmd(ctx context.Context, args []string) error {
@@ -120,54 +153,77 @@ func runExportCmd(ctx context.Context, args []string) error {
 	}
 }
 
+// diffRunner projects a stored-run comparison to out.
+type diffRunner func(ctx context.Context, out io.Writer, database string, leftID, rightID int64) error
+
+// diffTarget is the trailing operand triple shared by every diff subcommand:
+// a database path and the two stored run IDs to compare.
+type diffTarget struct {
+	database string
+	leftID   int64
+	rightID  int64
+}
+
+// parseDiffTarget consumes exactly three operands. Taking a fixed-size array
+// rather than a slice makes the bounds provable at the call site, so neither the
+// reader nor a static analyzer has to correlate a length guard with the indices.
+func parseDiffTarget(operands [3]string) (diffTarget, error) {
+	leftID, err := strconv.ParseInt(operands[1], 10, 64)
+	if err != nil {
+		return diffTarget{}, fmt.Errorf("parse left id %q: %w", operands[1], err)
+	}
+	rightID, err := strconv.ParseInt(operands[2], 10, 64)
+	if err != nil {
+		return diffTarget{}, fmt.Errorf("parse right id %q: %w", operands[2], err)
+	}
+	return diffTarget{database: operands[0], leftID: leftID, rightID: rightID}, nil
+}
+
+// diffProjections maps each `diff <projection> sqlite …` subcommand onto its
+// runner. The bare `diff sqlite …` form is handled separately because it has no
+// projection word.
+var diffProjections = map[string]diffRunner{
+	"review":  internalcmd.RunDiffReviewSQLite,
+	"handoff": internalcmd.RunDiffHandoffSQLite,
+	"next":    internalcmd.RunDiffNextSQLite,
+}
+
 func runDiffCmd(ctx context.Context, args []string) error {
+	// goreveal diff sqlite <database> <left-id> <right-id>
+	//
+	//nolint:gosec // G602 false positive: every index is guarded by the len check
 	if len(args) == 5 && args[1] == "sqlite" {
-		leftID, err := strconv.ParseInt(args[3], 10, 64)
+		target, err := parseDiffTarget([3]string{args[2], args[3], args[4]})
 		if err != nil {
-			return fmt.Errorf("parse left id %q: %w", args[3], err)
+			return err
 		}
-		rightID, err := strconv.ParseInt(args[4], 10, 64)
-		if err != nil {
-			return fmt.Errorf("parse right id %q: %w", args[4], err)
-		}
-		return internalcmd.RunDiffSQLite(ctx, os.Stdout, args[2], leftID, rightID)
+		return internalcmd.RunDiffSQLite(ctx, os.Stdout, target.database, target.leftID, target.rightID)
 	}
-	if len(args) == 6 && args[1] == "review" && args[2] == "sqlite" {
-		leftID, err := strconv.ParseInt(args[4], 10, 64)
-		if err != nil {
-			return fmt.Errorf("parse left id %q: %w", args[4], err)
+
+	// goreveal diff <review|handoff|next> sqlite <database> <left-id> <right-id>
+	//
+	//nolint:gosec // G602 false positive: every index is guarded by the len check
+	if len(args) == 6 && args[2] == "sqlite" {
+		if run, ok := diffProjections[args[1]]; ok {
+			target, err := parseDiffTarget([3]string{args[3], args[4], args[5]})
+			if err != nil {
+				return err
+			}
+			return run(ctx, os.Stdout, target.database, target.leftID, target.rightID)
 		}
-		rightID, err := strconv.ParseInt(args[5], 10, 64)
-		if err != nil {
-			return fmt.Errorf("parse right id %q: %w", args[5], err)
-		}
-		return internalcmd.RunDiffReviewSQLite(ctx, os.Stdout, args[3], leftID, rightID)
 	}
-	if len(args) == 6 && args[1] == "handoff" && args[2] == "sqlite" {
-		leftID, err := strconv.ParseInt(args[4], 10, 64)
-		if err != nil {
-			return fmt.Errorf("parse left id %q: %w", args[4], err)
-		}
-		rightID, err := strconv.ParseInt(args[5], 10, 64)
-		if err != nil {
-			return fmt.Errorf("parse right id %q: %w", args[5], err)
-		}
-		return internalcmd.RunDiffHandoffSQLite(ctx, os.Stdout, args[3], leftID, rightID)
-	}
-	if len(args) == 6 && args[1] == "next" && args[2] == "sqlite" {
-		leftID, err := strconv.ParseInt(args[4], 10, 64)
-		if err != nil {
-			return fmt.Errorf("parse left id %q: %w", args[4], err)
-		}
-		rightID, err := strconv.ParseInt(args[5], 10, 64)
-		if err != nil {
-			return fmt.Errorf("parse right id %q: %w", args[5], err)
-		}
-		return internalcmd.RunDiffNextSQLite(ctx, os.Stdout, args[3], leftID, rightID)
-	}
+
+	return errUsageDiff()
+}
+
+func errUsageDiff() error {
 	return errors.New("usage: goreveal diff sqlite <database> <left-id> <right-id> | goreveal diff review sqlite <database> <left-id> <right-id> | goreveal diff handoff sqlite <database> <left-id> <right-id> | goreveal diff next sqlite <database> <left-id> <right-id>")
 }
 
+func usageRoot() string {
+	return "usage: goreveal analyze <binary> | goreveal inspect <functions|packages|types|strings|runtime|peeling> <binary> | goreveal peel <binary> | goreveal source-tree <binary> | goreveal deobfuscate <binary> | goreveal export <sqlite|ida|ghidra> [args] | goreveal diff sqlite <database> <left-id> <right-id> | goreveal diff review sqlite <database> <left-id> <right-id> | goreveal diff handoff sqlite <database> <left-id> <right-id> | goreveal diff next sqlite <database> <left-id> <right-id> | goreveal version [--json] | goreveal help"
+}
+
 func errUsageRoot() error {
-	return errors.New("usage: goreveal analyze <binary> | goreveal inspect <functions|packages|types|strings|runtime|peeling> <binary> | goreveal peel <binary> | goreveal source-tree <binary> | goreveal deobfuscate <binary> | goreveal export <sqlite|ida|ghidra> [args] | goreveal diff sqlite <database> <left-id> <right-id> | goreveal diff review sqlite <database> <left-id> <right-id> | goreveal diff handoff sqlite <database> <left-id> <right-id> | goreveal diff next sqlite <database> <left-id> <right-id>")
+	return errors.New(usageRoot())
 }
