@@ -28,6 +28,35 @@ Per-release artifact notes, checksums, SBOMs, and signature verification steps
 live with each [GitHub Release](https://github.com/ioplane/goreveal/releases) and
 are described in [docs/RELEASE.md](docs/RELEASE.md).
 
+## [0.1.0](https://github.com/ioplane/goreveal/compare/v0.1.0...v0.1.0) (2026-07-30)
+
+
+### Features
+
+* prepare repository for public enterprise release ([5fcddfc](https://github.com/ioplane/goreveal/commit/5fcddfc2ae900a7a400619c202b3ee945fb50053))
+
+
+### Bug fixes
+
+* **ci:** skip the conventional-title check for bot-authored pull requests ([372c970](https://github.com/ioplane/goreveal/commit/372c97095940682c0d7335537e831390d90642d8))
+* **release:** ignore the Blacksmith buildkitd.toml so goreleaser sees a clean tree ([701ffb9](https://github.com/ioplane/goreveal/commit/701ffb9afb181c7ed815439c64199b0dc0d53240))
+* **sonar:** run analysis instead of always skipping, refresh README badges ([3c7541e](https://github.com/ioplane/goreveal/commit/3c7541e6bc8bd80a2920e34bea1810d00c243e0b))
+
+
+### Documentation
+
+* align readme with gore-docs standard ([a2e05a2](https://github.com/ioplane/goreveal/commit/a2e05a2ed3fbb9047cf70b5f209c6bfc5c135003))
+* **architecture:** note on Go pclntab-guided disassembler enrichment ([b82f091](https://github.com/ioplane/goreveal/commit/b82f091a4fd5d142d72f6a9cc84f843e8176c017))
+* **readme:** keep OpenSSF Scorecard badge, drop the not-yet-computed Sonar gate ([c4f4954](https://github.com/ioplane/goreveal/commit/c4f4954db2e7ef127147319bfaccdddbf19669de))
+* **readme:** unify OpenSSF badge style, enlarge badges, shrink header logo ([7fc88e6](https://github.com/ioplane/goreveal/commit/7fc88e64bdd7884b38097eb57f947da4babbf0ca))
+* rename architecture docs to an ADR-numbered scheme, trim README ([e1e344f](https://github.com/ioplane/goreveal/commit/e1e344fba121371a4ef41e7ff136f60410da398a))
+
+
+### Chores
+
+* re-cut the 0.1.0 release on fixed main ([a410f3f](https://github.com/ioplane/goreveal/commit/a410f3f1a4c824a0b36d7db0451445d0d3bdd8bf))
+* set the first release version to 0.1.0 ([37f9758](https://github.com/ioplane/goreveal/commit/37f9758d56b970f6763951454fb18748fce9bc82))
+
 ## 0.1.0 (2026-07-30)
 
 
