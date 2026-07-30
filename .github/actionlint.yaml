@@ -1,0 +1,8 @@
+---
+# actionlint validates `runs-on:` against GitHub's hosted runner labels and
+# rejects anything else as unknown. Blacksmith runner labels are declared here
+# so the workflow linter accepts them.
+self-hosted-runner:
+  labels:
+    - blacksmith-4vcpu-ubuntu-2404
+    - blacksmith-4vcpu-windows-2025
