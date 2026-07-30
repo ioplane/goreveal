@@ -13,27 +13,31 @@
   <a href="https://github.com/ioplane/goreveal/actions/workflows/ci.yml">
     <img
       src="https://shieldcn.dev/github/ci/ioplane/goreveal.svg?variant=secondary&amp;size=sm&amp;workflow=CI&amp;branch=main"
-      alt="CI status" height="22"></a>
-  <a href="https://github.com/ioplane/goreveal/releases/latest">
+      alt="CI status" height="20"></a>
+  <a href="https://sonarcloud.io/summary/new_code?id=ioplane_goreveal">
     <img
-      src="https://shieldcn.dev/github/release/ioplane/goreveal.svg?variant=secondary&amp;size=sm"
-      alt="Latest release" height="22"></a>
-  <a href="https://github.com/ioplane/goreveal/blob/main/LICENSE">
+      src="https://sonarcloud.io/api/project_badges/measure?project=ioplane_goreveal&amp;metric=alert_status"
+      alt="Quality gate status" height="20"></a>
+  <a href="https://scorecard.dev/viewer/?uri=github.com/ioplane/goreveal">
     <img
-      src="https://shieldcn.dev/github/license/ioplane/goreveal.svg?variant=secondary&amp;size=sm"
-      alt="License" height="22"></a>
+      src="https://api.scorecard.dev/projects/github.com/ioplane/goreveal/badge"
+      alt="OpenSSF Scorecard" height="20"></a>
   <a href="https://go.dev/dl/">
     <img
       src="https://shieldcn.dev/badge/Go-1.26-secondary.svg?variant=secondary&amp;size=sm&amp;logo=go"
-      alt="Go 1.26" height="22"></a>
+      alt="Go 1.26" height="20"></a>
+  <a href="https://github.com/ioplane/goreveal/blob/main/LICENSE">
+    <img
+      src="https://shieldcn.dev/github/license/ioplane/goreveal.svg?variant=secondary&amp;size=sm"
+      alt="License" height="20"></a>
+  <a href="https://github.com/ioplane/goreveal/releases/latest">
+    <img
+      src="https://shieldcn.dev/github/release/ioplane/goreveal.svg?variant=secondary&amp;size=sm"
+      alt="Latest release" height="20"></a>
   <a href="https://github.com/ioplane/goreveal/blob/main/docs/RELEASE.md">
     <img
       src="https://shieldcn.dev/badge/SLSA-Build%20L2-secondary.svg?variant=secondary&amp;size=sm"
-      alt="SLSA Build Level 2" height="22"></a>
-  <a href="https://github.com/ioplane/goreveal/blob/main/docs/RELEASE.md">
-    <img
-      src="https://shieldcn.dev/badge/SBOM-SPDX-secondary.svg?variant=secondary&amp;size=sm"
-      alt="SPDX SBOM" height="22"></a>
+      alt="SLSA Build Level 2" height="20"></a>
 </p>
 
 </div>

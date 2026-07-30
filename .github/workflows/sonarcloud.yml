@@ -55,7 +55,9 @@ jobs:
             echo "::notice::SONAR_TOKEN unavailable (absent secret or fork PR); skipping."
             exit 0
           fi
-          if grep -qE '^sonar\.(organization|projectKey)=(TODO|)' sonar-project.properties; then
+          # Matches a key left empty or still set to TODO, not a real value.
+          placeholder='^sonar\.(organization|projectKey)=[[:space:]]*(TODO)?[[:space:]]*$'
+          if grep -qE "$placeholder" sonar-project.properties; then
             echo "configured=false" >>"${GITHUB_OUTPUT}"
             echo "::warning::sonar-project.properties holds TODO keys; see docs/RELEASE.md."
             exit 0
