@@ -6,6 +6,7 @@
     srcset="https://shieldcn.dev/header/graph.svg?title=GoREveal&amp;subtitle=Clean-room+reverse+engineering+for+Go+binaries&amp;logo=go&amp;align=center&amp;mode=dark&amp;theme=slate"/>
   <img
     alt="GoREveal"
+    width="560"
     src="https://shieldcn.dev/header/graph.svg?title=GoREveal&amp;subtitle=Clean-room+reverse+engineering+for+Go+binaries&amp;logo=go&amp;align=center&amp;mode=light&amp;theme=slate"/>
 </picture>
 
@@ -13,27 +14,27 @@
   <a href="https://github.com/ioplane/goreveal/actions/workflows/ci.yml">
     <img
       src="https://shieldcn.dev/github/ci/ioplane/goreveal.svg?variant=secondary&amp;size=sm&amp;workflow=CI&amp;branch=main"
-      alt="CI status" height="20"></a>
+      alt="CI status" height="24"></a>
   <a href="https://scorecard.dev/viewer/?uri=github.com/ioplane/goreveal">
     <img
-      src="https://api.scorecard.dev/projects/github.com/ioplane/goreveal/badge"
-      alt="OpenSSF Scorecard" height="20"></a>
+      src="https://shieldcn.dev/badge/OpenSSF%20Scorecard-7.2-secondary.svg?variant=secondary&amp;size=sm"
+      alt="OpenSSF Scorecard" height="24"></a>
   <a href="https://go.dev/dl/">
     <img
       src="https://shieldcn.dev/badge/Go-1.26-secondary.svg?variant=secondary&amp;size=sm&amp;logo=go"
-      alt="Go 1.26" height="20"></a>
+      alt="Go 1.26" height="24"></a>
   <a href="https://github.com/ioplane/goreveal/blob/main/LICENSE">
     <img
       src="https://shieldcn.dev/github/license/ioplane/goreveal.svg?variant=secondary&amp;size=sm"
-      alt="License" height="20"></a>
+      alt="License" height="24"></a>
   <a href="https://github.com/ioplane/goreveal/releases/latest">
     <img
       src="https://shieldcn.dev/github/release/ioplane/goreveal.svg?variant=secondary&amp;size=sm"
-      alt="Latest release" height="20"></a>
+      alt="Latest release" height="24"></a>
   <a href="https://github.com/ioplane/goreveal/blob/main/docs/RELEASE.md">
     <img
       src="https://shieldcn.dev/badge/SLSA-Build%20L2-secondary.svg?variant=secondary&amp;size=sm"
-      alt="SLSA Build Level 2" height="20"></a>
+      alt="SLSA Build Level 2" height="24"></a>
 </p>
 
 </div>
