@@ -172,6 +172,11 @@ dockers_v2:
       org.opencontainers.image.licenses: Apache-2.0
 
 changelog:
+  # release-please owns CHANGELOG.md and the GitHub Release notes (generated from
+  # Conventional Commits). GoReleaser only attaches artifacts to that release
+  # (release.mode: append) and appends the verification footer, so it must not
+  # generate a second, duplicate changelog here.
+  disable: true
   sort: asc
   use: github
   filters:

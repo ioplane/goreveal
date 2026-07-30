@@ -1,0 +1,38 @@
+---
+name: release-please
+
+# yamllint disable-line rule:truthy
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch: {}
+
+permissions: {}
+
+concurrency:
+  group: release-please-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  # release-please reads the Conventional Commits merged into main and keeps an
+  # open "release PR" that maintains CHANGELOG.md (Keep a Changelog) and the
+  # SemVer bump. Merging that PR tags `vX.Y.Z`, which triggers release.yml to
+  # build and attach the signed artifacts. The changelog is never edited by hand.
+  release-please:
+    name: Maintain release PR
+    runs-on: blacksmith-4vcpu-ubuntu-2404
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: audit
+
+      - name: Run release-please
+        uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
