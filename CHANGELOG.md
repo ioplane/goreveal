@@ -28,6 +28,13 @@ Per-release artifact notes, checksums, SBOMs, and signature verification steps
 live with each [GitHub Release](https://github.com/ioplane/goreveal/releases) and
 are described in [docs/RELEASE.md](docs/RELEASE.md).
 
+## [0.1.2](https://github.com/ioplane/goreveal/compare/v0.1.1...v0.1.2) (2026-07-30)
+
+
+### Bug fixes
+
+* **release:** pin cosign to v2 so sign-blob keeps the .sig/.pem format ([331aab1](https://github.com/ioplane/goreveal/commit/331aab14c79995d3b7807a08f56114132b6b6908))
+
 ## [0.1.1](https://github.com/ioplane/goreveal/compare/v0.1.0...v0.1.1) (2026-07-30)
 
 
