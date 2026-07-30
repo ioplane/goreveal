@@ -13,7 +13,7 @@
 <p>
   <a href="https://github.com/ioplane/goreveal/actions/workflows/ci.yml">
     <img
-      src="https://shieldcn.dev/github/ci/ioplane/goreveal.svg?variant=secondary&amp;size=sm&amp;workflow=CI&amp;branch=main"
+      src="https://shieldcn.dev/github/ci/ioplane/goreveal.svg?variant=secondary&amp;size=sm&amp;workflow=ci.yml&amp;branch=main"
       alt="CI status" height="24"></a>
   <a href="https://scorecard.dev/viewer/?uri=github.com/ioplane/goreveal">
     <img
