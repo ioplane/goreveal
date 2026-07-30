@@ -46,8 +46,8 @@ obfuscated ones — and hands it to your disassembler.**
 
 Go binaries carry rich metadata: a function-to-line table, module data, type
 descriptors, embedded build info. Strip the symbol table and most tools go quiet.
-GoREveal reads what remains, reports exactly how confident it is about each
-claim, and refuses to guess when the evidence is not there.
+GoREveal reads what remains and grades how confident it is about each claim,
+rather than guessing when the evidence is not there.
 
 ```console
 $ goreveal inspect packages ./stripped-service | jq '.[0]'
@@ -160,8 +160,8 @@ goreveal inspect runtime ./target     # module data and pclntab evidence
 goreveal inspect peeling ./target     # user-versus-runtime classification
 ```
 
-`inspect runtime` returns `unavailable` rather than inventing runtime facts when
-the evidence is absent. That is intended behavior, not a failure.
+`inspect runtime` returns `unavailable` when the evidence is absent rather than
+inventing runtime facts.
 
 ### Separate your code from the runtime
 
@@ -309,12 +309,12 @@ image verification and how to reproduce a build, are in
 | Topic | Document |
 | --- | --- |
 | Documentation index | [docs/README.md](docs/README.md) |
-| Platform contract | [docs/architecture/2026-03-19-goreveal-platform-contract.md](docs/architecture/2026-03-19-goreveal-platform-contract.md) |
-| Module map | [docs/architecture/2026-03-19-goreveal-module-map.md](docs/architecture/2026-03-19-goreveal-module-map.md) |
-| Schema principles | [docs/architecture/2026-03-19-goreveal-schema-principles.md](docs/architecture/2026-03-19-goreveal-schema-principles.md) |
-| Claim boundaries | [docs/architecture/2026-03-20-goreveal-semantic-claim-boundaries.md](docs/architecture/2026-03-20-goreveal-semantic-claim-boundaries.md) |
-| Testing strategy | [docs/architecture/2026-03-19-goreveal-testing-strategy.md](docs/architecture/2026-03-19-goreveal-testing-strategy.md) |
-| Go 1.26 engineering guide | [docs/architecture/2026-03-19-goreveal-go126-best-practices.md](docs/architecture/2026-03-19-goreveal-go126-best-practices.md) |
+| Platform contract | [docs/architecture/0001-platform-contract.md](docs/architecture/0001-platform-contract.md) |
+| Module map | [docs/architecture/0002-module-map.md](docs/architecture/0002-module-map.md) |
+| Schema principles | [docs/architecture/0003-schema-principles.md](docs/architecture/0003-schema-principles.md) |
+| Claim boundaries | [docs/architecture/0008-semantic-claim-boundaries.md](docs/architecture/0008-semantic-claim-boundaries.md) |
+| Testing strategy | [docs/architecture/0004-testing-strategy.md](docs/architecture/0004-testing-strategy.md) |
+| Go 1.26 engineering guide | [docs/architecture/0005-go126-best-practices.md](docs/architecture/0005-go126-best-practices.md) |
 | Release and verification | [docs/RELEASE.md](docs/RELEASE.md) |
 | Contributing | [CONTRIBUTING.md](CONTRIBUTING.md) |
 | Security policy | [SECURITY.md](SECURITY.md) |
@@ -381,9 +381,6 @@ Honest assessment of the current capability envelope:
 | Build-to-build diffing | Working, with explained matches and a review queue |
 | IDA and Ghidra adapters | Contract-locked payloads and validating adapters; live host-API binding not implemented |
 | Server mode | Not implemented; deferred by design |
-
-Where a capability is partial, the output says so rather than filling the gap with
-inference.
 
 ## Contributing
 

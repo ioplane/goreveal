@@ -29,5 +29,5 @@ is research. Reproducing its parsing routine, even reworded, is not. If you cann
 describe a finding as observable behavior without referring to how the other
 project's code is organized, you have crossed the line.
 
-See [`docs/architecture/2026-03-19-goreveal-baseline-sources.md`](docs/architecture/2026-03-19-goreveal-baseline-sources.md)
+See [`docs/architecture/0006-baseline-sources.md`](docs/architecture/0006-baseline-sources.md)
 for the reference set and the licensing reason this boundary exists.

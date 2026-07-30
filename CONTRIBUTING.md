@@ -148,7 +148,7 @@ task test-differential
 The directory should contain checkouts named `gore`, `redress`, `GoReSym`,
 `GoResolver`, `gostringungarbler`, and `AlphaGolang`. These are reference-only;
 they are never runtime dependencies. See
-[docs/architecture/2026-03-19-goreveal-baseline-sources.md](docs/architecture/2026-03-19-goreveal-baseline-sources.md).
+[docs/architecture/0006-baseline-sources.md](docs/architecture/0006-baseline-sources.md).
 
 Differential tests are skipped, not failed, when baselines are absent — so CI
 stays green without them.

@@ -25,12 +25,12 @@ Priority order, in this order, always:
 
 ## Required reading before substantial work
 
-- [docs/architecture/2026-03-19-goreveal-platform-contract.md](docs/architecture/2026-03-19-goreveal-platform-contract.md)
-- [docs/architecture/2026-03-19-goreveal-module-map.md](docs/architecture/2026-03-19-goreveal-module-map.md)
-- [docs/architecture/2026-03-19-goreveal-schema-principles.md](docs/architecture/2026-03-19-goreveal-schema-principles.md)
-- [docs/architecture/2026-03-20-goreveal-semantic-claim-boundaries.md](docs/architecture/2026-03-20-goreveal-semantic-claim-boundaries.md)
-- [docs/architecture/2026-03-19-goreveal-go126-best-practices.md](docs/architecture/2026-03-19-goreveal-go126-best-practices.md)
-- [docs/architecture/2026-03-19-goreveal-testing-strategy.md](docs/architecture/2026-03-19-goreveal-testing-strategy.md)
+- [docs/architecture/0001-platform-contract.md](docs/architecture/0001-platform-contract.md)
+- [docs/architecture/0002-module-map.md](docs/architecture/0002-module-map.md)
+- [docs/architecture/0003-schema-principles.md](docs/architecture/0003-schema-principles.md)
+- [docs/architecture/0008-semantic-claim-boundaries.md](docs/architecture/0008-semantic-claim-boundaries.md)
+- [docs/architecture/0005-go126-best-practices.md](docs/architecture/0005-go126-best-practices.md)
+- [docs/architecture/0004-testing-strategy.md](docs/architecture/0004-testing-strategy.md)
 
 ## Hard rule 1: clean-room boundary
 

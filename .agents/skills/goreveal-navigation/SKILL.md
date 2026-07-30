@@ -15,10 +15,10 @@ description: Navigate GoREveal module ownership and claim boundaries before maki
 ## Read First
 
 - `AGENTS.md`
-- `docs/architecture/2026-03-19-goreveal-platform-contract.md`
-- `docs/architecture/2026-03-19-goreveal-module-map.md`
-- `docs/architecture/2026-03-20-goreveal-semantic-claim-boundaries.md`
-- `docs/architecture/2026-03-19-goreveal-schema-principles.md`
+- `docs/architecture/0001-platform-contract.md`
+- `docs/architecture/0002-module-map.md`
+- `docs/architecture/0008-semantic-claim-boundaries.md`
+- `docs/architecture/0003-schema-principles.md`
 - `CONTRIBUTING.md`
 
 ## Workflow

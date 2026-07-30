@@ -79,8 +79,8 @@ It only freezes the baseline stack so future planning can stay consistent.
 
 ## Related Notes
 
-- `docs/architecture/2026-03-19-goreveal-platform-contract.md`
-- `docs/architecture/2026-03-19-goreveal-schema-principles.md`
+- `docs/architecture/0001-platform-contract.md`
+- `docs/architecture/0003-schema-principles.md`
 
 Runtime-mode, storage, and agent-transport exploration that informed this
 decision lives in the maintainers' working notes and is not published.

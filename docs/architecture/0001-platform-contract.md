@@ -379,7 +379,7 @@ Planning order:
 ## 11. Go 1.26 Best Practices and Project Patterns
 
 Go 1.26 best practices are normative for this project and should be documented separately in
-`docs/architecture/2026-03-19-goreveal-go126-best-practices.md`.
+`docs/architecture/0005-go126-best-practices.md`.
 
 High-level policy:
 

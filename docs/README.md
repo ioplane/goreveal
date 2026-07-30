@@ -24,13 +24,13 @@ Start here to find the right document.
 | --- | --- |
 | Install and run the tool | [README](../README.md) |
 | Verify a downloaded release | [RELEASE.md — Verifying a release](RELEASE.md#verifying-a-release) |
-| Understand what GoREveal promises and refuses to promise | [Platform contract](architecture/2026-03-19-goreveal-platform-contract.md) |
-| Know which package owns what | [Module map](architecture/2026-03-19-goreveal-module-map.md) |
-| Change the output shape | [Schema principles](architecture/2026-03-19-goreveal-schema-principles.md) |
-| Know what a recovered field is allowed to claim | [Semantic claim boundaries](architecture/2026-03-20-goreveal-semantic-claim-boundaries.md) |
-| Add a test or a fixture | [Testing strategy](architecture/2026-03-19-goreveal-testing-strategy.md) |
-| Write Go that fits this codebase | [Go 1.26 practices](architecture/2026-03-19-goreveal-go126-best-practices.md) |
-| Compare against a reference tool | [Baseline sources](architecture/2026-03-19-goreveal-baseline-sources.md) · [Differential notes](architecture/2026-03-19-goreveal-differential-v1-notes.md) |
+| Understand what GoREveal promises and refuses to promise | [Platform contract](architecture/0001-platform-contract.md) |
+| Know which package owns what | [Module map](architecture/0002-module-map.md) |
+| Change the output shape | [Schema principles](architecture/0003-schema-principles.md) |
+| Know what a recovered field is allowed to claim | [Semantic claim boundaries](architecture/0008-semantic-claim-boundaries.md) |
+| Add a test or a fixture | [Testing strategy](architecture/0004-testing-strategy.md) |
+| Write Go that fits this codebase | [Go 1.26 practices](architecture/0005-go126-best-practices.md) |
+| Compare against a reference tool | [Baseline sources](architecture/0006-baseline-sources.md) · [Differential notes](architecture/0007-differential-validation-notes.md) |
 | Cut a release | [RELEASE.md — Cutting a release](RELEASE.md#cutting-a-release) |
 | Contribute a change | [CONTRIBUTING.md](../CONTRIBUTING.md) |
 | Report a vulnerability | [SECURITY.md](../SECURITY.md) |
@@ -42,15 +42,15 @@ document marked `draft` records a direction, not a commitment.
 
 | Document | What it settles |
 | --- | --- |
-| [Platform contract](architecture/2026-03-19-goreveal-platform-contract.md) | Product scope, architecture decisions, and the boundaries the project holds itself to |
-| [Module map](architecture/2026-03-19-goreveal-module-map.md) | Package ownership and the dependency direction between layers |
-| [Schema principles](architecture/2026-03-19-goreveal-schema-principles.md) | How the canonical contract is shaped, versioned, and extended |
-| [Semantic claim boundaries](architecture/2026-03-20-goreveal-semantic-claim-boundaries.md) | Exactly what a recovered field may assert, and what it may not |
-| [Testing strategy](architecture/2026-03-19-goreveal-testing-strategy.md) | Fixtures, golden snapshots, differential comparison, fuzzing, benchmarks |
-| [Go 1.26 practices](architecture/2026-03-19-goreveal-go126-best-practices.md) | Implementation patterns, anti-patterns, and the performance policy |
-| [Baseline sources](architecture/2026-03-19-goreveal-baseline-sources.md) | The reference tool set and the clean-room rules governing its use |
-| [Differential validation notes](architecture/2026-03-19-goreveal-differential-v1-notes.md) | What the current differential suite actually compares |
-| [Server stack decision](architecture/2026-03-31-goreveal-server-stack-decision.md) | The frozen technology choice for the deferred server mode |
+| [Platform contract](architecture/0001-platform-contract.md) | Product scope, architecture decisions, and the boundaries the project holds itself to |
+| [Module map](architecture/0002-module-map.md) | Package ownership and the dependency direction between layers |
+| [Schema principles](architecture/0003-schema-principles.md) | How the canonical contract is shaped, versioned, and extended |
+| [Semantic claim boundaries](architecture/0008-semantic-claim-boundaries.md) | Exactly what a recovered field may assert, and what it may not |
+| [Testing strategy](architecture/0004-testing-strategy.md) | Fixtures, golden snapshots, differential comparison, fuzzing, benchmarks |
+| [Go 1.26 practices](architecture/0005-go126-best-practices.md) | Implementation patterns, anti-patterns, and the performance policy |
+| [Baseline sources](architecture/0006-baseline-sources.md) | The reference tool set and the clean-room rules governing its use |
+| [Differential validation notes](architecture/0007-differential-validation-notes.md) | What the current differential suite actually compares |
+| [Server stack decision](architecture/0009-server-stack-decision.md) | The frozen technology choice for the deferred server mode |
 
 ## Operations
 
