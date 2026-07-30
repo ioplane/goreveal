@@ -28,6 +28,13 @@ Per-release artifact notes, checksums, SBOMs, and signature verification steps
 live with each [GitHub Release](https://github.com/ioplane/goreveal/releases) and
 are described in [docs/RELEASE.md](docs/RELEASE.md).
 
+## [0.1.3](https://github.com/ioplane/goreveal/compare/v0.1.2...v0.1.3) (2026-07-30)
+
+
+### Bug fixes
+
+* **release:** publish only on the release event, not also on the tag push ([e467f9d](https://github.com/ioplane/goreveal/commit/e467f9ddf3fcd19cb8615a02b75089456c946f1d))
+
 ## [0.1.2](https://github.com/ioplane/goreveal/compare/v0.1.1...v0.1.2) (2026-07-30)
 
 
