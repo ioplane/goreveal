@@ -30,7 +30,7 @@ jobs:
   # ---------------------------------------------------------------------------
   dependency-review:
     name: Dependency review
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     if: github.event_name == 'pull_request'
     permissions:
       contents: read
@@ -68,7 +68,7 @@ jobs:
   # ---------------------------------------------------------------------------
   govulncheck:
     name: govulncheck
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     permissions:
       contents: read
     steps:
@@ -98,7 +98,7 @@ jobs:
   # ---------------------------------------------------------------------------
   osv-scanner:
     name: OSV-Scanner
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     permissions:
       security-events: write
       contents: read
@@ -146,7 +146,7 @@ jobs:
   # ---------------------------------------------------------------------------
   gitleaks:
     name: Gitleaks
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     permissions:
       security-events: write
       contents: read
@@ -204,7 +204,7 @@ jobs:
   # ---------------------------------------------------------------------------
   sbom:
     name: SPDX SBOM
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     permissions:
       contents: read
     steps:

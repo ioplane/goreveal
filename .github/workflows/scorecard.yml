@@ -22,7 +22,7 @@ concurrency:
 jobs:
   analysis:
     name: Scorecard analysis
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     # Scorecard measures a repository's public supply-chain posture and
     # `publish_results` requires a public repository. Skip cleanly while the
     # repository is private rather than reporting a red run for a condition the

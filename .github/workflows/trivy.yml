@@ -33,7 +33,7 @@ jobs:
   # ---------------------------------------------------------------------------
   vulnerabilities:
     name: Vulnerability scan
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     permissions:
       security-events: write
       contents: read
@@ -107,7 +107,7 @@ jobs:
   # ---------------------------------------------------------------------------
   secrets:
     name: Secret scan
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     permissions:
       security-events: write
       contents: read
@@ -165,7 +165,7 @@ jobs:
   # ---------------------------------------------------------------------------
   image:
     name: Image scan
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     permissions:
       security-events: write
       contents: read
@@ -185,8 +185,8 @@ jobs:
         id: code-scanning
         uses: ./.github/actions/code-scanning-available
 
-      - name: Set up Buildx
-        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+      - name: Setup Blacksmith Builder
+        uses: useblacksmith/setup-docker-builder@v1
 
       - name: Build the release image
         run: |
