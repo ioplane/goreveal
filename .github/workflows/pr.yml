@@ -23,6 +23,11 @@ jobs:
   title:
     name: Conventional commit title
     runs-on: blacksmith-4vcpu-ubuntu-2404
+    # Automated PRs (Dependabot, the Blacksmith migration app, release-please)
+    # author their own already-conventional titles; don't red-X them mid-edit.
+    if: >-
+      github.event.pull_request.user.type != 'Bot'
+      && github.actor != 'dependabot[bot]'
     permissions:
       pull-requests: read
     steps:
