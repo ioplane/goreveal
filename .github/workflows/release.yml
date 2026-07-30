@@ -3,6 +3,11 @@ name: Release
 
 # yamllint disable-line rule:truthy
 on:
+  # release-please (with a PAT) publishes a GitHub Release, which fires this.
+  release:
+    types:
+      - published
+  # A manual `git push` of a version tag also publishes.
   push:
     tags:
       - "v*.*.*"
@@ -106,6 +111,12 @@ jobs:
     runs-on: blacksmith-4vcpu-ubuntu-2404
     needs:
       - preflight
+    # Publish on a real release/tag event; a manual dispatch only publishes when
+    # dry_run is explicitly false, otherwise it is a snapshot.
+    env:
+      PUBLISH: >-
+        ${{ github.event_name == 'release' || github.event_name == 'push'
+        || (github.event_name == 'workflow_dispatch' && inputs.dry_run == false) }}
     permissions:
       # Create the release and upload assets.
       contents: write
@@ -154,7 +165,7 @@ jobs:
         uses: useblacksmith/setup-docker-builder@6ff44f8e5255f9d8aa31ef22f7e57a2d926b7da0 # v1.11.0
 
       - name: Log in to GitHub Container Registry
-        if: github.event_name == 'push'
+        if: ${{ env.PUBLISH == 'true' }}
         uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
         with:
           registry: ghcr.io
@@ -170,7 +181,7 @@ jobs:
           distribution: goreleaser
           version: ${{ env.GORELEASER_VERSION }}
           args: >-
-            ${{ (github.event_name == 'push' && 'release --clean')
+            ${{ (env.PUBLISH == 'true' && 'release --clean')
             || 'release --clean --snapshot --skip=sign,publish' }}
 
       # ----------------------------------------------------------------------
@@ -179,7 +190,7 @@ jobs:
       # material the build steps cannot reach.
       # ----------------------------------------------------------------------
       - name: Attest build provenance for release artifacts
-        if: github.event_name == 'push'
+        if: ${{ env.PUBLISH == 'true' }}
         uses: actions/attest-build-provenance@0f67c3f4856b2e3261c31976d6725780e5e4c373 # v4.1.1
         with:
           subject-path: |
@@ -189,7 +200,7 @@ jobs:
             dist/*.rpm
 
       - name: Attest the SBOMs
-        if: github.event_name == 'push'
+        if: ${{ env.PUBLISH == 'true' }}
         uses: actions/attest-sbom@c604332985a26aa8cf1bdc465b92731239ec6b9e # v4.1.0
         with:
           subject-path: dist/*_checksums.txt
@@ -235,7 +246,7 @@ jobs:
           done
           echo "::endgroup::"
 
-          if [ "${GITHUB_EVENT_NAME}" = "push" ]; then
+          if [ "${PUBLISH}" = "true" ]; then
             echo "::group::Cosign signature"
             workflow_path=".github/workflows/release.yml"
             identity="^https://github\.com/${GITHUB_REPOSITORY}/"
@@ -278,7 +289,7 @@ jobs:
           {
             echo "### Release ${{ needs.preflight.outputs.version }}"
             echo
-            if [ "${GITHUB_EVENT_NAME}" = "push" ]; then
+            if [ "${PUBLISH}" = "true" ]; then
               url="https://github.com/${GITHUB_REPOSITORY}/releases/tag/${GITHUB_REF_NAME}"
               echo "Published to <${url}>."
             else
