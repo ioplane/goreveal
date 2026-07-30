@@ -172,6 +172,12 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # The Blacksmith builder writes buildkitd.toml into the workspace; remove it
+      # so goreleaser does not see a dirty tree and refuse to release. .gitignore
+      # also covers it, but this guards older tags whose tree predates that entry.
+      - name: Keep the builder config out of the release tree
+        run: rm -f buildkitd.toml
+
       - name: Run GoReleaser
         id: goreleaser
         uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3

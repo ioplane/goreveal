@@ -57,3 +57,7 @@ venv/
 
 # Node (used only for ad-hoc `npx markdownlint-cli2` runs)
 node_modules/
+
+# Written by useblacksmith/setup-docker-builder at runtime; must not dirty the
+# release tree (goreleaser refuses to build a dirty checkout).
+buildkitd.toml
