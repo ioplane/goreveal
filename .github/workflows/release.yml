@@ -28,7 +28,11 @@ env:
   GO_VERSION: "1.26.5"
   GORELEASER_VERSION: "~> v2"
   SYFT_VERSION: v1.50.0
-  COSIGN_VERSION: v3.1.2
+  # cosign v3 defaults sign-blob to the new bundle format and rejects the
+  # separate --output-signature/--output-certificate flags goreleaser uses
+  # ("must specify --bundle with --new-bundle-format"). v2 keeps the .sig/.pem
+  # output that docs/RELEASE.md verifies against.
+  COSIGN_VERSION: v2.6.4
   GOWORK: "off"
   GOTOOLCHAIN: local
 
