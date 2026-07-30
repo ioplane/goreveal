@@ -14,10 +14,6 @@
     <img
       src="https://shieldcn.dev/github/ci/ioplane/goreveal.svg?variant=secondary&amp;size=sm&amp;workflow=CI&amp;branch=main"
       alt="CI status" height="20"></a>
-  <a href="https://sonarcloud.io/summary/new_code?id=ioplane_goreveal">
-    <img
-      src="https://sonarcloud.io/api/project_badges/measure?project=ioplane_goreveal&amp;metric=alert_status"
-      alt="Quality gate status" height="20"></a>
   <a href="https://scorecard.dev/viewer/?uri=github.com/ioplane/goreveal">
     <img
       src="https://api.scorecard.dev/projects/github.com/ioplane/goreveal/badge"
