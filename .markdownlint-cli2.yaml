@@ -1,0 +1,61 @@
+---
+# markdownlint-cli2 configuration.
+# Rule reference: https://github.com/DavidAnson/markdownlint/blob/main/doc/Rules.md
+
+config:
+  default: true
+
+  # Prose is hand-wrapped at 100 columns. Tables, code blocks, and long URLs are
+  # exempt because breaking them to satisfy a linter makes them worse.
+  MD013:
+    line_length: 100
+    heading_line_length: 100
+    tables: false
+    code_blocks: false
+    headings: true
+
+  # Duplicate headings are fine when nested under different parents -- several
+  # documents legitimately repeat "Steps" or "Verification" per section.
+  MD024:
+    siblings_only: true
+
+  # Every doc carries YAML front matter with a `title:` key. Without this,
+  # MD025 counts that key as the first H1 and then flags the real heading.
+  MD025:
+    front_matter_title: ""
+
+  # Ordered lists are written with incrementing numbers so that a reader
+  # following steps out of order can still cite "step 3".
+  MD029:
+    style: ordered
+
+  # Inline HTML is required: shieldcn badge strips and adaptive <picture>
+  # elements have no Markdown equivalent.
+  MD033: false
+
+  # Emphasis-only lines are used as figure captions under diagrams.
+  MD036: false
+
+  # The first line of every doc is YAML front matter, not a heading.
+  MD041: false
+
+  # Bare URLs inside angle brackets are the documented form used throughout.
+  MD034: false
+
+globs:
+  - "**/*.md"
+
+ignores:
+  - node_modules/**
+  - .venv/**
+  - venv/**
+  - .serena/**
+  - docs/.local/**
+  - .tmp/**
+  - dist/**
+  - CODE_OF_CONDUCT.md   # verbatim Contributor Covenant 2.1 text
+  - LICENSE
+  - corpus/**
+
+outputFormatters:
+  - - markdownlint-cli2-formatter-default

@@ -3,7 +3,7 @@ package types
 import (
 	"testing"
 
-	"github.com/dantte-lp/goreveal/schema"
+	"github.com/ioplane/goreveal/schema"
 )
 
 func TestEnrichUserMetadata(t *testing.T) {

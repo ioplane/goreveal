@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/dantte-lp/goreveal/schema"
+	"github.com/ioplane/goreveal/schema"
 )
 
 // Type is the canonical recovered type representation.

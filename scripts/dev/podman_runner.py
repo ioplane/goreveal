@@ -11,7 +11,12 @@ from typing import Any, NotRequired, TypedDict
 
 DEFAULT_DEV_IMAGE = "localhost/goreveal:dev"
 DEFAULT_DEV_WORKDIR = "/workspace"
-DEFAULT_BASELINES_ROOT = "/opt/projects/repositories"
+# Host directory holding the reference-tool checkouts used by the differential
+# suite. Override with GOREVEAL_BASELINES_HOST_ROOT; see CONTRIBUTING.md.
+DEFAULT_BASELINES_ROOT = os.environ.get(
+    "GOREVEAL_BASELINES_HOST_ROOT",
+    str(Path.home() / "goreveal-baselines"),
+)
 GOFMT_ALL_CMD = '/usr/local/go/bin/gofmt -w $(find . -type f -name "*.go" -not -path "./.git/*")'
 
 
@@ -200,13 +205,15 @@ def task_steps(name: str) -> list[Step]:
                 cmd=[
                     "bash",
                     "-lc",
-                    "cd /workspace && "
-                    "mkdir -p .tmp/protected /tmp/protected-matrix && "
-                    f"/usr/local/go/bin/go build -o {protected_matrix_bin} ./cmd/goreveal && "
-                    "python3 -m scripts.protected.profile_matrix "
-                    f"--goreveal-bin {protected_matrix_bin} "
-                    "--output-dir /tmp/protected-matrix "
-                    "--json-out /tmp/protected-matrix/profile-matrix.json",
+                    (
+                        "cd /workspace && "
+                        "mkdir -p .tmp/protected /tmp/protected-matrix && "
+                        f"/usr/local/go/bin/go build -o {protected_matrix_bin} ./cmd/goreveal && "
+                        "python3 -m scripts.protected.profile_matrix "
+                        f"--goreveal-bin {protected_matrix_bin} "
+                        "--output-dir /tmp/protected-matrix "
+                        "--json-out /tmp/protected-matrix/profile-matrix.json"
+                    ),
                 ],
                 with_baselines=True,
                 env={"GOREVEAL_BIN": protected_matrix_bin},

@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/dantte-lp/goreveal/schema"
+	"github.com/ioplane/goreveal/schema"
 )
 
 func TestPipelinePreservesRawTruth(t *testing.T) {

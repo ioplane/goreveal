@@ -1,0 +1,113 @@
+---
+name: CodeQL
+
+# yamllint disable-line rule:truthy
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+  schedule:
+    # Weekly full scan. Offset from the hour to avoid the top-of-hour rush.
+    - cron: "37 4 * * 1"
+  workflow_dispatch: {}
+
+permissions: {}
+
+concurrency:
+  group: codeql-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # codeql-action/analyze uploads its results as an inherent part of the run, so
+  # unlike the other scanners there is nothing to gate separately: the whole
+  # analysis has to be skipped when code scanning is unavailable.
+  # ---------------------------------------------------------------------------
+  preflight:
+    name: Preflight
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      available: ${{ steps.code-scanning.outputs.available }}
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Check code-scanning availability
+        id: code-scanning
+        uses: ./.github/actions/code-scanning-available
+
+  analyze:
+    name: Analyze ${{ matrix.language }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    needs:
+      - preflight
+    if: needs.preflight.outputs.available == 'true'
+    permissions:
+      security-events: write
+      packages: read
+      actions: read
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - language: go
+            build-mode: manual
+          - language: python
+            build-mode: none
+          - language: actions
+            build-mode: none
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: audit
+
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        if: matrix.language == 'go'
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: "1.26.5"
+          check-latest: true
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@e4fba868fa4b1b91e1fdab776edc8cfbe6e9fb81 # v4
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: ${{ matrix.build-mode }}
+          # security-extended adds lower-precision queries that matter for a tool
+          # whose entire input surface is attacker-controlled.
+          queries: security-extended
+          config: |
+            paths-ignore:
+              - docs/.local
+              - corpus/fixtures/**/src
+              - corpus/protected/**/src
+              - .tmp
+
+      # Manual build mode: CodeQL observes the real compilation rather than
+      # guessing at it, which matters for a module with build-tagged files.
+      - name: Build Go
+        if: matrix.language == 'go'
+        env:
+          GOWORK: "off"
+          GOTOOLCHAIN: local
+        run: go build ./...
+
+      - name: Perform analysis
+        uses: github/codeql-action/analyze@e4fba868fa4b1b91e1fdab776edc8cfbe6e9fb81 # v4
+        with:
+          category: /language:${{ matrix.language }}

@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/dantte-lp/goreveal/engine"
-	storesqlite "github.com/dantte-lp/goreveal/storage/sqlite"
+	"github.com/ioplane/goreveal/engine"
+	storesqlite "github.com/ioplane/goreveal/storage/sqlite"
 )
 
 // RunExportSQLite analyzes a binary and persists the canonical result to SQLite.

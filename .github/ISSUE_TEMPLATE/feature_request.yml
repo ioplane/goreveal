@@ -1,0 +1,96 @@
+---
+name: Feature request
+description: Propose a new recovery capability, operator surface, or integration
+title: "feat: "
+labels:
+  - enhancement
+  - needs-triage
+body:
+  - type: markdown
+    attributes:
+      value: |
+        GoREveal grows in **bounded, evidence-backed increments**. Proposals that
+        describe a concrete capability with a way to verify it move quickly;
+        broad "support X better" requests usually stall.
+
+        Read the architecture invariants in `CONTRIBUTING.md` first — a proposal
+        that requires recovery logic in `plugins/`, or a `core` dependency on
+        CLI or storage, will need reshaping before it can land.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: |
+        What analysis task is currently hard or impossible? Describe the concrete
+        situation, not the solution.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed capability
+      description: What GoREveal should be able to do.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Primary area
+      options:
+        - core — recovery primitives
+        - schema — canonical contract or export shape
+        - engine — pipeline, peeling, projection
+        - deobfuscation — garble string or name refinement
+        - storage — persistence or build-to-build diffing
+        - cmd — operator CLI surface
+        - plugins — IDA or Ghidra adapters
+        - corpus / tests — fixtures and evidence
+        - build / release / CI
+        - documentation
+        - unsure
+    validations:
+      required: true
+
+  - type: textarea
+    id: evidence
+    attributes:
+      label: How would this be verified?
+      description: |
+        What proves it works? A fixture, a differential comparison against a
+        reference tool, a golden snapshot, a benchmark? A capability that cannot
+        be verified cannot be trusted, and will not land.
+    validations:
+      required: true
+
+  - type: textarea
+    id: claim_boundary
+    attributes:
+      label: Claim boundary
+      description: |
+        What must this capability report when the evidence is absent or partial?
+        Anything that would require inferring an unverifiable value needs an
+        explicit `unavailable` or confidence-degraded path.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: |
+        Existing commands or workarounds you tried, and why they fall short.
+        Include how other tools approach it — as behavior, not as code to copy.
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched existing issues and discussions for a duplicate
+          required: true
+        - label: This does not require copying implementation code from another project
+          required: true
+        - label: I am willing to discuss scope reduction to make this landable

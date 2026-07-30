@@ -11,7 +11,7 @@ Priorities:
 - catch missing evidence, tests, or docs updates
 
 Rules:
-- treat Sprint 12 runtime claims as bounded unless docs prove otherwise
+- treat runtime claims as bounded unless the docs prove otherwise
 - treat schema as canonical
 - prefer findings with file paths and concrete risks
 - flag drift between `Taskfile.yml`, `Makefile`, `scripts/dev/podman_runner.py`, and documented verification commands

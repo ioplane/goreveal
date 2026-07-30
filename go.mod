@@ -1,4 +1,4 @@
-module github.com/dantte-lp/goreveal
+module github.com/ioplane/goreveal
 
 go 1.26
 

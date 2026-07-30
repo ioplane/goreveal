@@ -4,7 +4,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/dantte-lp/goreveal/schema"
+	"github.com/ioplane/goreveal/schema"
 )
 
 // FunctionMatchReason explains the bounded reason for a version-tracking-adjacent function match.
@@ -231,6 +231,11 @@ type normalizedNameKey struct {
 	classification schema.PeelingClass
 }
 
+// Match reasons are tried in a fixed precedence order and each tier consumes
+// what the previous one left. That ordering is the algorithm; helpers would
+// obscure it and invite a reordering bug.
+//
+//nolint:funlen // fixed-precedence match tiers; the ordering is the algorithm
 func matchFunctions(left, right schema.Analysis) []FunctionMatch {
 	if len(left.Functions) == 0 || len(right.Functions) == 0 {
 		return nil

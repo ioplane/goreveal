@@ -33,13 +33,17 @@ def main() -> int:
     project_root = Path(__file__).resolve().parents[2]
     env = os.environ.copy()
     goreveal_bin = env.get("GOREVEAL_BIN")
-    analysis_cmd = [goreveal_bin, "analyze", fixture] if goreveal_bin else [
-        "/usr/local/go/bin/go",
-        "run",
-        "./cmd/goreveal",
-        "analyze",
-        fixture,
-    ]
+    analysis_cmd = (
+        [goreveal_bin, "analyze", fixture]
+        if goreveal_bin
+        else [
+            "/usr/local/go/bin/go",
+            "run",
+            "./cmd/goreveal",
+            "analyze",
+            fixture,
+        ]
+    )
 
     analysis = _run_json(
         analysis_cmd,

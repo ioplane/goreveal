@@ -1,0 +1,71 @@
+---
+name: Stale issue and pull request triage
+
+# yamllint disable-line rule:truthy
+on:
+  schedule:
+    - cron: "17 2 * * *"
+  workflow_dispatch: {}
+
+permissions: {}
+
+concurrency:
+  group: stale
+  cancel-in-progress: false
+
+jobs:
+  stale:
+    name: Mark and close stale items
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
+    steps:
+      - name: Triage
+        uses: actions/stale@4391f3da665fdf50b6810c1a66712fb9ba21aa93 # v11.0.0
+        with:
+          days-before-stale: 90
+          days-before-close: 21
+          # Pull requests get more room: a stalled review is our problem, not
+          # the contributor's.
+          days-before-pr-stale: 120
+          days-before-pr-close: 30
+          stale-issue-label: stale
+          stale-pr-label: stale
+          # Anything a maintainer has committed to, or that carries evidence
+          # worth keeping, is never auto-closed.
+          exempt-issue-labels: >-
+            security,
+            breaking-change,
+            pinned,
+            roadmap,
+            help-wanted,
+            good-first-issue,
+            needs-fixture
+          exempt-pr-labels: >-
+            security,
+            breaking-change,
+            pinned,
+            dependencies
+          exempt-all-milestones: true
+          stale-issue-message: |
+            This issue has had no activity for 90 days.
+
+            It will close in 21 days unless there is a further comment. If it is
+            still relevant, the most useful thing you can add is a reproducer we
+            can turn into a corpus fixture -- see
+            [SUPPORT.md](https://github.com/ioplane/goreveal/blob/main/SUPPORT.md#what-to-include-in-a-report).
+          stale-pr-message: |
+            This pull request has had no activity for 120 days and will close in
+            30 days unless updated.
+
+            If it is blocked on a review or an unclear decision, say so here and
+            a maintainer will pick it up.
+          close-issue-message: |
+            Closing after no activity during the stale period. Comment to reopen
+            -- a closed issue is not a rejected one.
+          close-pr-message: |
+            Closing after no activity during the stale period. Reopen when you
+            want to continue; the branch and review history are preserved.
+          operations-per-run: 60
+          ascending: true

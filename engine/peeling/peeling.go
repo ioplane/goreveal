@@ -6,7 +6,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/dantte-lp/goreveal/schema"
+	"github.com/ioplane/goreveal/schema"
 )
 
 // Build derives a bounded function-level code-peeling layer from canonical truth.

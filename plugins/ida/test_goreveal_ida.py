@@ -121,14 +121,18 @@ class GoRevealIDAAdapterTests(unittest.TestCase):
         repo_root = Path(__file__).resolve().parents[2]
         fixture = repo_root / "corpus" / "fixtures" / "go-elf-buildinfo-linux-amd64" / "fixture.bin"
         goreveal_bin = os.environ.get("GOREVEAL_BIN")
-        cmd = [goreveal_bin, "export", "ida", str(fixture)] if goreveal_bin else [
-            "/usr/local/go/bin/go",
-            "run",
-            "./cmd/goreveal",
-            "export",
-            "ida",
-            str(fixture),
-        ]
+        cmd = (
+            [goreveal_bin, "export", "ida", str(fixture)]
+            if goreveal_bin
+            else [
+                "/usr/local/go/bin/go",
+                "run",
+                "./cmd/goreveal",
+                "export",
+                "ida",
+                str(fixture),
+            ]
+        )
 
         proc = subprocess.run(
             cmd,
@@ -147,8 +151,7 @@ class GoRevealIDAAdapterTests(unittest.TestCase):
 
         self.assertTrue(
             any(
-                action["kind"] == "function" and action["name"] == "main.main"
-                for action in actions
+                action["kind"] == "function" and action["name"] == "main.main" for action in actions
             )
         )
         self.assertTrue(

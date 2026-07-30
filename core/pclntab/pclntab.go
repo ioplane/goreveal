@@ -5,10 +5,11 @@ import (
 	"debug/elf"
 	"debug/macho"
 	stdpe "debug/pe"
+	"errors"
 	"fmt"
 	"os"
 
-	"github.com/dantte-lp/goreveal/schema"
+	"github.com/ioplane/goreveal/schema"
 )
 
 // Data captures the minimal pclntab-related inputs needed for function recovery.
@@ -50,75 +51,97 @@ func Read(path string) (Data, error) {
 		return readMachO(mf)
 	}
 
-	return Data{}, fmt.Errorf("open binary: unsupported pclntab container")
+	return Data{}, errors.New("open binary: unsupported pclntab container")
+}
+
+// sectionNames is the per-format naming of the three sections pclntab recovery
+// needs. ELF and Mach-O differ only in these names, not in the recovery itself.
+type sectionNames struct {
+	pcln   string
+	text   string
+	symtab string
+}
+
+var (
+	elfSectionNames   = sectionNames{pcln: ".gopclntab", text: ".text", symtab: ".gosymtab"}
+	machoSectionNames = sectionNames{pcln: "__gopclntab", text: "__text", symtab: "__gosymtab"}
+)
+
+// sectionLookup resolves a section name to its bytes and virtual address.
+// It returns found=false when the section is simply absent, which the caller
+// distinguishes from a read failure.
+type sectionLookup func(name string) (data []byte, addr uint64, found bool, err error)
+
+func elfSectionLookup(ef *elf.File) sectionLookup {
+	return func(name string) ([]byte, uint64, bool, error) {
+		section := ef.Section(name)
+		if section == nil {
+			return nil, 0, false, nil
+		}
+		data, err := section.Data()
+		if err != nil {
+			return nil, 0, true, fmt.Errorf("read %s: %w", section.Name, err)
+		}
+		return data, section.Addr, true, nil
+	}
+}
+
+func machoSectionLookup(mf *macho.File) sectionLookup {
+	return func(name string) ([]byte, uint64, bool, error) {
+		section := mf.Section(name)
+		if section == nil {
+			return nil, 0, false, nil
+		}
+		data, err := section.Data()
+		if err != nil {
+			return nil, 0, true, fmt.Errorf("read %s: %w", section.Name, err)
+		}
+		return data, section.Addr, true, nil
+	}
+}
+
+// readSectioned recovers pclntab data from any format whose sections can be
+// resolved by name. The symbol table stays optional: a binary without
+// .gosymtab / __gosymtab is normal, not an error.
+func readSectioned(lookup sectionLookup, names sectionNames) (Data, error) {
+	pcln, _, found, err := lookup(names.pcln)
+	if err != nil {
+		return Data{}, err
+	}
+	if !found {
+		return Data{}, fmt.Errorf("section %q not found", names.pcln)
+	}
+
+	_, textAddr, found, err := lookup(names.text)
+	if err != nil {
+		return Data{}, err
+	}
+	if !found {
+		return Data{}, fmt.Errorf("section %q not found", names.text)
+	}
+
+	symtab, _, _, err := lookup(names.symtab)
+	if err != nil {
+		return Data{}, err
+	}
+
+	return Data{
+		PCLN:      pcln,
+		Symtab:    symtab,
+		TextStart: textAddr,
+		Provenance: schema.Provenance{
+			Source:     "core.pclntab",
+			Confidence: "high",
+		},
+	}, nil
 }
 
 func readELF(ef *elf.File) (Data, error) {
-	pclnSection := ef.Section(".gopclntab")
-	if pclnSection == nil {
-		return Data{}, fmt.Errorf("section %q not found", ".gopclntab")
-	}
-	pcln, err := pclnSection.Data()
-	if err != nil {
-		return Data{}, fmt.Errorf("read %s: %w", pclnSection.Name, err)
-	}
-
-	textSection := ef.Section(".text")
-	if textSection == nil {
-		return Data{}, fmt.Errorf("section %q not found", ".text")
-	}
-
-	var symtab []byte
-	if section := ef.Section(".gosymtab"); section != nil {
-		symtab, err = section.Data()
-		if err != nil {
-			return Data{}, fmt.Errorf("read %s: %w", section.Name, err)
-		}
-	}
-
-	return Data{
-		PCLN:      pcln,
-		Symtab:    symtab,
-		TextStart: textSection.Addr,
-		Provenance: schema.Provenance{
-			Source:     "core.pclntab",
-			Confidence: "high",
-		},
-	}, nil
+	return readSectioned(elfSectionLookup(ef), elfSectionNames)
 }
 
 func readMachO(mf *macho.File) (Data, error) {
-	pclnSection := mf.Section("__gopclntab")
-	if pclnSection == nil {
-		return Data{}, fmt.Errorf("section %q not found", "__gopclntab")
-	}
-	pcln, err := pclnSection.Data()
-	if err != nil {
-		return Data{}, fmt.Errorf("read %s: %w", pclnSection.Name, err)
-	}
-
-	textSection := mf.Section("__text")
-	if textSection == nil {
-		return Data{}, fmt.Errorf("section %q not found", "__text")
-	}
-
-	var symtab []byte
-	if section := mf.Section("__gosymtab"); section != nil {
-		symtab, err = section.Data()
-		if err != nil {
-			return Data{}, fmt.Errorf("read %s: %w", section.Name, err)
-		}
-	}
-
-	return Data{
-		PCLN:      pcln,
-		Symtab:    symtab,
-		TextStart: textSection.Addr,
-		Provenance: schema.Provenance{
-			Source:     "core.pclntab",
-			Confidence: "high",
-		},
-	}, nil
+	return readSectioned(machoSectionLookup(mf), machoSectionNames)
 }
 
 func readPE(pf *stdpe.File) (Data, error) {
@@ -149,7 +172,7 @@ func readPE(pf *stdpe.File) (Data, error) {
 	}
 
 	if len(pcln) == 0 {
-		return Data{}, fmt.Errorf("PE pclntab header candidate not found")
+		return Data{}, errors.New("PE pclntab header candidate not found")
 	}
 
 	return Data{

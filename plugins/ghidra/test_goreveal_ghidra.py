@@ -145,14 +145,18 @@ class GoRevealGhidraAdapterTests(unittest.TestCase):
         repo_root = Path(__file__).resolve().parents[2]
         fixture = repo_root / "corpus" / "fixtures" / "go-elf-buildinfo-linux-amd64" / "fixture.bin"
         goreveal_bin = os.environ.get("GOREVEAL_BIN")
-        cmd = [goreveal_bin, "export", "ghidra", str(fixture)] if goreveal_bin else [
-            "/usr/local/go/bin/go",
-            "run",
-            "./cmd/goreveal",
-            "export",
-            "ghidra",
-            str(fixture),
-        ]
+        cmd = (
+            [goreveal_bin, "export", "ghidra", str(fixture)]
+            if goreveal_bin
+            else [
+                "/usr/local/go/bin/go",
+                "run",
+                "./cmd/goreveal",
+                "export",
+                "ghidra",
+                str(fixture),
+            ]
+        )
 
         proc = subprocess.run(
             cmd,

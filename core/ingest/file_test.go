@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/dantte-lp/goreveal/core/format"
+	"github.com/ioplane/goreveal/core/format"
 )
 
 func TestOpen(t *testing.T) {

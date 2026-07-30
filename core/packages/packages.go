@@ -4,7 +4,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/dantte-lp/goreveal/schema"
+	"github.com/ioplane/goreveal/schema"
 )
 
 // Package is the canonical recovered package representation.

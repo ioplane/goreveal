@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/dantte-lp/goreveal/engine"
-	"github.com/dantte-lp/goreveal/schema"
+	"github.com/ioplane/goreveal/engine"
+	"github.com/ioplane/goreveal/schema"
 )
 
 // RunExportGhidra writes the stable Ghidra-oriented export payload.

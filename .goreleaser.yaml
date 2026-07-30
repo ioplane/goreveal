@@ -1,0 +1,266 @@
+---
+# GoReleaser configuration for GoREveal.
+#
+# Validate locally with:
+#   goreleaser check
+#   goreleaser release --snapshot --clean --skip=sign,publish
+#
+# Reference: https://goreleaser.com/customization/
+version: 2
+
+project_name: goreveal
+
+before:
+  hooks:
+    - go mod download
+    - go mod verify
+
+env:
+  # go.work only declares `use .`; workspace mode would change module
+  # resolution during the release build.
+  - GOWORK=off
+  - GOTOOLCHAIN=local
+  - CGO_ENABLED=0
+
+builds:
+  - id: goreveal
+    main: ./cmd/goreveal
+    binary: goreveal
+    env:
+      - CGO_ENABLED=0
+    flags:
+      - -trimpath
+    ldflags:
+      # -buildid= drops the only remaining source of nondeterminism, so the
+      # same tag rebuilds byte-identically.
+      - -s -w -buildid=
+      - -X github.com/ioplane/goreveal/internal/version.Version={{ .Version }}
+      - -X github.com/ioplane/goreveal/internal/version.GitCommit={{ .FullCommit }}
+      - -X github.com/ioplane/goreveal/internal/version.BuildDate={{ .CommitDate }}
+    mod_timestamp: "{{ .CommitTimestamp }}"
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ignore:
+      # No verified evidence lane for these targets; do not ship untested
+      # architecture combinations.
+      - goos: windows
+        goarch: arm64
+
+archives:
+  - id: goreveal
+    ids:
+      - goreveal
+    formats:
+      - tar.gz
+    format_overrides:
+      - goos: windows
+        formats:
+          - zip
+    name_template: >-
+      {{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}
+    files:
+      - LICENSE
+      - NOTICE
+      - README.md
+      - CHANGELOG.md
+      - SECURITY.md
+      - src: docs/RELEASE.md
+        dst: docs/RELEASE.md
+
+checksum:
+  name_template: "{{ .ProjectName }}_{{ .Version }}_checksums.txt"
+  algorithm: sha256
+
+# SPDX JSON is the interchange format consumers can feed to Trivy, Grype, or a
+# license scanner without conversion.
+sboms:
+  - id: archive
+    artifacts: archive
+    documents:
+      - "{{ .ArtifactName }}.spdx.json"
+    args:
+      - "$artifact"
+      - --output
+      - spdx-json=$document
+  - id: source
+    artifacts: source
+    documents:
+      - "{{ .ProjectName }}_{{ .Version }}_source.spdx.json"
+    args:
+      - "$artifact"
+      - --output
+      - spdx-json=$document
+
+# Keyless Sigstore signature over the checksum file. Every other artifact --
+# including the SBOMs -- is covered by that checksum, so one signature anchors
+# the whole release.
+signs:
+  - id: checksum
+    cmd: cosign
+    artifacts: checksum
+    certificate: "${artifact}.pem"
+    output: true
+    args:
+      - sign-blob
+      - --yes
+      - --oidc-provider=github-actions
+      - --output-certificate=${certificate}
+      - --output-signature=${signature}
+      - "${artifact}"
+
+source:
+  enabled: true
+  name_template: "{{ .ProjectName }}_{{ .Version }}_source"
+
+nfpms:
+  - id: packages
+    ids:
+      - goreveal
+    package_name: goreveal
+    vendor: ioplane
+    homepage: https://github.com/ioplane/goreveal
+    maintainer: The GoREveal Authors <noreply@github.com>
+    description: |-
+      Clean-room reverse-engineering platform for Go binaries.
+      Recovers functions, packages, types, and strings from stripped and
+      obfuscated Go artifacts, and exports them to IDA and Ghidra.
+    license: Apache-2.0
+    section: utils
+    formats:
+      - deb
+      - rpm
+    file_name_template: >-
+      {{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}
+    contents:
+      - src: LICENSE
+        dst: /usr/share/doc/goreveal/LICENSE
+      - src: NOTICE
+        dst: /usr/share/doc/goreveal/NOTICE
+      - src: README.md
+        dst: /usr/share/doc/goreveal/README.md
+
+dockers_v2:
+  - id: goreveal
+    ids:
+      - goreveal
+    images:
+      - ghcr.io/ioplane/goreveal
+    tags:
+      - "{{ .Version }}"
+      - "{{ .Major }}.{{ .Minor }}"
+      - "{{ .Major }}"
+      - latest
+    platforms:
+      - linux/amd64
+      - linux/arm64
+    dockerfile: deployments/docker/Containerfile.release
+    build_args:
+      VERSION: "{{ .Version }}"
+      GIT_COMMIT: "{{ .FullCommit }}"
+      BUILD_DATE: "{{ .CommitDate }}"
+    labels:
+      org.opencontainers.image.title: "{{ .ProjectName }}"
+      org.opencontainers.image.version: "{{ .Version }}"
+      org.opencontainers.image.revision: "{{ .FullCommit }}"
+      org.opencontainers.image.created: "{{ .CommitDate }}"
+      org.opencontainers.image.source: https://github.com/ioplane/goreveal
+      org.opencontainers.image.licenses: Apache-2.0
+
+changelog:
+  sort: asc
+  use: github
+  filters:
+    exclude:
+      - "^chore\\(deps\\):"
+      - "^ci\\(deps\\):"
+      - "^build\\(deps-dev\\):"
+      - "^docs: *typo"
+      - "^Merge (branch|pull request)"
+  groups:
+    - title: Security
+      regexp: '^security(\(.+\))?!?:'
+      order: 0
+    - title: Breaking changes
+      regexp: '^\w+(\(.+\))?!:'
+      order: 1
+    - title: Features
+      regexp: '^feat(\(.+\))?:'
+      order: 2
+    - title: Bug fixes
+      regexp: '^fix(\(.+\))?:'
+      order: 3
+    - title: Performance
+      regexp: '^perf(\(.+\))?:'
+      order: 4
+    - title: Refactoring
+      regexp: '^refactor(\(.+\))?:'
+      order: 5
+    - title: Tests and evidence
+      regexp: '^test(\(.+\))?:'
+      order: 6
+    - title: Documentation
+      regexp: '^docs(\(.+\))?:'
+      order: 7
+    - title: Build and CI
+      regexp: '^(build|ci)(\(.+\))?:'
+      order: 8
+    - title: Other
+      order: 99
+
+release:
+  github:
+    owner: ioplane
+    name: goreveal
+  draft: false
+  replace_existing_draft: true
+  prerelease: auto
+  mode: append
+  name_template: "v{{ .Version }}"
+  footer: |
+    ## Verifying this release
+
+    Every artifact below is covered by `{{ .ProjectName }}_{{ .Version }}_checksums.txt`,
+    which is signed with Sigstore keyless signing and carries SLSA build
+    provenance. Verify before you deploy.
+
+    ```bash
+    VERSION={{ .Version }}
+    BASE=https://github.com/ioplane/goreveal/releases/download/v${VERSION}
+
+    # 1. Checksums
+    curl -fsSLO "${BASE}/goreveal_${VERSION}_checksums.txt"
+    sha256sum --check --ignore-missing goreveal_${VERSION}_checksums.txt
+
+    # 2. Signature over the checksum file
+    curl -fsSLO "${BASE}/goreveal_${VERSION}_checksums.txt.sig"
+    curl -fsSLO "${BASE}/goreveal_${VERSION}_checksums.txt.pem"
+    IDENTITY='^https://github\.com/ioplane/goreveal/'
+    IDENTITY+='\.github/workflows/release\.yml@refs/tags/v'
+    cosign verify-blob \
+      --certificate goreveal_${VERSION}_checksums.txt.pem \
+      --signature goreveal_${VERSION}_checksums.txt.sig \
+      --certificate-identity-regexp "${IDENTITY}" \
+      --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+      goreveal_${VERSION}_checksums.txt
+
+    # 3. Build provenance (SLSA)
+    gh attestation verify goreveal_${VERSION}_linux_amd64.tar.gz -R ioplane/goreveal
+
+    # 4. Confirm the binary reports the identity you expect
+    ./goreveal version --json
+    ```
+
+    SPDX JSON SBOMs accompany each archive as `*.spdx.json`.
+    Full instructions, including container image verification, are in
+    [docs/RELEASE.md](https://github.com/ioplane/goreveal/blob/main/docs/RELEASE.md).
+
+    ---
+
+    GoREveal is a clean-room implementation. It contains no code copied from
+    `gore`, `redress`, `GoReSym`, `GoResolver`, `gostringungarbler`, or
+    `AlphaGolang`. See [NOTICE](https://github.com/ioplane/goreveal/blob/main/NOTICE).

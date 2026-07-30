@@ -1,7 +1,22 @@
+---
+title: GoREveal Schema Principles
+status: active
+date: 2026-03-19
+owners:
+  - ioplane/goreveal-maintainers
+tags:
+  - schema
+  - contract
+---
+
 # GoREveal Schema Principles
 
-> Status: architecture support document
-> Date: 2026-03-19
+<img
+  src="https://shieldcn.dev/badge/status-active-slate.svg?variant=outline&size=xs"
+  alt="status: active" height="20">
+<img
+  src="https://shieldcn.dev/badge/docs-architecture-slate.svg?variant=outline&size=xs"
+  alt="docs: architecture" height="20">
 
 ## Purpose
 
@@ -18,6 +33,7 @@ This document defines the principles for the canonical GoREveal analysis schema.
 ## Required Concepts
 
 Every major recovered entity should be able to represent:
+
 - raw recovered value
 - refined value if any
 - provenance
@@ -27,6 +43,7 @@ Every major recovered entity should be able to represent:
 ## Provenance Model
 
 Provenance should distinguish at least:
+
 - direct runtime metadata recovery
 - structural parsing inference
 - heuristic recovery
@@ -36,6 +53,7 @@ Provenance should distinguish at least:
 ## Confidence Model
 
 Confidence should be explicit enough to separate:
+
 - strongly recovered facts
 - probable inferences
 - weak heuristics

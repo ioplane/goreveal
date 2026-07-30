@@ -6,7 +6,7 @@ import (
 	"io"
 	"os"
 
-	"github.com/dantte-lp/goreveal/core/format"
+	"github.com/ioplane/goreveal/core/format"
 )
 
 // File contains basic metadata gathered during binary ingestion.

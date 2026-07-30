@@ -1,0 +1,55 @@
+---
+name: Code scanning available
+description: >-
+  Reports whether this repository can accept code-scanning SARIF uploads.
+  Code scanning is free on public repositories and requires GitHub Advanced
+  Security on private ones, so a private repository without GHAS must skip the
+  upload rather than fail the scan that produced the results.
+
+outputs:
+  available:
+    description: '"true" when SARIF can be uploaded, "false" otherwise'
+    value: ${{ steps.probe.outputs.available }}
+
+runs:
+  using: composite
+  steps:
+    - name: Probe code-scanning availability
+      id: probe
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+        REPO: ${{ github.repository }}
+      run: |
+        set -euo pipefail
+
+        visibility="$(gh api "repos/${REPO}" --jq '.visibility')"
+        ghas="$(gh api "repos/${REPO}" \
+          --jq '.security_and_analysis.advanced_security.status // "disabled"')"
+
+        if [ "${visibility}" != "private" ] || [ "${ghas}" = "enabled" ]; then
+          available=true
+        else
+          available=false
+        fi
+
+        echo "available=${available}" >>"${GITHUB_OUTPUT}"
+
+        if [ "${available}" = "true" ]; then
+          echo "Code scanning is available (visibility=${visibility}, advanced security=${ghas})."
+        else
+          notice="Code scanning unavailable: the repository is private and"
+          notice="${notice} GitHub Advanced Security is ${ghas}. Scans still run"
+          notice="${notice} and still gate; only the SARIF upload is skipped."
+          echo "::notice::${notice}"
+          {
+            echo "### Code scanning upload skipped"
+            echo
+            echo "This repository is **private** and GitHub Advanced Security is"
+            echo "\`${ghas}\`, so SARIF cannot be uploaded."
+            echo
+            echo "The scan itself still ran and still gates the build. Uploads"
+            echo "start working automatically once the repository is public, or"
+            echo "once Advanced Security is enabled."
+          } >>"${GITHUB_STEP_SUMMARY}"
+        fi

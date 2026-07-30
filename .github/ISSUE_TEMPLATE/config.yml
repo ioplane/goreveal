@@ -1,0 +1,22 @@
+---
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security vulnerability
+    url: https://github.com/ioplane/goreveal/security/advisories/new
+    about: >-
+      Private disclosure channel. Never report vulnerabilities in a public issue.
+      See SECURITY.md for scope and response targets.
+  - name: Ask a question
+    url: https://github.com/ioplane/goreveal/discussions/categories/q-a
+    about: >-
+      Usage help, "how do I", and "is this expected" belong in Discussions.
+      Note that returning `unavailable` when evidence is absent is intended.
+  - name: Propose an idea
+    url: https://github.com/ioplane/goreveal/discussions/categories/ideas
+    about: >-
+      Sanity-check a direction before writing a formal feature request.
+  - name: Contributing guide
+    url: https://github.com/ioplane/goreveal/blob/main/CONTRIBUTING.md
+    about: >-
+      Build, test, and verification workflow, plus the clean-room rules that
+      govern what can be accepted.

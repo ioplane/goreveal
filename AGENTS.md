@@ -1,207 +1,222 @@
 # GoREveal Agent Contract
 
-This file is the primary operational contract for all agents and maintainers working in `GoREveal`.
+<img
+  src="https://shieldcn.dev/badge/contract-agents-slate.svg?variant=outline&size=xs"
+  alt="contract: agents" height="20">
 
-## Project Purpose
+This file is the operational contract for automated contributors and maintainers
+working in GoREveal. Read it before making changes.
 
-`GoREveal` is a clean-room Go binary reverse-engineering platform. It is inspired by `gore`, `redress`, `GoReSym`, `GoResolver`, `gostringungarbler`, and `AlphaGolang`, but it must not copy code from them.
+Human-facing documentation lives in [README.md](README.md),
+[CONTRIBUTING.md](CONTRIBUTING.md), and [docs/README.md](docs/README.md). This
+file does not restate them; it states the constraints an agent must not violate.
 
-Primary priority order:
+## Project purpose
+
+GoREveal is a clean-room reverse-engineering platform for Go binaries. It is
+informed by `gore`, `redress`, `GoReSym`, `GoResolver`, `gostringungarbler`, and
+`AlphaGolang` — and must not copy code from any of them.
+
+Priority order, in this order, always:
+
 1. accuracy
 2. convenience
 3. speed
 
-## Required Reference Docs
+## Required reading before substantial work
 
-Read these before major work:
-- `docs/architecture/2026-03-19-goreveal-platform-contract.md`
-- `docs/architecture/2026-03-19-goreveal-go126-best-practices.md`
-- `docs/plans/2026-03-19-goreveal-scrum-implementation-plan.md`
-- `docs/tmp/draft/go-bp.md`
-- `docs/tmp/draft/simd-optimization.md`
+- [docs/architecture/2026-03-19-goreveal-platform-contract.md](docs/architecture/2026-03-19-goreveal-platform-contract.md)
+- [docs/architecture/2026-03-19-goreveal-module-map.md](docs/architecture/2026-03-19-goreveal-module-map.md)
+- [docs/architecture/2026-03-19-goreveal-schema-principles.md](docs/architecture/2026-03-19-goreveal-schema-principles.md)
+- [docs/architecture/2026-03-20-goreveal-semantic-claim-boundaries.md](docs/architecture/2026-03-20-goreveal-semantic-claim-boundaries.md)
+- [docs/architecture/2026-03-19-goreveal-go126-best-practices.md](docs/architecture/2026-03-19-goreveal-go126-best-practices.md)
+- [docs/architecture/2026-03-19-goreveal-testing-strategy.md](docs/architecture/2026-03-19-goreveal-testing-strategy.md)
 
-## Clean-Room Boundary
+## Hard rule 1: clean-room boundary
 
 Allowed:
-- study reference repositories for behavior, edge cases, data formats, and test ideas
-- build differential tests against baseline tools
-- document similarities and divergences
+
+- studying reference repositories for behavior, edge cases, data formats, and
+  test ideas
+- building differential tests against baseline tools
+- documenting similarities and divergences
 
 Forbidden:
+
 - copying implementation code from baseline projects
-- translating AGPL code into slightly modified GoREveal code
+- translating AGPL-licensed code into superficially different Go
 - treating baseline output as infallible truth without validation
 
-When baseline behavior is useful, turn it into:
-- a documented finding
-- a fixture
-- a differential test
-- a consciously designed GoREveal implementation
+When baseline behavior is useful, convert it into a documented finding, a corpus
+fixture, a differential test, or a consciously designed implementation. Never
+into copied code.
 
-## Architecture Invariants
+## Hard rule 2: never invent recovery truth
 
-These rules are non-negotiable:
+When evidence is absent the correct output is `unavailable`, an empty collection,
+or an explicit error. A plausible-looking guess is a defect.
+
+Concretely:
+
+- degrade to `[]`, never to JSON `null`, when there is no truthful surface
+- `analyze` emits `types: []` rather than omitting the field
+- `inspect runtime` returns `unavailable` rather than inventing runtime facts
+- nodes without file evidence are marked `has_file_evidence: false` rather than
+  presented as real paths
+- `provenance` and `confidence` must accurately describe how each value was
+  obtained, including which fallback path produced it
+
+## Architecture invariants
+
+Non-negotiable:
+
 - `schema` is the canonical contract
-- `core` must stay independent from CLI, storage, API, and plugin concerns
-- `deobfuscation` must not overwrite raw recovered truth
-- provenance and confidence must remain first-class result fields
-- SIMD is an optimization layer, not a correctness layer
+- `core` stays independent of CLI, storage, API, and plugin concerns
+- `deobfuscation` refines and must never overwrite raw recovered truth
+- provenance and confidence remain first-class result fields
+- SIMD is an optimization layer, never a correctness layer
 - plugins consume exports; they do not implement recovery logic
 
-## Planning and Delivery Rules
+[`.golangci.yml`](.golangci.yml) enforces part of this mechanically: `depguard`
+denies `unsafe` and `os/exec` outside the baseline harness. Do not weaken that
+policy to make a change pass — adapt the change.
 
-Use capability increments, not architecture-only work.
-Every meaningful change should leave behind at least one of:
-- test coverage
+## Delivery rules
+
+Prefer vertical slices over architecture-only work: recovery logic, its schema
+mapping, CLI or export exposure when user-visible, and evidence.
+
+Every meaningful change leaves behind at least one of:
+
+- corpus fixture coverage
 - golden snapshot coverage
 - differential comparison coverage
+- fuzz coverage for parsing and recovery boundaries
 - benchmark evidence
 - updated docs or contract notes
 
-Prefer vertical slices:
-- recovery logic
-- schema mapping
-- CLI/export exposure if user-visible
-- tests/evidence
+A change is done only when it respects module boundaries, carries the right
+evidence type, updates docs if behavior or contract changed, keeps a scalar
+fallback for any optimized path, and can be demonstrated through the CLI, schema
+output, tests, or benchmarks.
 
-## Definition of Done
+If a change affects recovery semantics, update the golden outputs, the
+differential expectations, and the provenance/confidence behavior together.
+**Refreshing a golden snapshot to make a test pass, without explaining the diff,
+is prohibited.** That is how a correctness regression ships silently.
 
-A task is done only if:
-- it respects module boundaries
-- it includes the right evidence type for the change
-- docs are updated when behavior or contract changes
-- scalar fallback still exists for optimized paths
-- it can be demonstrated through CLI, schema output, tests, or benchmarks
+## Performance policy
 
-A sprint increment is done only if:
-- it exposes a usable or verifiable new capability
-- it works on at least one golden binary
-- it does not require architectural rollback for follow-up work
+Strict order:
 
-## Testing Policy
-
-Required quality layers:
-- corpus fixtures
-- golden snapshots
-- differential tests against baseline tools where relevant
-- fuzz tests for parsing and recovery boundaries
-- benchmarks for hotspots and any optimization work
-
-If a change affects recovery semantics, update:
-- golden outputs
-- differential expectations
-- provenance/confidence behavior if needed
-
-## Performance Policy
-
-Always follow this order:
 1. pure Go reference implementation
 2. optimized scalar implementation
-3. architecture-specific SIMD implementation
-4. optional `simd/archsimd` experimentation
+3. architecture-specific SIMD
+4. optional experimentation
 
-No SIMD work is acceptable without:
-- hotspot evidence
-- correctness equivalence tests
-- scalar fallback
-- documented feature gating
+No SIMD work without hotspot evidence, correctness-equivalence tests, a scalar
+fallback, and documented feature gating.
 
-## Repository Guidance
+## Verification
 
-Current repository state is still early-stage. Until full code scaffolding exists, focus on:
-- architecture docs
-- plan docs
-- baseline inventory
-- agent docs and skills
-- Podman-first development environment
-- current native capability transfer in Sprint 11:
-  - grouped source packages
-  - `external_packages`
-  - package `import_path`, `source_file_count`, `module_local`
-  - type `package`, `import_path`, `source_file_count`, `module_local`, and `user_meaningful`
-- current next priority after Sprint 11:
-  - treat Sprint 7 as maintenance for evidence hygiene, not the main execution lane
-  - advance Sprint 12 from bounded runtime evidence into the first very small semantic decode
-  - use `docs/architecture/2026-03-19-goreveal-sprint12-runtime-spike-notes.md` as the initial runtime-spike reference
-  - use `docs/architecture/2026-03-20-goreveal-semantic-claim-boundaries.md` when documenting or extending semantic-runtime claims
-  - keep Sprint 12 bounded around field-specific `moduledata` cross-checks and tiny semantic steps such as the typelinks/itablinks slice headers, memory-range block, `.rodata` range, `.text` range, fixture-local typelink resolution, and the current `pcHeader` / `funcnametab` / `cutab` / `filetab` / `pctab` / `pclntable` bridges, not a broad parser
-  - small user-facing Sprint 12 slices are also allowed when they only project already-known truth, such as bounded function/source metadata, string candidate absolute addresses, first engine-owned code-peeling classification from canonical function/build-info truth, or thin export-layer projection of canonical function/type/string fields into RE-tool payloads
-  - if thin adapters already receive stronger canonical location truth, they should consume it directly instead of recomputing or discarding it; fallback logic is fine, duplicate inference is not
-  - after the current `.gopclntab` bridge chain checkpoint, do not add more blind same-fixture pcln bridges by default; prefer a second fixture or a very small runtime-to-heuristic cross-check
-  - the stripped ELF checkpoint is now part of the active Sprint 12 contract:
-    - `ReadMetadata()` may use bounded `.go.module` fallback as `firstmoduledata_addr` for the current stripped ELF family
-    - `analysis.runtime` may expose `firstmoduledata_from_go_module_fallback` so operators can tell when that bounded stripped-fixture fallback path was used
-    - `inspect functions` may expose bounded `package`, `import_path`, `module_local`, `source_file`, `source_line`, and `autogenerated` metadata derived from recovered function names plus `build_info.path` for `main`
-    - `inspect runtime` may expose the bounded `analysis.runtime` contract directly and should return `unavailable` rather than inventing runtime truth when that contract is absent
-    - `inspect packages` may preserve only the `main` package as module-local through `build_info.path` when source-tree evidence is absent, while external packages still expose direct `import_path` truth from function recovery; if source-tree correlation exists, packages may also expose explicit `has_source_evidence` from that already-known file-backed state
-    - type metadata may preserve `main` package locality through `build_info.path` when a truthful type surface exists without source-tree evidence, while non-`main` types still expose direct `import_path` truth from parsed type packages
-    - `inspect types` should degrade to `[]`, not JSON `null`, when no truthful type surface exists
-    - canonical `analyze` should expose `types: []`, not omit the field, when no truthful type surface exists
-    - `source-tree` may fall back to module root plus module-local and external package nodes with empty file lists when truthful file evidence is absent, but should mark those nodes with `has_file_evidence: false`
-  - do not rewrite package/type heuristics from Sprint 11 until runtime-semantic work yields stable naming or scope truth beyond the current fixture-local bridge
-  - use `docs/plans/2026-03-20-goreveal-functional-assessment.md` for the current product/strategy reassessment
+All development commands run inside the Podman dev container. Do not rely on host
+Go or host linters.
 
-Planned major areas:
-- `core`
-- `schema`
-- `engine`
-- `deobfuscation`
-- `cli`
-- `storage`
-- `api`
-- `plugins`
-- `bench`
-- `corpus`
+```bash
+podman build -f deployments/docker/Containerfile.dev -t localhost/goreveal:dev .
+task build-image
 
-## Expected Commands
+task fmt
+task lint
+task test
+task lint-scripts
+task test-snapshots
+task test-differential
+task test-differential-report
+task test-plugins
+```
 
-All development commands must run inside the project Podman dev container.
-Preferred flow once container scaffolding exists:
-- `podman build -f deployments/docker/Containerfile.dev -t goreveal:dev .`
-- `task build-image`
-- `task lint`
-- `task test`
-- `task test-differential`
-- `task test-differential-report`
-- `task test-plugins`
-- `task snapshot-update`
-- `make lint`
-- `make test`
-- `make test-differential`
-- `make test-differential-report`
-- `make test-plugins`
-- `make snapshot-update`
-- `make lint-scripts`
-- `task lint-scripts`
-- differential and corpus-specific commands documented in project skills should also run through the dev container
-- keep verification sequential; avoid overlapping build/test runs against the same bind-mounted workspace
-- treat `.golangci.yml` as a staged policy imported from `gobfd`: preserve the shared rule philosophy, keep `make lint` green, and adapt future rule changes deliberately instead of silently weakening the policy
-- Python, YAML, and shell checks are part of the supported verification surface:
-  - `ruff`
-  - `ty`
-  - `yamllint`
-  - `shellcheck`
-- `scripts/dev/podman_runner.py` is the canonical Podman automation entrypoint behind `make` and `task`
-- Podman socket discovery may come from `PODMAN_BASE_URL`, `CONTAINER_HOST`, or `DOCKER_HOST`; do not assume only `XDG_RUNTIME_DIR`-based rootless layouts
+Equivalent `make` targets exist. Keep verification **sequential** — overlapping
+runs against the same bind-mounted workspace produce flaky results.
 
-## Project Skills
+Non-Go gates are part of the supported surface and run through `uv`:
 
-Use the project skills whenever they match the task:
-- `goreveal-navigation`
-- `goreveal-cleanroom`
-- `goreveal-corpus-validation`
-- `goreveal-differential-testing`
-- `goreveal-deobfuscation`
-- `goreveal-perf-simd`
-- `goreveal-export-contracts`
-- `goreveal-release-ops`
+```bash
+uv sync --group dev
+uv run ruff check .
+uv run ruff format --check .
+uv run ty check
+uv run yamllint --strict .
+```
 
-Codex-native portable layout:
-- canonical repo-local skills now live in `.agents/skills/`
-- `skills/` remains as a compatibility mirror for current repo workflows
-- repo-local subagents live in `.codex/agents/`
-- project-scoped Codex config lives in `.codex/config.toml`
+`scripts/dev/podman_runner.py` is the canonical Podman automation entrypoint
+behind `make` and `task`. Podman socket discovery may come from
+`PODMAN_BASE_URL`, `CONTAINER_HOST`, or `DOCKER_HOST` — do not assume only
+`XDG_RUNTIME_DIR`-based rootless layouts.
 
-Additional coordination skills:
-- `goreveal-doc-sync`
-- `goreveal-sprint12-runtime`
+Differential tests need baseline checkouts. Point at them with
+`GOREVEAL_BASELINES_HOST_ROOT`; absent baselines cause skips, not failures.
+
+## Repository layout
+
+```text
+core/            recovery primitives (format, ingest, buildinfo, pclntab,
+                 runtime, functions, packages, types, strings)
+schema/          canonical analysis contract and export encoders
+engine/          pipeline orchestration, peeling, projection
+deobfuscation/   garble string and name refinement
+storage/         SQLite persistence and build-to-build diffing
+cmd/goreveal/    operator CLI
+internal/        version identity and test helpers
+plugins/         thin IDA and Ghidra adapters
+corpus/          fixtures and the protected-binary sample
+tests/           snapshot and differential suites
+scripts/         Python automation
+docs/            architecture and release documentation
+deployments/     Containerfiles
+```
+
+## Commits and pull requests
+
+Conventional Commits, enforced on pull request titles by CI. Allowed types:
+`feat`, `fix`, `perf`, `refactor`, `docs`, `test`, `build`, `ci`, `chore`,
+`revert`, `security`. Scope is a package path.
+
+```text
+feat(core/pclntab): recover funcnametab offsets on stripped ELF
+fix(engine/peeling): keep classification evidence on empty package sets
+```
+
+Never introduce host paths, internal hostnames, secrets, or organization-internal
+identifiers. This repository is public.
+
+## Project skills
+
+Repo-local skills live in [`.agents/skills/`](.agents/skills/). Use the one that
+matches the task:
+
+| Skill | Use when |
+| --- | --- |
+| `goreveal-navigation` | Orienting before any change |
+| `goreveal-cleanroom` | Studying a reference tool |
+| `goreveal-corpus-validation` | Touching fixtures or golden snapshots |
+| `goreveal-differential-testing` | Comparing against baseline tools |
+| `goreveal-deobfuscation` | Working on refinement layers |
+| `goreveal-export-contracts` | Changing an export shape |
+| `goreveal-perf-simd` | Any performance work |
+| `goreveal-release-ops` | Release and operational claims |
+| `goreveal-doc-sync` | Keeping docs aligned after a strategic change |
+
+Repo-local subagents live in [`.codex/agents/`](.codex/agents/); project-scoped
+Codex configuration is in `.codex/config.toml`.
+
+## Overlay files
+
+[CLAUDE.md](CLAUDE.md), [CODEX.md](CODEX.md), and [GEMINI.md](GEMINI.md) are
+per-assistant overlays. They refine emphasis; they never override this file.
+
+## Working notes
+
+`docs/.local/` is git-ignored and holds maintainer planning material. Read it for
+context when it exists, but never cite it in code, commits, or public
+documentation — it is not part of the project, and contributors will not have it.

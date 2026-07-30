@@ -10,9 +10,9 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/dantte-lp/goreveal/engine"
-	"github.com/dantte-lp/goreveal/internal/testutil"
-	"github.com/dantte-lp/goreveal/schema"
+	"github.com/ioplane/goreveal/engine"
+	"github.com/ioplane/goreveal/internal/testutil"
+	"github.com/ioplane/goreveal/schema"
 )
 
 var updateSnapshots = flag.Bool("update", false, "update analysis snapshots")
@@ -29,7 +29,6 @@ func TestAnalyzeFixtureSnapshot(t *testing.T) {
 	testutil.MustNoErr(t, err)
 
 	for _, fixtureName := range fixtureNames {
-		fixtureName := fixtureName
 		t.Run(fixtureName, func(t *testing.T) {
 			t.Parallel()
 

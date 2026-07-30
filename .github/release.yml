@@ -1,0 +1,62 @@
+---
+# Categories for GitHub's generated release notes. GoReleaser produces the
+# primary changelog from Conventional Commit prefixes; this file shapes the
+# "what's changed" block GitHub renders alongside it.
+changelog:
+  exclude:
+    labels:
+      - skip-changelog
+      - duplicate
+      - invalid
+      - question
+    authors:
+      - dependabot
+      - dependabot[bot]
+      - github-actions[bot]
+
+  categories:
+    - title: Security
+      labels:
+        - security
+    - title: Breaking changes
+      labels:
+        - breaking-change
+    - title: Recovery and analysis
+      labels:
+        - area/core
+        - area/engine
+        - area/deobfuscation
+    - title: Contract and exports
+      labels:
+        - area/schema
+        - area/plugins
+    - title: Operator surface
+      labels:
+        - area/cmd
+        - area/storage
+    - title: Performance
+      labels:
+        - performance
+    - title: Bug fixes
+      labels:
+        - bug
+    - title: Features
+      labels:
+        - enhancement
+    - title: Evidence and tests
+      labels:
+        - area/tests
+        - area/corpus
+    - title: Documentation
+      labels:
+        - documentation
+    - title: Build, CI, and supply chain
+      labels:
+        - ci
+        - build
+    - title: Dependencies
+      labels:
+        - dependencies
+    - title: Other changes
+      labels:
+        - "*"

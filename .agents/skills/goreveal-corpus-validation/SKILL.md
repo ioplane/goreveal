@@ -10,7 +10,7 @@ description: Manage fixtures, snapshots, and recovery evidence updates without m
 - adding a fixture
 - changing snapshot expectations
 - updating package/type/runtime semantics
-- landing new Sprint 12 evidence surfaces
+- landing a new bounded runtime or semantic evidence surface
 
 ## Required Checks
 

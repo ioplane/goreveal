@@ -24,7 +24,10 @@ description: Keep deobfuscation as a refinement layer with preserved raw truth a
 - test proving raw/refined separation
 - comparison note if inspired by an external tool
 
-## Sprint Rule
+## Scope Rule
 
-Do not expand `Sprint 13` ahead of the active `Sprint 12` lane.
-If constraint solving becomes relevant later, prefer external orchestration before native heavy dependencies.
+Keep refinement bounded: land the smallest pass that a fixture can prove, and do
+not widen into general symbolic recovery on the strength of one working case.
+
+If constraint solving becomes relevant later, prefer external orchestration over
+pulling a heavy solver dependency into this module.

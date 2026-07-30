@@ -1,21 +1,45 @@
+---
+title: GoREveal Platform Contract
+status: draft
+date: 2026-03-19
+owners:
+  - ioplane/goreveal-maintainers
+tags:
+  - architecture
+  - contract
+---
+
 # GoREveal Platform Contract
 
-> Status: draft architecture contract
-> Date: 2026-03-19
-> Purpose: capture approved product, architecture, and planning decisions early so implementation can return to a stable source of truth.
+<img
+  src="https://shieldcn.dev/badge/status-draft-slate.svg?variant=outline&size=xs"
+  alt="status: draft" height="20">
+<img
+  src="https://shieldcn.dev/badge/docs-architecture-slate.svg?variant=outline&size=xs"
+  alt="docs: architecture" height="20">
+
+> **Purpose.** Capture approved product, architecture, and planning decisions early so
+  implementation can return to a stable source of truth.
 
 ## 0. Delivery Model
 
-GoREveal is developed container-first. Build, lint, test, fuzz, benchmark, and code-generation workflows must run inside a Podman-managed OCI-compatible container environment. The host machine is treated as orchestration-only.
+GoREveal is developed container-first. Build, lint, test, fuzz, benchmark, and code-generation
+workflows must run inside a Podman-managed OCI-compatible container environment. The host machine is
+treated as orchestration-only.
 
-Reference pattern: `gobfd/deployments/docker` with separate development, builder, and release container definitions.
-
+Reference pattern: `gobfd/deployments/docker` with separate development, builder, and release
+container definitions.
 
 ## 1. Product Scope and Boundaries
 
-`GoREveal` is a clean-room platform for analysis of Go binaries that functionally covers the strongest capabilities of `gore`, `redress`, `GoReSym`, `GoResolver`, `gostringungarbler`, and `AlphaGolang`, without copying their code or inheriting their architectural constraints. These projects are treated as behavioral references, sources of edge cases, and differential-testing baselines.
+`GoREveal` is a clean-room platform for analysis of Go binaries that functionally covers the
+strongest capabilities of `gore`, `redress`, `GoReSym`, `GoResolver`, `gostringungarbler`, and
+`AlphaGolang`, without copying their code or inheriting their architectural constraints. These
+projects are treated as behavioral references, sources of edge cases, and differential-testing
+baselines.
 
 Scope for the first product line:
+
 - recovery core
 - canonical analysis schema
 - CLI
@@ -26,6 +50,7 @@ Scope for the first product line:
 - IDA/Ghidra adapters
 
 Out of scope for the first product line:
+
 - rich TUI/web UI
 - distributed analysis
 - live instrumentation
@@ -34,6 +59,7 @@ Out of scope for the first product line:
 - mandatory CGO components
 
 Platform contract:
+
 - accuracy first
 - schema before integrations
 - core independent from CLI/plugins/storage
@@ -42,19 +68,24 @@ Platform contract:
 - public-release planning must include an explicit repository license decision
 
 Priority order:
+
 1. accuracy
 2. convenience
 3. speed
 
 ## 2. Platform Architecture and Module Map
 
-`GoREveal` should be built as a monorepo with one product contract and a set of isolated modules around it.
+`GoREveal` should be built as a monorepo with one product contract and a set of isolated modules
+around it.
 
 Core modules:
-- `core`: binary parsing and recovery of runtime metadata, functions, packages, types, strings, build information, and file layout
+
+- `core`: binary parsing and recovery of runtime metadata, functions, packages, types, strings,
+  build information, and file layout
 - `schema`: canonical data model of analysis results
 - `deobfuscation`: garble-aware and string/name/CFG refinement passes over recovered data
-- `engine`: orchestration layer that runs recovery, enrichment, validation, normalization, and bounded analyst-facing layers such as source projection and the current first code-peeling slice
+- `engine`: orchestration layer that runs recovery, enrichment, validation, normalization, and
+  bounded analyst-facing layers such as source projection and the current first code-peeling slice
 - `cli`: command-line surface for analysis, inspection, export, diffing, and service mode
 - `storage`: SQLite-first persistence for cache and analysis artifacts
 - `api`: server interface for automation and integrations
@@ -64,34 +95,44 @@ Core modules:
 - `testdata` or `corpus`: golden binaries, expected snapshots, and cross-tool comparison fixtures
 
 Dependency direction must stay strict:
+
 - `core -> schema`
 - `deobfuscation -> core + schema`
 - `engine -> core + deobfuscation + schema`
 - `cli/storage/api/plugins -> engine + schema`
 - no reverse dependency into `core`
 
-This separation is required so that correctness work, plugin work, storage work, and SIMD work can evolve independently without contaminating the recovery core.
+This separation is required so that correctness work, plugin work, storage work, and SIMD work can
+evolve independently without contaminating the recovery core.
 
 ## 3. Data Flow, Analysis Pipeline, and SIMD Strategy
 
 The analysis pipeline should remain explicitly staged.
 
 Stages:
+
 1. `ingest`: open binary, file-format detection, mmap or stream abstraction, basic layout capture
-2. `runtime recovery`: recover build info, pclntab, moduledata, typelinks, interface/type metadata, string regions, symbol hints
-3. `semantic recovery`: build functions, methods, packages, source roots, compiler/runtime assumptions, higher-level recovered structures
-4. `deobfuscation passes`: garble-aware string recovery, name refinement, package recovery, optional CFG-guided enrichment
+2. `runtime recovery`: recover build info, pclntab, moduledata, typelinks, interface/type metadata,
+   string regions, symbol hints
+3. `semantic recovery`: build functions, methods, packages, source roots, compiler/runtime
+   assumptions, higher-level recovered structures
+4. `deobfuscation passes`: garble-aware string recovery, name refinement, package recovery, optional
+   CFG-guided enrichment
 5. `normalization`: map all results into canonical `schema`
-6. `projection/export`: CLI tables, JSON/proto export, source-tree projection, SQLite persistence, plugin payloads
+6. `projection/export`: CLI tables, JSON/proto export, source-tree projection, SQLite persistence,
+   plugin payloads
 7. `comparison/validation`: differential validation against baseline tools and golden expectations
 
 Every stage should preserve provenance and confidence metadata so users can distinguish:
+
 - directly recovered data
 - heuristically inferred data
 - deobfuscation-enriched data
 
 SIMD strategy:
-- SIMD is not introduced into correctness-critical code until baseline scalar behavior is stable and benchmarked
+
+- SIMD is not introduced into correctness-critical code until baseline scalar behavior is stable and
+  benchmarked
 - SIMD is allowed only in measured hotspots such as:
   - pattern scanning over large mapped sections
   - byte classification and delimiter scanning
@@ -105,6 +146,7 @@ SIMD strategy:
   - runtime feature detection
 
 Optimization ladder:
+
 1. pure Go reference implementation
 2. optimized scalar implementation
 3. architecture-specific SIMD implementation
@@ -115,14 +157,17 @@ Optimization ladder:
 The product should be organized around user workflows rather than around isolated utilities.
 
 First-class workflows:
+
 - analyze a binary and obtain a full canonical analysis result
-- inspect recovered functions, types, packages, strings, build information, and compiler/runtime assumptions
+- inspect recovered functions, types, packages, strings, build information, and compiler/runtime
+  assumptions
 - export results into IDA/Ghidra without manual glue work
 - project a source-like tree from recovered metadata
 - deobfuscate garble-like binaries to improve readability
 - compare `GoREveal` output with baseline tools on the same input
 
 Primary product surface:
+
 - CLI commands:
   - `goreveal analyze`
   - `goreveal inspect functions|types|packages|strings|build`
@@ -144,6 +189,7 @@ Primary product surface:
   - differential validation runs
 
 Non-goals for the early platform:
+
 - plugin-specific semantics in the core
 - storage as a mandatory prerequisite for analysis
 - premature UI work before schema stabilization
@@ -152,19 +198,27 @@ Non-goals for the early platform:
 ## 5. Quality Strategy, Differential Testing, and Scrum Roadmap Shape
 
 Quality for `GoREveal` must be built around three truth layers:
+
 - correctness against known binaries
 - behavior parity or improvement versus baseline tools
 - performance regression visibility
 
 Quality strategy:
-- `golden corpus`: binaries across Go versions, formats (`ELF/PE/Mach-O`), stripping modes, and obfuscation scenarios
+
+- `golden corpus`: binaries across Go versions, formats (`ELF/PE/Mach-O`), stripping modes, and
+  obfuscation scenarios
 - `snapshot tests`: canonical schema output compared against expected golden snapshots
-- `differential tests`: comparisons against `GoReSym`, `gore`, `redress`, `GoResolver`, and `gostringungarbler` where applicable
-- `property/fuzz tests`: parser and recovery fuzzing for layout, metadata, string extraction, and type decoding
-- `benchmark gates`: hotspot and corpus-scale benchmarks so SIMD and parser changes remain measurable
-- `confidence accounting`: all recovery results should carry provenance/confidence so improvements remain auditable
+- `differential tests`: comparisons against `GoReSym`, `gore`, `redress`, `GoResolver`, and
+  `gostringungarbler` where applicable
+- `property/fuzz tests`: parser and recovery fuzzing for layout, metadata, string extraction, and
+  type decoding
+- `benchmark gates`: hotspot and corpus-scale benchmarks so SIMD and parser changes remain
+  measurable
+- `confidence accounting`: all recovery results should carry provenance/confidence so improvements
+  remain auditable
 
 Scrum roadmap shape:
+
 - `Epic 1`: Core binary recovery foundation
 - `Epic 2`: Canonical schema and engine
 - `Epic 3`: CLI and export surface
@@ -176,20 +230,24 @@ Scrum roadmap shape:
 - `Epic 9`: Server/API surface
 - `Epic 10`: Release engineering and corpus operations
 
-Sprint policy:
-- use capability sprints, not architecture-only sprints
-- every sprint ends with a demonstrable increment
+Delivery policy:
+
+- work in capability increments, not architecture-only refactors
+- every increment ends with something demonstrable through the CLI, schema, an
+  export, or a test
 - correctness and evidence outrank feature breadth
-- once a same-fixture bounded bridge chain is dense enough, prefer a second fixture or a small cross-check over further blind expansion
+- once a same-fixture bounded bridge chain is dense enough, prefer a second
+  fixture or a small cross-check over further blind expansion
 
-## 6. Epic Breakdown and Sprint Structure
+## 6. Capability Areas
 
-Backlog should be organized into:
-- `Epic`: major capability area
-- `Sprint`: demonstrable increment inside one or more epics
-- `Task`: finished engineering unit with tests or benchmark evidence
+Work is organized by capability area, each delivered as a sequence of narrow,
+individually verifiable increments. Day-to-day contribution rules live in
+[CONTRIBUTING.md](../../CONTRIBUTING.md); this section only records the shape of
+the problem space.
 
-Recommended epic set:
+Capability areas:
+
 - `Epic 1: Core Recovery`
 - `Epic 2: Schema + Engine`
 - `Epic 3: Inspection CLI`
@@ -202,24 +260,30 @@ Recommended epic set:
 - `Epic 10: Service Surface`
 - `Epic 11: Release and Operations`
 
-Sprint structure should follow vertical capability slices rather than horizontal architecture-only milestones.
+Progress within an area follows vertical capability slices — recovery logic, its
+schema mapping, operator exposure, and evidence — rather than horizontal
+architecture-only milestones.
 
 ## 7. Definition of Done, Backlog Rules, and Planning Assumptions
 
 Definition of done for any engineering task:
+
 - code is integrated into the correct module boundary
 - tests, snapshots, or benchmarks exist for the changed behavior
 - docs or contract notes are updated if behavior or schema changes
 - differential expectations are updated when recovery semantics change
 - scalar fallback remains intact for optimized paths
-- the change can be demonstrated as part of a sprint increment
+- the change can be demonstrated through the CLI, schema output, tests, or benchmarks
 
-Definition of done for any sprint increment:
-- a user-visible or automation-visible capability exists through CLI, schema, export, or test flow
+Definition of done for any capability increment:
+
+- a user-visible or automation-visible capability exists through the CLI, schema,
+  an export, or a test flow
 - the capability is proven on at least one golden binary
-- follow-on work can continue without architectural rollback
+- follow-on work can continue without an architectural rollback
 
 Backlog rules:
+
 - `accuracy work` outranks `feature breadth`
 - `schema-changing tasks` require explicit review attention
 - `plugin tasks` come only after stable export contracts
@@ -228,32 +292,43 @@ Backlog rules:
 - `baseline parity` means behavior comparison, not code copying
 
 Planning assumptions:
+
 - team size is small, so tasks must stay narrow and vertical
-- every major feature must include recovery logic, schema mapping, tests, and user-facing exposure if relevant
-- every performance initiative must include measurement, scalar baseline, optimized path, and regression benchmark
+- every major feature must include recovery logic, schema mapping, tests, and user-facing exposure
+  if relevant
+- every performance initiative must include measurement, scalar baseline, optimized path, and
+  regression benchmark
 - every integration initiative must include stable export contract and fixture-based validation
-- code peeling belongs in `engine` as enrichment over canonical truth, not in `core` as recovery logic
-- the next cross-format evidence checkpoint after the current ELF family should be a bounded Windows `PE` fixture
+- code peeling belongs in `engine` as enrichment over canonical truth, not in `core` as recovery
+  logic
+- the next cross-format evidence checkpoint after the current ELF family should be a bounded Windows
+  `PE` fixture
 
-## 8. Recommended First Scrum Roadmap
+## 8. Capability Ordering
 
-Recommended sprint sequence:
-- `Sprint 1`: analysis skeleton
-- `Sprint 2`: function and package recovery
-- `Sprint 3`: types and strings
-- `Sprint 4`: source projection v1
-- `Sprint 5`: deobfuscation v1
-- `Sprint 6`: SQLite analysis store
-- `Sprint 7`: plugin-ready exports
-- `Sprint 8`: performance and SIMD foundation
-- `Sprint 9`: service/API layer
-- `Sprint 10`: hardening and release baseline
+The dependency order between capabilities, recorded because later items are not
+meaningfully reachable before earlier ones:
 
-These sprints are defined as capability increments, not date-bound ceremonies.
+1. analysis skeleton
+2. function and package recovery
+3. types and strings
+4. source projection
+5. deobfuscation as a refinement layer
+6. SQLite analysis store
+7. plugin-ready export contracts
+8. performance and SIMD foundation
+9. service and API surface
+10. release engineering and corpus operations
+
+These are capability increments, not date-bound commitments. Current delivered
+state is summarized in the project status table in
+[README.md](../../README.md#project-status); the ordering above says what depends
+on what, not what is finished.
 
 ## 9. Agent Docs and Mandatory Project Skills
 
 `AGENTS.md` is the primary operational contract for agents and maintainers. It should cover:
+
 - project purpose and clean-room boundary
 - baseline references
 - priorities and architecture invariants
@@ -263,11 +338,14 @@ These sprints are defined as capability increments, not date-bound ceremonies.
 - standard commands and repository map once scaffolded
 
 Agent overlays should remain short:
+
 - `CLAUDE.md`: planning and large-scale refactor guidance
-- `CODEX.md`: implementation-heavy guidance with emphasis on tests, schema boundaries, and performance discipline
+- `CODEX.md`: implementation-heavy guidance with emphasis on tests, schema boundaries, and
+  performance discipline
 - `GEMINI.md`: research and baseline-comparison guidance
 
 Mandatory project skills:
+
 - `goreveal-navigation`
 - `goreveal-cleanroom`
 - `goreveal-corpus-validation`
@@ -280,6 +358,7 @@ Mandatory project skills:
 ## 10. Required Documentation and Planning Artifacts Before Implementation
 
 Required artifacts before implementation begins:
+
 - this platform contract
 - module map document
 - schema principles document
@@ -290,6 +369,7 @@ Required artifacts before implementation begins:
 - required project skills
 
 Planning order:
+
 1. finalize architecture docs
 2. write Scrum implementation plan
 3. write agent docs and project skills
@@ -298,9 +378,11 @@ Planning order:
 
 ## 11. Go 1.26 Best Practices and Project Patterns
 
-Go 1.26 best practices are normative for this project and should be documented separately in `docs/architecture/2026-03-19-goreveal-go126-best-practices.md`.
+Go 1.26 best practices are normative for this project and should be documented separately in
+`docs/architecture/2026-03-19-goreveal-go126-best-practices.md`.
 
 High-level policy:
+
 - small focused packages
 - constructor-based wiring
 - context-first APIs where cancellation and I/O matter

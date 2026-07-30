@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/dantte-lp/goreveal/schema"
-	storagediff "github.com/dantte-lp/goreveal/storage/diff"
-	storesqlite "github.com/dantte-lp/goreveal/storage/sqlite"
+	"github.com/ioplane/goreveal/schema"
+	storagediff "github.com/ioplane/goreveal/storage/diff"
+	storesqlite "github.com/ioplane/goreveal/storage/sqlite"
 )
 
 type storedRunDiff struct {
@@ -144,7 +144,7 @@ type diffReviewHandoffTarget struct {
 }
 
 // RunDiffSQLite compares two stored analyses from the same SQLite database.
-func RunDiffSQLite(ctx context.Context, stdout io.Writer, dbPath string, leftID, rightID int64) (err error) {
+func RunDiffSQLite(ctx context.Context, stdout io.Writer, dbPath string, leftID, rightID int64) error {
 	_, _, summary, err := loadStoredRunDiffSummary(ctx, dbPath, leftID, rightID)
 	if err != nil {
 		return err
@@ -223,6 +223,7 @@ func RunDiffNextSQLite(ctx context.Context, stdout io.Writer, dbPath string, lef
 	})
 }
 
+//nolint:nonamedreturns // the deferred store.Close must be able to replace err
 func loadStoredRunDiffSummary(ctx context.Context, dbPath string, leftID, rightID int64) (left schema.Analysis, right schema.Analysis, summary storagediff.Summary, err error) {
 	store, err := storesqlite.Open(ctx, dbPath)
 	if err != nil {
@@ -246,6 +247,11 @@ func loadStoredRunDiffSummary(ctx context.Context, dbPath string, leftID, rightI
 	return left, right, storagediff.Compare(left, right), nil
 }
 
+// The handoff artifact is one flat contract assembled field by field. Splitting
+// it would scatter a single wire shape across helpers without making it easier
+// to verify against the export-contract tests.
+//
+//nolint:funlen // flat contract assembly; splitting hurts reviewability
 func buildDiffReviewHandoff(dbPath string, leftID, rightID int64, leftInput, rightInput schema.Input, focus *storagediff.TransferReviewAction) *diffReviewHandoff {
 	if focus == nil {
 		return nil
@@ -275,25 +281,25 @@ func buildDiffReviewHandoff(dbPath string, leftID, rightID int64, leftInput, rig
 				ArtifactRole:    "go_metadata_export",
 				Contract:        "goreveal.export.ida/v1",
 				Format:          "ida",
-				ProducerCommand: fmt.Sprintf("goreveal export ida %s", rightInput.Path),
+				ProducerCommand: "goreveal export ida " + rightInput.Path,
 			},
 			{
 				ID:              "ghidra_export",
 				ArtifactRole:    "go_metadata_export",
 				Contract:        "goreveal.export.ghidra/v1",
 				Format:          "ghidra",
-				ProducerCommand: fmt.Sprintf("goreveal export ghidra %s", rightInput.Path),
+				ProducerCommand: "goreveal export ghidra " + rightInput.Path,
 			},
 		},
 		ReviewCommand: reviewCommand,
 		ExportCommands: []string{
-			fmt.Sprintf("goreveal export ida %s", rightInput.Path),
-			fmt.Sprintf("goreveal export ghidra %s", rightInput.Path),
+			"goreveal export ida " + rightInput.Path,
+			"goreveal export ghidra " + rightInput.Path,
 		},
 		OperatorSteps: []string{
 			reviewCommand,
-			fmt.Sprintf("goreveal export ida %s", rightInput.Path),
-			fmt.Sprintf("goreveal export ghidra %s", rightInput.Path),
+			"goreveal export ida " + rightInput.Path,
+			"goreveal export ghidra " + rightInput.Path,
 			fmt.Sprintf("handoff runtime/package review for %s from %s to host platform MCP or workspace import", focus.Package, leftInput.Path),
 		},
 		TargetProfiles: []diffReviewHandoffTarget{
@@ -302,7 +308,7 @@ func buildDiffReviewHandoff(dbPath string, leftID, rightID int64, leftInput, rig
 				RecommendedMCP:     "ida-pro-mcp",
 				ExportFormat:       "ida",
 				ExportContract:     "goreveal.export.ida/v1",
-				ExportCommand:      fmt.Sprintf("goreveal export ida %s", rightInput.Path),
+				ExportCommand:      "goreveal export ida " + rightInput.Path,
 				ArtifactRole:       "go_metadata_export",
 				BindingMode:        "mcp_server",
 				HostEntrypoint:     "ida-pro-mcp.import_export_payload",
@@ -320,7 +326,7 @@ func buildDiffReviewHandoff(dbPath string, leftID, rightID int64, leftInput, rig
 				RequiredArtifacts: []string{"review_handoff", "ida_export"},
 				OperatorSteps: []string{
 					reviewCommand,
-					fmt.Sprintf("goreveal export ida %s", rightInput.Path),
+					"goreveal export ida " + rightInput.Path,
 					"pass the export payload to ida-pro-mcp or import it into the IDA workspace",
 				},
 			},
@@ -328,7 +334,7 @@ func buildDiffReviewHandoff(dbPath string, leftID, rightID int64, leftInput, rig
 				Target:             "ghidra",
 				ExportFormat:       "ghidra",
 				ExportContract:     "goreveal.export.ghidra/v1",
-				ExportCommand:      fmt.Sprintf("goreveal export ghidra %s", rightInput.Path),
+				ExportCommand:      "goreveal export ghidra " + rightInput.Path,
 				ArtifactRole:       "go_metadata_export",
 				BindingMode:        "workspace_loader",
 				HostEntrypoint:     "ghidra.workspace_import",
@@ -346,7 +352,7 @@ func buildDiffReviewHandoff(dbPath string, leftID, rightID int64, leftInput, rig
 				RequiredArtifacts: []string{"review_handoff", "ghidra_export"},
 				OperatorSteps: []string{
 					reviewCommand,
-					fmt.Sprintf("goreveal export ghidra %s", rightInput.Path),
+					"goreveal export ghidra " + rightInput.Path,
 					"import the export payload into the Ghidra workspace or future host-platform bridge",
 				},
 			},
@@ -361,8 +367,8 @@ func buildDiffNextActions(dbPath string, leftID, rightID int64, rightInput schem
 
 	reviewCommand := fmt.Sprintf("goreveal diff review sqlite %s %d %d", dbPath, leftID, rightID)
 	handoffCommand := fmt.Sprintf("goreveal diff handoff sqlite %s %d %d", dbPath, leftID, rightID)
-	idaExport := fmt.Sprintf("goreveal export ida %s", rightInput.Path)
-	ghidraExport := fmt.Sprintf("goreveal export ghidra %s", rightInput.Path)
+	idaExport := "goreveal export ida " + rightInput.Path
+	ghidraExport := "goreveal export ghidra " + rightInput.Path
 
 	return []storedRunDiffNextAction{
 		{
@@ -481,10 +487,7 @@ func buildDiffNextUpcoming(plan []storagediff.TransferReviewAction, focus *stora
 		return nil
 	}
 
-	end := start + limit
-	if end > len(plan) {
-		end = len(plan)
-	}
+	end := min(start+limit, len(plan))
 
 	out := make([]storedRunDiffNextPackage, 0, end-start)
 	for _, item := range plan[start:end] {

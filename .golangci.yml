@@ -1,10 +1,10 @@
 ---
 version: "2"
 
-# This policy is rebased from /opt/projects/repositories/gobfd/.golangci.yml.
-# It is intentionally staged for goreveal: preserve the shared lint philosophy,
-# but only enable the subset that currently provides signal without drowning the
-# repo in style-only migration noise.
+# This policy is intentionally staged: it enables the subset of linters that
+# currently produce signal, rather than every rule at once. Extend it
+# deliberately -- never weaken it to make a change pass. `depguard` below is what
+# mechanically enforces the module boundaries described in AGENTS.md.
 
 run:
   timeout: 10m
@@ -19,7 +19,7 @@ formatters:
   settings:
     goimports:
       local-prefixes:
-        - github.com/dantte-lp/goreveal
+        - github.com/ioplane/goreveal
 
 output:
   formats:

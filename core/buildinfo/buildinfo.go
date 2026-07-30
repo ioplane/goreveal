@@ -4,7 +4,7 @@ import (
 	stdbuildinfo "debug/buildinfo"
 	"fmt"
 
-	"github.com/dantte-lp/goreveal/schema"
+	"github.com/ioplane/goreveal/schema"
 )
 
 // Info is the canonical build information recovered from a Go binary.

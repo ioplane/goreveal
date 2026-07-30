@@ -1,0 +1,95 @@
+---
+name: SonarQube Cloud
+
+# yamllint disable-line rule:truthy
+on:
+  push:
+    branches:
+      - main
+  # pull_request_target is deliberately avoided: it would expose secrets to fork
+  # code. Fork pull requests get an explicit skip notice instead.
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch: {}
+
+permissions: {}
+
+concurrency:
+  group: sonar-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  GO_VERSION: "1.26.5"
+  GOWORK: "off"
+  GOTOOLCHAIN: local
+
+jobs:
+  scan:
+    name: Analyze
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: audit
+
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          # Sonar needs full history to attribute issues to authors and to
+          # compute new-code periods correctly.
+          fetch-depth: 0
+
+      - name: Detect Sonar configuration
+        id: sonar
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "${SONAR_TOKEN:-}" ]; then
+            echo "configured=false" >>"${GITHUB_OUTPUT}"
+            echo "::notice::SONAR_TOKEN unavailable (absent secret or fork PR); skipping."
+            exit 0
+          fi
+          if grep -qE '^sonar\.(organization|projectKey)=(TODO|)' sonar-project.properties; then
+            echo "configured=false" >>"${GITHUB_OUTPUT}"
+            echo "::warning::sonar-project.properties holds TODO keys; see docs/RELEASE.md."
+            exit 0
+          fi
+          echo "configured=true" >>"${GITHUB_OUTPUT}"
+
+      - name: Set up Go
+        if: steps.sonar.outputs.configured == 'true'
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          check-latest: true
+
+      # Sonar's Go analyzer reads a native coverage profile, so it is produced
+      # here rather than downloaded from the CI workflow -- that keeps this
+      # workflow independent and avoids a cross-workflow artifact dependency.
+      - name: Generate coverage
+        if: steps.sonar.outputs.configured == 'true'
+        run: go test ./... -coverprofile=coverage.out -covermode=atomic -timeout=15m
+
+      - name: SonarQube Cloud scan
+        if: steps.sonar.outputs.configured == 'true'
+        uses: SonarSource/sonarqube-scan-action@22918119ff8e1ca75a623e15c8296b6ea4fbe28f # v8.2.1
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+      - name: Report skip
+        if: steps.sonar.outputs.configured != 'true'
+        run: |
+          {
+            echo "### SonarQube Cloud analysis skipped"
+            echo
+            echo "Either \`SONAR_TOKEN\` is unavailable (fork pull request) or"
+            echo "\`sonar-project.properties\` still holds TODO placeholders."
+            echo
+            echo "Setup steps are documented in \`docs/RELEASE.md\`."
+          } >>"${GITHUB_STEP_SUMMARY}"

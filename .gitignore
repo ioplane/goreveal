@@ -1,29 +1,59 @@
-# Go
+# Build output
 bin/
 dist/
 *.test
 *.out
+*.exe
+*.so
+*.dylib
+
+# Coverage and profiling
 coverage.out
+coverage.txt
+coverage.html
+*.prof
+*.cpu
+*.mem
 
 # Modules and workspaces
 vendor/
 
-# Tooling
+# Go tooling caches
 .golangci.cache/
+
+# Analysis and scan reports
+*.sarif
+sbom*.json
+sbom*.spdx.json
 
 # Editors and OS
 .DS_Store
 .idea/
 .vscode/
+*.swp
 
 # Analysis artifacts
 corpus/generated/
 output/
 .tmp/
 
+# Local-only documentation (planning, sprint notes, internal drafts).
+# Kept on disk for maintainers; never tracked or published.
+docs/.local/
+
 # Local agent state
 .serena/
+.claude/settings.local.json
 
 # Python
 __pycache__/
 *.pyc
+.ruff_cache/
+.mypy_cache/
+.pytest_cache/
+.venv/
+venv/
+*.egg-info/
+
+# Node (used only for ad-hoc `npx markdownlint-cli2` runs)
+node_modules/

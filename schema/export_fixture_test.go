@@ -5,8 +5,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/dantte-lp/goreveal/engine"
-	"github.com/dantte-lp/goreveal/schema"
+	"github.com/ioplane/goreveal/engine"
+	"github.com/ioplane/goreveal/schema"
 )
 
 func TestFixtureIDAExportSimulation(t *testing.T) {

@@ -1,15 +1,47 @@
-FROM debian:trixie-slim AS release
+# syntax=docker/dockerfile:1
+#
+# GoREveal minimal runtime image.
+#
+# Built by the release pipeline from an already-compiled binary; it never
+# compiles anything. Keep it free of shells and package managers beyond what is
+# needed to present CA certificates.
+#
+# Base image is digest-pinned. Refresh it deliberately.
+FROM docker.io/library/debian:trixie-slim@sha256:020c0d20b9880058cbe785a9db107156c3c75c2ac944a6aa7ab59f2add76a7bd AS release
 
-LABEL org.opencontainers.image.title="GoREveal Release Image"
-LABEL org.opencontainers.image.description="Minimal OCI runtime image for GoREveal"
-LABEL org.opencontainers.image.source="https://github.com/dantte-lp/goreveal"
+ARG VERSION=dev
+ARG GIT_COMMIT=unknown
+ARG BUILD_DATE=unknown
 
-RUN groupadd -r goreveal && useradd -r -g goreveal -s /usr/sbin/nologin goreveal \
-    && apt-get update && apt-get install -y --no-install-recommends ca-certificates \
+LABEL org.opencontainers.image.title="GoREveal" \
+      org.opencontainers.image.description="Clean-room reverse-engineering platform for Go binaries" \
+      org.opencontainers.image.source="https://github.com/ioplane/goreveal" \
+      org.opencontainers.image.url="https://github.com/ioplane/goreveal" \
+      org.opencontainers.image.documentation="https://github.com/ioplane/goreveal/blob/main/README.md" \
+      org.opencontainers.image.licenses="Apache-2.0" \
+      org.opencontainers.image.vendor="ioplane" \
+      org.opencontainers.image.version="${VERSION}" \
+      org.opencontainers.image.revision="${GIT_COMMIT}" \
+      org.opencontainers.image.created="${BUILD_DATE}"
+
+RUN groupadd --system goreveal \
+    && useradd --system --gid goreveal --shell /usr/sbin/nologin --no-create-home goreveal \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-COPY goreveal /usr/local/bin/goreveal
+# GoReleaser's dockers_v2 build context lays artifacts out per platform
+# (`linux/amd64/goreveal`, `linux/arm64/goreveal`, …), so the copy is addressed
+# through TARGETPLATFORM. Building this image by hand requires the same layout:
+#
+#   mkdir -p linux/amd64 && cp goreveal linux/amd64/
+#   docker buildx build -f deployments/docker/Containerfile.release .
+ARG TARGETPLATFORM
+COPY ${TARGETPLATFORM}/goreveal /usr/local/bin/goreveal
 
+# Analysis is read-only work on untrusted input: no writable home, no shell user.
 USER goreveal:goreveal
+WORKDIR /work
 
 ENTRYPOINT ["/usr/local/bin/goreveal"]
+CMD ["--help"]

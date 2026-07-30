@@ -12,7 +12,7 @@ Priorities:
 
 Rules:
 - prefer reading docs and repo structure before code bodies
-- respect AGENTS.md and the active Sprint 12 contract
+- respect AGENTS.md and the documented claim boundaries
 - do not propose moving plugin or storage logic into core
 - when automation is involved, treat `Taskfile.yml`, `Makefile`, and `scripts/dev/podman_runner.py` as one contract surface
 """

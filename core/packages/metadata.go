@@ -1,6 +1,6 @@
 package packages
 
-import "github.com/dantte-lp/goreveal/schema"
+import "github.com/ioplane/goreveal/schema"
 
 // EnrichSourceMetadata correlates recovered packages with source-tree evidence.
 func EnrichSourceMetadata(pkgs []Package, tree *schema.SourceTree) []Package {

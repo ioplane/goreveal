@@ -5,19 +5,19 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/dantte-lp/goreveal/core/buildinfo"
-	"github.com/dantte-lp/goreveal/core/functions"
-	"github.com/dantte-lp/goreveal/core/ingest"
-	"github.com/dantte-lp/goreveal/core/packages"
-	recoveryruntime "github.com/dantte-lp/goreveal/core/runtime"
-	recoverystrings "github.com/dantte-lp/goreveal/core/strings"
-	"github.com/dantte-lp/goreveal/core/types"
-	"github.com/dantte-lp/goreveal/deobfuscation"
-	"github.com/dantte-lp/goreveal/deobfuscation/garble"
-	"github.com/dantte-lp/goreveal/deobfuscation/refine"
-	"github.com/dantte-lp/goreveal/engine/peeling"
-	"github.com/dantte-lp/goreveal/engine/projection"
-	"github.com/dantte-lp/goreveal/schema"
+	"github.com/ioplane/goreveal/core/buildinfo"
+	"github.com/ioplane/goreveal/core/functions"
+	"github.com/ioplane/goreveal/core/ingest"
+	"github.com/ioplane/goreveal/core/packages"
+	recoveryruntime "github.com/ioplane/goreveal/core/runtime"
+	recoverystrings "github.com/ioplane/goreveal/core/strings"
+	"github.com/ioplane/goreveal/core/types"
+	"github.com/ioplane/goreveal/deobfuscation"
+	"github.com/ioplane/goreveal/deobfuscation/garble"
+	"github.com/ioplane/goreveal/deobfuscation/refine"
+	"github.com/ioplane/goreveal/engine/peeling"
+	"github.com/ioplane/goreveal/engine/projection"
+	"github.com/ioplane/goreveal/schema"
 )
 
 // Analyzer orchestrates the minimal ingest-to-schema flow.
@@ -56,11 +56,12 @@ func (Analyzer) AnalyzeFile(ctx context.Context, path string) (schema.Analysis, 
 		analysis.BuildInfo = &info
 	}
 
-	if analysis.Input.Format == "elf" {
+	switch analysis.Input.Format {
+	case "elf":
 		analysis = analyzeELFSurfaces(path, analysis)
-	} else if analysis.Input.Format == "pe" {
+	case "pe":
 		analysis = analyzePESurfaces(path, analysis)
-	} else if analysis.Input.Format == "macho" {
+	case "macho":
 		analysis = analyzeMachOSurfaces(path, analysis)
 	}
 

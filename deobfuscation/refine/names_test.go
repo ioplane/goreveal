@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/dantte-lp/goreveal/deobfuscation"
-	"github.com/dantte-lp/goreveal/schema"
+	"github.com/ioplane/goreveal/deobfuscation"
+	"github.com/ioplane/goreveal/schema"
 )
 
 func TestSyntheticNamePassRefinesTypeEqFunctions(t *testing.T) {
