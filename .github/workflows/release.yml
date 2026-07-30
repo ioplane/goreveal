@@ -4,13 +4,12 @@ name: Release
 # yamllint disable-line rule:truthy
 on:
   # release-please (with a PAT) publishes a GitHub Release, which fires this.
+  # This is the single publish trigger: release-please's tag creation also emits
+  # a push event, so listening to push tags as well would double-run goreleaser
+  # against the same release.
   release:
     types:
       - published
-  # A manual `git push` of a version tag also publishes.
-  push:
-    tags:
-      - "v*.*.*"
   workflow_dispatch:
     inputs:
       dry_run:
@@ -119,7 +118,7 @@ jobs:
     # dry_run is explicitly false, otherwise it is a snapshot.
     env:
       PUBLISH: >-
-        ${{ github.event_name == 'release' || github.event_name == 'push'
+        ${{ github.event_name == 'release'
         || (github.event_name == 'workflow_dispatch' && inputs.dry_run == false) }}
     permissions:
       # Create the release and upload assets.
