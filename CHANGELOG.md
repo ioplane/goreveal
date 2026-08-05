@@ -28,6 +28,13 @@ Per-release artifact notes, checksums, SBOMs, and signature verification steps
 live with each [GitHub Release](https://github.com/ioplane/goreveal/releases) and
 are described in [docs/RELEASE.md](docs/RELEASE.md).
 
+## [0.1.4](https://github.com/ioplane/goreveal/compare/v0.1.3...v0.1.4) (2026-08-05)
+
+
+### Bug fixes
+
+* **readme:** point the CI badge at the ci.yml workflow file ([e8fdda8](https://github.com/ioplane/goreveal/commit/e8fdda8bd915b9cb91023331576b98bb99770df3))
+
 ## [0.1.3](https://github.com/ioplane/goreveal/compare/v0.1.2...v0.1.3) (2026-07-30)
 
 
